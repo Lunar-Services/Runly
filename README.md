@@ -55,6 +55,7 @@ Use Stripe test mode only for local development:
 3. In another terminal, run:
 
 ```bash
+npm i -g @stripe/cli@latest
 stripe login
 stripe listen --events customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,checkout.session.completed,checkout.session.async_payment_succeeded,invoice.paid,invoice.payment_failed --forward-to http://localhost:3000/api/stripe/webhook
 ```

@@ -54,6 +54,11 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [cancellation, setCancellation] = useState<{
+    plan: string;
+    currentPeriodEnd: string;
+  } | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const [account, setAccount] = useState<{
     displayName: string;
     email: string;
@@ -79,6 +84,19 @@ export function AppShell({
       controller.abort();
       window.removeEventListener("runly-profile-updated", loadAccount);
     };
+  }, []);
+  useEffect(() => {
+    fetch("/api/billing")
+      .then(async (response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        const subscription = data?.subscription;
+        if (subscription?.cancelAtPeriodEnd && subscription.currentPeriodEnd)
+          setCancellation({
+            plan: subscription.plan,
+            currentPeriodEnd: subscription.currentPeriodEnd,
+          });
+      })
+      .catch(() => undefined);
   }, []);
   async function signOut() {
     setPending(true);
@@ -192,7 +210,30 @@ export function AppShell({
             <Bot size={19} />
           </Link>
         </header>
-        <div className="app-content">{children}</div>
+        <div className="app-content">
+          {cancellation && !bannerDismissed && (
+            <div className="cancellation-banner" role="status">
+              <span>
+                Your {cancellation.plan[0]?.toUpperCase()}
+                {cancellation.plan.slice(1)} plan ends{" "}
+                {new Date(cancellation.currentPeriodEnd).toLocaleDateString()}.
+                You may{" "}
+                <Link href="/settings/billing">
+                  withdraw your cancellation at Billing
+                </Link>
+                .
+              </span>
+              <button
+                className="cancellation-banner-close"
+                aria-label="Dismiss cancellation notice"
+                onClick={() => setBannerDismissed(true)}
+              >
+                ×
+              </button>
+            </div>
+          )}
+          {children}
+        </div>
       </main>
     </div>
   );

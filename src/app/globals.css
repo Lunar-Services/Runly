@@ -1731,6 +1731,36 @@ a {
   font-size: 12px;
   margin-bottom: 20px;
 }
+.cancellation-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 15px;
+  margin-bottom: 20px;
+  border: 1px solid #e3aaa3;
+  border-radius: 10px;
+  background: #fff1ef;
+  color: #7d2821;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.cancellation-banner a {
+  color: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cancellation-banner-close {
+  flex: 0 0 auto;
+  border: 0;
+  padding: 0 2px;
+  background: transparent;
+  color: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
 .two-col,
 .settings-grid {
   display: grid;
@@ -1777,11 +1807,26 @@ a {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+.billing-ending-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #fff2c7;
+  color: #866400;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 .billing-actions {
   margin-top: 20px;
 }
 .billing-dialog {
   width: min(520px, calc(100vw - 32px));
+}
+.billing-dialog > .muted {
+  margin: 0;
 }
 .billing-dialog-section {
   border-top: 1px solid #eee;
@@ -1790,7 +1835,14 @@ a {
 }
 .billing-dialog-section h3 {
   font-size: 15px;
-  margin-bottom: 10px;
+  margin: 0 0 12px;
+}
+.billing-dialog-section .muted {
+  margin: 0;
+  max-width: 440px;
+}
+.billing-dialog-section .button {
+  margin-top: 16px;
 }
 .billing-upgrade-option {
   width: 100%;
@@ -1817,10 +1869,125 @@ a {
   font-weight: 800;
 }
 .billing-cancel-section {
-  margin-bottom: 20px;
+  margin-bottom: 30px;
+}
+.billing-dialog > .button-row {
+  justify-content: flex-end;
+  padding-top: 18px;
+  border-top: 1px solid #eee;
 }
 .billing-invoices {
   align-self: start;
+}
+.invoice-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.invoice-header h2 {
+  margin: 0;
+}
+.invoice-date-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #777b75;
+  font-size: 11px;
+}
+.invoice-picker {
+  position: relative;
+}
+.invoice-picker-trigger {
+  min-width: 116px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.invoice-picker-trigger:hover,
+.invoice-picker-trigger[aria-expanded="true"] {
+  border-color: #b5b8b2;
+}
+.invoice-picker-trigger:focus-visible {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(16, 17, 16, 0.1);
+}
+.invoice-picker-chevron {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  margin-top: -3px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: rotate(45deg);
+}
+.invoice-picker-popover {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 7px);
+  right: 0;
+  width: 238px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  box-shadow: 0 14px 30px rgba(16, 17, 16, 0.12);
+}
+.invoice-picker-popover select {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+}
+.invoice-month-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  margin-top: 10px;
+}
+.invoice-month-grid button,
+.invoice-picker-actions button {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 12px;
+}
+.invoice-month-grid button {
+  height: 32px;
+}
+.invoice-month-grid button:hover,
+.invoice-month-grid button.selected {
+  border-color: var(--ink);
+  background: var(--white);
+}
+.invoice-picker-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--soft);
+}
+.invoice-picker-actions button {
+  padding: 5px 3px;
+  color: #656a63;
+}
+.invoice-picker-actions button:hover {
+  color: var(--ink);
 }
 .invoice-list {
   display: grid;

@@ -294,7 +294,21 @@ export async function cancelAtPeriodEnd(userId: string) {
   const subscription = await getStripe().subscriptions.update(
     local.stripe_subscription_id,
     { cancel_at_period_end: true },
-    { idempotencyKey: `runly-cancel-${local.stripe_subscription_id}` },
+    {
+      idempotencyKey: `runly-cancel-${local.stripe_subscription_id}-${Date.now()}`,
+    },
+  );
+  await syncStripeSubscription(subscription, Math.floor(Date.now() / 1000));
+}
+
+export async function withdrawCancellation(userId: string) {
+  const local = await ownedStripeSubscription(userId);
+  const subscription = await getStripe().subscriptions.update(
+    local.stripe_subscription_id,
+    { cancel_at_period_end: false },
+    {
+      idempotencyKey: `runly-withdraw-cancel-${local.stripe_subscription_id}-${Date.now()}`,
+    },
   );
   await syncStripeSubscription(subscription, Math.floor(Date.now() / 1000));
 }
@@ -310,6 +324,10 @@ async function invoiceHistory(stripeCustomerId: string | null) {
       invoices: data.map((invoice) => ({
         id: invoice.id,
         created: new Date(invoice.created * 1000).toISOString(),
+        kind:
+          invoice.billing_reason === "subscription_update"
+            ? "upgrade"
+            : "subscription",
         status: invoice.status || "open",
         amount: invoice.amount_due,
         currency: invoice.currency,

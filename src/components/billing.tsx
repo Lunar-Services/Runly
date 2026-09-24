@@ -4,6 +4,21 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "./app-shell";
 
+const invoiceMonths = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
 const fallbackPlans = [
   {
     id: "standard",
@@ -24,6 +39,7 @@ type Plan = { id: string; name: string; price: string; allowance: string };
 type Invoice = {
   id: string;
   created: string;
+  kind: "subscription" | "upgrade";
   status: string;
   amount: number;
   currency: string;
@@ -52,8 +68,8 @@ function formatInvoiceAmount(amount: number, currency: string) {
 async function redirectToBilling(path: string, body?: object) {
   const response = await fetch(path, {
     method: "POST",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body ?? {}),
     signal: AbortSignal.timeout(30000),
   });
   const result = await response.json();
@@ -156,6 +172,11 @@ export function BillingSettings() {
   const [state, setState] = useState<BillingState | null>(null);
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
+  const [invoiceMonth, setInvoiceMonth] = useState("");
+  const [invoicePickerOpen, setInvoicePickerOpen] = useState(false);
+  const pickerYear = invoiceMonth
+    ? Number(invoiceMonth.slice(0, 4))
+    : new Date().getFullYear();
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/billing", { signal: controller.signal })
@@ -172,7 +193,7 @@ export function BillingSettings() {
       );
     return () => controller.abort();
   }, []);
-  async function manage(action: "cancel") {
+  async function manage(action: "cancel" | "withdraw-cancellation") {
     setPending(true);
     setMessage("");
     try {
@@ -195,6 +216,9 @@ export function BillingSettings() {
     }
   }
   const subscription = state?.subscription;
+  const filteredInvoices = state?.invoices.filter(
+    (invoice) => !invoiceMonth || invoice.created.slice(0, 7) === invoiceMonth,
+  );
   return (
     <AppShell title="Billing">
       <div className="settings-grid">
@@ -219,20 +243,20 @@ export function BillingSettings() {
                 </div>
                 <span
                   className={
-                    subscription.active
-                      ? "billing-active-badge"
-                      : "danger-badge"
+                    subscription.cancelAtPeriodEnd
+                      ? "billing-ending-badge"
+                      : subscription.active
+                        ? "billing-active-badge"
+                        : "danger-badge"
                   }
                 >
-                  {subscription.active ? "Active" : subscription.status}
+                  {subscription.cancelAtPeriodEnd
+                    ? "Ending"
+                    : subscription.active
+                      ? "Active"
+                      : subscription.status}
                 </span>
               </div>
-              {subscription.cancelAtPeriodEnd && (
-                <p className="muted">
-                  Your plan remains available until the end of the current
-                  period.
-                </p>
-              )}
               <div className="button-row billing-actions">
                 <button
                   className="button button-dark"
@@ -267,18 +291,108 @@ export function BillingSettings() {
           )}
         </section>
         <section className="panel billing-invoices">
-          <h2>Invoices</h2>
+          <div className="invoice-header">
+            <h2>Invoices</h2>
+            <div className="invoice-date-filter">
+              <span>Date</span>
+              <div className="invoice-picker">
+                <button
+                  className="invoice-picker-trigger"
+                  type="button"
+                  aria-expanded={invoicePickerOpen}
+                  aria-label="Filter invoices by month"
+                  onClick={() => setInvoicePickerOpen((open) => !open)}
+                >
+                  {invoiceMonth
+                    ? `${invoiceMonths[Number(invoiceMonth.slice(5, 7)) - 1]} ${invoiceMonth.slice(0, 4)}`
+                    : "All dates"}
+                  <span className="invoice-picker-chevron" aria-hidden="true" />
+                </button>
+                {invoicePickerOpen && (
+                  <div className="invoice-picker-popover">
+                    <select
+                      aria-label="Invoice year"
+                      value={pickerYear}
+                      onChange={(event) => {
+                        const month = invoiceMonth
+                          ? invoiceMonth.slice(5, 7)
+                          : "01";
+                        setInvoiceMonth(`${event.target.value}-${month}`);
+                      }}
+                    >
+                      {Array.from({ length: 11 }, (_, index) => {
+                        const year = new Date().getFullYear() - 5 + index;
+                        return (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <div className="invoice-month-grid">
+                      {invoiceMonths.map((month, index) => {
+                        const value = `${pickerYear}-${String(index + 1).padStart(2, "0")}`;
+                        return (
+                          <button
+                            className={
+                              invoiceMonth === value ? "selected" : undefined
+                            }
+                            key={month}
+                            type="button"
+                            onClick={() => {
+                              setInvoiceMonth(value);
+                              setInvoicePickerOpen(false);
+                            }}
+                          >
+                            {month}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="invoice-picker-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInvoiceMonth("");
+                          setInvoicePickerOpen(false);
+                        }}
+                      >
+                        Clear
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const now = new Date();
+                          setInvoiceMonth(
+                            `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+                          );
+                          setInvoicePickerOpen(false);
+                        }}
+                      >
+                        This month
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
           {!state ? (
             <p className="muted">Loading invoices…</p>
-          ) : state.invoices.length ? (
+          ) : filteredInvoices?.length ? (
             <div className="invoice-list">
-              {state.invoices.map((invoice) => (
+              {filteredInvoices.map((invoice) => (
                 <div className="invoice-row" key={invoice.id}>
                   <span>
                     <strong>
                       {new Date(invoice.created).toLocaleDateString()}
                     </strong>
-                    <small>{invoice.status}</small>
+                    <small>
+                      {invoice.kind === "upgrade"
+                        ? "Prorated upgrade"
+                        : "Subscription Paid"}
+                      {` · ${invoice.status}`}
+                    </small>
                   </span>
                   <span className="invoice-amount">
                     {formatInvoiceAmount(invoice.amount, invoice.currency)}
@@ -293,9 +407,11 @@ export function BillingSettings() {
             </div>
           ) : (
             <p className="muted">
-              {state.invoicesAvailable
-                ? "No invoices yet."
-                : "Invoices appear after billing is connected."}
+              {invoiceMonth
+                ? "No invoices found for this month."
+                : state.invoicesAvailable
+                  ? "No invoices yet."
+                  : "Invoices appear after billing is connected."}
             </p>
           )}
         </section>
@@ -313,7 +429,7 @@ export function BillingSettings() {
         <h2 id="billing-dialog-title">Manage billing</h2>
         <p className="muted">Changes are verified and processed by Stripe.</p>
         <section className="billing-dialog-section">
-          <h3>Upgrade plan</h3>
+          <h3>Update Billing Information</h3>
           <p className="muted">
             Stripe handles plan changes, prorating, payment, and any required
             verification.
@@ -323,21 +439,37 @@ export function BillingSettings() {
             disabled={pending}
             onClick={() => redirectToBilling("/api/billing/portal")}
           >
-            Open Stripe billing
+            Update Billing Information
           </button>
         </section>
         <section className="billing-dialog-section billing-cancel-section">
-          <h3>Cancel plan</h3>
-          <p className="muted">
-            Your access remains active through the current billing period.
-          </p>
-          <button
-            className="button button-outline"
-            disabled={pending || subscription?.cancelAtPeriodEnd}
-            onClick={() => manage("cancel")}
-          >
+          <h3>
             {subscription?.cancelAtPeriodEnd
               ? "Cancellation scheduled"
+              : "Cancel plan"}
+          </h3>
+          <p className="muted">
+            {subscription?.cancelAtPeriodEnd
+              ? "Your plan remains active through the current billing period. You can withdraw the cancellation any time before then."
+              : "Your access remains active through the current billing period."}
+          </p>
+          <button
+            className={
+              subscription?.cancelAtPeriodEnd
+                ? "button button-dark"
+                : "button button-outline"
+            }
+            disabled={pending}
+            onClick={() =>
+              manage(
+                subscription?.cancelAtPeriodEnd
+                  ? "withdraw-cancellation"
+                  : "cancel",
+              )
+            }
+          >
+            {subscription?.cancelAtPeriodEnd
+              ? "Withdraw cancellation"
               : "Cancel at period end"}
           </button>
         </section>
@@ -408,6 +540,8 @@ export function UpgradePlans() {
       })
       .catch(() => undefined);
   }, []);
+  const currentPlanName =
+    plans.find((plan) => plan.id === current)?.name ?? "current plan";
   return (
     <AppShell title="Upgrade your plan">
       <div className="price-grid standalone-prices">
@@ -426,8 +560,8 @@ export function UpgradePlans() {
             {plan.id !== current && previews[plan.id]?.kind === "downgrade" && (
               <p>
                 <em>
-                  You will retain your current perks until the next billing
-                  cycle.
+                  You will retain your {currentPlanName} perks until end of
+                  billing cycle
                 </em>
               </p>
             )}
