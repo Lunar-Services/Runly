@@ -1,0 +1,67 @@
+RUNLY — TERMS OF SERVICE
+DRAFT FOR REVIEW — NOT YET PUBLISHED
+Effective date: [INSERT EFFECTIVE DATE]
+Service operator/legal name: [INSERT LEGAL ENTITY OR INDIVIDUAL NAME]
+Contact email: [INSERT SUPPORT EMAIL]
+Business address (if legally required): [INSERT ADDRESS]
+Governing law and dispute process: [INSERT AFTER LEGAL REVIEW]
+
+PLEASE REVIEW BEFORE PUBLICATION: This draft describes the proposed Runly service. Replace all bracketed fields and ensure the terms match the actual features, pricing, refund practices, age requirements, and laws applicable to your business and customers.
+
+1. ACCEPTANCE AND ELIGIBILITY
+These Terms of Service ("Terms") govern your access to and use of Runly's website, AI-assisted development tools, project workspaces, GitHub integration, and Runly Cowork (together, the "Service"). By creating an account or using the Service, you agree to these Terms. If you use Runly on behalf of an organization, you represent that you are authorized to accept these Terms for it. You must meet the minimum age and any other eligibility requirements stated in the finalized signup flow and applicable law. [CONFIRM AGE POLICY AND ANY PARENT/GUARDIAN CONSENT REQUIREMENTS BEFORE LAUNCH.]
+
+2. ACCOUNTS AND SECURITY
+Provide accurate account information and keep your credentials secure. You are responsible for activity performed through your account to the extent permitted by applicable law. Notify us at [SUPPORT EMAIL] if you suspect unauthorized access. Runly may use GitHub sign-in and other identity services; your use of those services is also subject to their terms. We may require email verification or additional account checks to protect the Service.
+
+3. WHAT RUNLY DOES
+Runly helps users generate, inspect, edit, preview, and manage software projects using AI. Some features require external services, including an AI provider, GitHub, hosting or build infrastructure, and payment processing. Feature availability may depend on your plan, provider availability, or the permissions you grant. We may reasonably change or discontinue features, subject to any applicable notice, refund, or consumer-rights obligations.
+
+4. YOUR CONTENT AND PROJECTS
+"Your Content" includes prompts, code, files, project materials, conversations, and other material you submit to Runly. As between you and Runly, you retain your rights in Your Content. You grant Runly a limited, nonexclusive permission to host, process, transmit, reproduce, and modify Your Content only as needed to provide, secure, troubleshoot, and improve the Service as described in the Privacy Policy and your settings. You must have the rights needed to provide Your Content and authorize its processing and sharing with collaborators or connected services.
+
+As between you and Runly, Runly does not claim ownership of code generated for your project solely because it was produced through the Service. AI output may not be unique, may resemble other output, and may be subject to third-party rights or licenses. You are responsible for reviewing generated code, checking licenses and dependencies, testing security and functionality, and determining whether it is suitable for deployment. Nothing here transfers rights that Runly or third parties do not own.
+
+5. AI LIMITATIONS AND ACCEPTABLE USE
+AI-generated responses and code can be inaccurate, insecure, incomplete, or unsuitable for your purpose. Do not rely on output without appropriate review and testing. You may not use the Service to violate laws or others' rights, access systems without authorization, distribute malicious software, interfere with the Service, abuse its resources, or attempt to bypass billing, usage limits, account controls, API access protections, or security safeguards. [ADD AN ACCEPTABLE-USE POLICY LINK OR SPECIFIC RESTRICTIONS IF IMPLEMENTED.]
+
+6. GITHUB AND THIRD-PARTY INTEGRATIONS
+If you connect GitHub, you authorize Runly to access and modify only the repositories and resources permitted by the authorization you grant and the permissions available to Runly. Runly may create commits or push changes when you direct it to do so or when you enable a disclosed automatic-sync feature. Review changes and repository settings carefully. You can revoke GitHub permissions through the applicable service, but this may disable imports, saving, syncing, or collaboration. Repository contents stored on GitHub remain subject to GitHub's terms and your repository settings. Disconnecting Runly does not automatically delete a repository from GitHub.
+
+7. RUNLY COWORK
+Cowork workspaces support shared projects, conversations, and team activity. Workspace owners and authorized administrators may invite or remove members and control access according to the roles supported by Runly. Information you post in a workspace, including project prompts and generated changes, may be visible to other authorized workspace members. Do not upload confidential information unless you have permission to share it with those members and the services involved. Workspace owners are responsible for appropriately managing invitations, access, and the workspace's subscription. Access to connected GitHub repositories additionally depends on the applicable GitHub authorization and permissions.
+
+8. PLANS, TOKENS, AND USAGE LIMITS
+Runly offers subscription plans with specified features and AI usage allowances. The plan and prices shown at checkout control your purchase. Proposed plans include Standard ($3/month), Pro ($9/month), and Cowork ($19/month); Ultimate pricing is not yet set. These figures are drafts until published in the actual checkout flow. Cowork's allowance is shared at workspace level, not multiplied by member count. Personal and Cowork allowances are separate.
+
+Runly may measure use through tokens or another clearly disclosed usage unit. The proposed plan limits use two independent rolling windows: three hours and seven days. Requests must have sufficient allowance under each applicable limit. Usage windows replenish as prior usage ages out, not necessarily at a fixed clock time. AI requests may also be subject to reasonable per-request, concurrency, security, or spending controls. The displayed usage meter is intended to help you understand remaining usage; the backend usage record governs enforcement, subject to correction of errors. Usage limits, subscription entitlements, and top-up balances are verified by Runly servers and cannot be changed through browser settings or user-submitted request fields. Requests can additionally be stopped or delayed by provider credit or rate limits, including if your Runly allowance remains available.
+
+If we offer purchased usage top-ups, their quantity, price, consumption priority, expiration (if any), and refund treatment will be disclosed before purchase. Purchased Runly usage is not an OpenAI API credit or a cash balance and is not transferable or redeemable for cash unless required by law. [CONFIRM TOP-UP EXPIRATION AND OTHER TERMS BEFORE ENABLEMENT.]
+
+9. PAYMENTS, RENEWAL, CANCELLATION, AND REFUNDS
+Paid subscriptions renew automatically at the billing interval and price disclosed at checkout until canceled. Payment processing is handled by our payment provider. You authorize recurring charges for the subscription you purchase, subject to applicable law. Applicable taxes, any trial terms, and material price changes will be disclosed as required. You can manage or cancel a subscription through the billing settings or by contacting [SUPPORT EMAIL]. [CONFIRM EXACT CANCELLATION EFFECTIVE DATE AND POST-CANCELLATION ACCESS RULES.]
+
+Refunds, withdrawal rights, and cancellation remedies are governed by the refund policy displayed at checkout and applicable consumer law. Nothing in these Terms limits rights that cannot legally be waived. [INSERT A REAL REFUND POLICY; DO NOT PUBLISH AN UNCONFIRMED "NO REFUNDS" CLAIM.]
+
+10. AVAILABILITY AND INTERRUPTIONS
+Runly depends on external providers and infrastructure. AI requests, previews, GitHub synchronization, or Cowork messaging may be interrupted by outages, exhausted provider credits, rate limits, scheduled maintenance, or other technical issues. We aim to present accurate status information, preserve existing work where feasible, and avoid charging Runly usage for failed requests according to our published accounting policy. We do not promise that the Service will be uninterrupted or that every generated project will work correctly.
+
+11. SUSPENSION AND TERMINATION
+We may limit or suspend access when reasonably necessary to address security incidents, fraud, illegal activity, serious misuse, nonpayment, or material breaches of these Terms. Where practical and appropriate, we will give notice and an opportunity to resolve the issue. You may stop using Runly and request account deletion through [ACCOUNT DELETION FLOW OR CONTACT]. Termination does not automatically delete repositories hosted by GitHub or content retained by third parties under their policies. [SPECIFY PROJECT EXPORT, DELETION TIMELINES, AND ANY RETENTION EXCEPTIONS AFTER IMPLEMENTATION.]
+
+12. PRIVACY
+Our Privacy Policy explains what information we collect and share, how we use it, and how to exercise applicable privacy rights. Please read it before using Runly. A workspace owner or collaborator may independently control copies of content you shared with them or saved to repositories they control.
+
+13. RUNLY BRAND AND FEEDBACK
+Runly's name, branding, website design, and underlying service software are owned by Runly or its licensors. These Terms do not grant permission to use our trademarks. If you voluntarily submit product feedback, you permit us to use it to improve the Service without an obligation to compensate you, except where applicable law requires otherwise. This does not give us ownership of your private project source code.
+
+14. DISCLAIMERS AND LIABILITY
+To the extent permitted by applicable law, Runly is provided on an "as available" basis without a promise that generated code is error-free, secure, legally compliant, or fit for a particular purpose. Any liability limits, exclusions, or remedies must be drafted to comply with the governing law and mandatory consumer protections. [INSERT JURISDICTION-APPROPRIATE LIABILITY AND WARRANTY TERMS AFTER LEGAL REVIEW.]
+
+15. CHANGES TO THESE TERMS
+We may update these Terms to reflect changes to the Service, law, or business practices. We will publish the updated version and its effective date and provide additional notice or seek renewed acceptance when required. Changes do not override mandatory legal rights or retroactively alter completed purchases in a way prohibited by law.
+
+16. CONTACT AND DISPUTES
+Questions, complaints, and legal notices may be sent to [SUPPORT EMAIL]. [INSERT THE BUSINESS'S LEGAL NAME, REQUIRED CONTACT DETAILS, GOVERNING LAW, AND A FAIR, APPLICABLE DISPUTE PROCESS AFTER LEGAL REVIEW.]
+
+END OF DRAFT

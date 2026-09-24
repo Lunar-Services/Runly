@@ -1,0 +1,67 @@
+RUNLY — PRIVACY POLICY
+DRAFT FOR REVIEW — NOT YET PUBLISHED
+Effective date: [INSERT EFFECTIVE DATE]
+Data controller/business operator: [INSERT LEGAL ENTITY OR INDIVIDUAL NAME]
+Privacy contact: [INSERT PRIVACY EMAIL]
+Business address (if legally required): [INSERT ADDRESS]
+
+PLEASE REVIEW BEFORE PUBLICATION: This draft describes the planned Runly features, not verified deployed behavior. Confirm actual data flows, providers, storage locations, retention periods, cookie practices, user-rights procedures, and applicable legal requirements. Replace all bracketed fields. Do not publish claims that your implementation cannot support.
+
+1. SCOPE
+This Privacy Policy explains how [RUNLY OPERATOR] ("Runly," "we," "us") collects, uses, shares, and handles personal information when you visit the Runly website, create an account, generate software using Runly AI, connect GitHub, purchase a subscription, or participate in Runly Cowork. It does not replace the privacy notices of external providers, including GitHub or payment services, when you use their services directly.
+
+2. INFORMATION WE COLLECT
+Account and profile information: email address, account identifier, display name, avatar, sign-in method, and optional profile details.
+
+Project and AI content: prompts, generated responses, project names, source code and files, relevant repository content, chat history, and attachments you choose to provide. To perform a requested change, Runly may access the relevant files and context from your connected repository or saved draft.
+
+GitHub connection information: GitHub account and installation identifiers, repository names and IDs, permission and authorization details, repository URLs, branches, commit metadata, and access credentials needed to carry out authorized operations. [CONFIRM WHICH GITHUB METADATA AND CREDENTIAL TYPES THE IMPLEMENTATION ACTUALLY STORES.]
+
+Cowork information: workspace names, invitations and invitee email addresses, membership and role information, team messages, shared files, activity records, and shared project history. Workspace content may identify which member made a change or submitted an AI request.
+
+Billing and usage information: subscription plan and status, transaction references, purchase history, token or credit usage, timestamps, and estimated or actual costs. Our payment processor may collect payment-card or other payment details directly; [CONFIRM WHETHER RUNLY EVER HANDLES COMPLETE CARD DETAILS].
+
+Technical and security information: IP address, device/browser information, basic service logs, error reports, session identifiers, and records used to detect abuse or troubleshoot problems. [LIST ANALYTICS TOOLS, ADVERTISING TOOLS, AND ANY ADDITIONAL DATA ACTUALLY COLLECTED.]
+
+3. HOW WE USE INFORMATION
+We process information to create and secure accounts; authenticate users; fulfill AI generation and editing requests; maintain project context; create and sync GitHub repositories; deliver previews; operate Cowork invitations, messaging, and permissions; administer subscriptions and token allowances; handle support; troubleshoot failures; prevent fraud and misuse; and comply with applicable obligations. If we use information for optional analytics, marketing, or product improvement beyond providing the Service, we will describe that use and provide any required choices or consent. [IDENTIFY APPLICABLE LEGAL BASES BY JURISDICTION BEFORE PUBLICATION.]
+
+4. AI PROVIDER AND PROJECT CONTENT
+When you submit a Runly AI request, we send your prompt and relevant project context, which may include code, previous conversation content, or selected files, to our configured AI provider to generate an answer or code changes. We seek to limit submissions to information relevant to the request, but the exact content transmitted depends on the feature and task.
+
+Runly currently plans to use OpenAI's API. OpenAI describes API inputs and outputs as excluded from model training by default unless the API customer opts into sharing; separate provider logging and application-state retention may still apply, depending on the endpoint and account settings. Do not interpret this as a promise that prompts are never stored by OpenAI. Provider handling is governed by its applicable terms, documentation, and configured settings. [VERIFY RUNLY'S ACTUAL API SETTINGS AND ANY OTHER AI PROVIDERS BEFORE PUBLICATION.]
+
+5. GITHUB AND CONNECTED ACCOUNTS
+If you choose to connect GitHub, we access the account and selected repositories only as authorized by the permissions you grant and the operations you request or enable. Runly may retrieve files, create commits, or push changes to connected repositories. Your project source code stored on GitHub is also subject to GitHub's policies and your repository visibility and collaborator settings. You can revoke Runly's GitHub access through GitHub. Revocation may stop syncing but will not itself delete repositories or content already hosted by GitHub.
+
+6. COWORK AND SHARING
+Other authorized members of a Cowork workspace may see shared discussions, project content, attachments, member identities, and activity records, depending on their roles and project permissions. Workspace owners and administrators can manage membership and access as the product permits. Be mindful of who can access a workspace before sharing private or third-party material. We may also disclose information when you intentionally share a project, authorize a connection, or request a transfer or export.
+
+7. SERVICE PROVIDERS AND OTHER DISCLOSURES
+Depending on the features actually enabled, Runly expects to use service providers such as Supabase for authentication, database, realtime communication, and storage; OpenAI for AI processing; Stripe for payment processing; GitHub for authentication and repositories; and [INSERT HOSTING, EMAIL DELIVERY, ERROR MONITORING, ANALYTICS, AND OTHER PROVIDERS]. These parties receive information needed to perform their functions and may have separate obligations and policies. We may also disclose information when legally required, to protect rights and security, or in connection with a business transaction subject to applicable protections. [SPECIFY WHETHER RUNLY SELLS OR SHARES PERSONAL INFORMATION FOR TARGETED ADVERTISING; DO NOT ASSUME THE ANSWER.]
+
+8. COOKIES AND LOCAL STORAGE
+Runly may use cookies or similar browser technologies for sign-in, session security, preferences, and other features. [IDENTIFY EACH ACTUAL COOKIE CATEGORY, ANALYTICS OR ADVERTISING TAG, ITS PURPOSE, AND WHETHER CONSENT OR AN OPT-OUT IS REQUIRED.] Essential session functionality may not work if required storage is blocked. Do not include analytics or advertising cookies in this policy unless they are actually deployed.
+
+9. SECURITY
+We intend to use server-side AI-provider requests, restricted administrative access, encrypted storage for administrator-supplied provider credentials, access controls, encrypted transport, database permissions, and monitoring appropriate to the Service. Provider API credentials are not intended to be supplied to user browsers or project preview environments. [VERIFY EVERY CLAIM ABOUT SECRET MANAGEMENT, ENCRYPTION, ACCESS CONTROLS, AND THE ACTUAL DEPLOYMENT BEFORE PUBLICATION.] No online system can guarantee absolute security. You should protect your account credentials and review who has access to your GitHub repositories and Cowork workspaces. [VERIFY THE IMPLEMENTED SECURITY CONTROLS AND INCIDENT-NOTIFICATION PROCEDURES BEFORE PUBLICATION.]
+
+10. DATA RETENTION
+We retain information for as long as reasonably necessary to provide the Service and meet legitimate operational or legal needs. The actual periods depend on the data type, account status, connected service, and applicable requirements. [INSERT VERIFIED RETENTION PERIODS OR SPECIFIC RETENTION CRITERIA FOR: ACCOUNT DATA; PROJECT DRAFTS; AI CONVERSATIONS; COWORK MESSAGES; INVITATIONS; USAGE LOGS; BILLING RECORDS; BACKUPS; AND SUPPORT REQUESTS.] Deleting content in Runly may not remove copies independently held in GitHub repositories, collaborators' accounts, payment records, or external providers' systems. Where deletion cannot be immediate or complete, explain the reason and timing in the final policy.
+
+11. YOUR CHOICES AND PRIVACY RIGHTS
+You may be able to update profile details, disconnect GitHub, change workspace memberships, cancel a subscription, or request access to, correction of, export of, or deletion of personal information through account settings or by contacting [PRIVACY EMAIL]. Your rights and our response obligations depend on applicable law. We may need to verify a request, retain limited records when required, or protect other people's rights. [IMPLEMENT AND DESCRIBE ACTUAL REQUEST METHODS, RESPONSE TIMES, AND ANY APPEAL PROCESS REQUIRED BY APPLICABLE LAW.]
+
+12. INTERNATIONAL PROCESSING
+Runly and its providers may process information in countries other than your own. [IDENTIFY ACTUAL HOSTING/PROCESSING REGIONS AND, WHERE REQUIRED, THE LEGAL MECHANISMS OR SAFEGUARDS USED FOR INTERNATIONAL TRANSFERS.] Do not promise that all data stays in one country unless the complete processing chain has been verified.
+
+13. CHILDREN AND AGE REQUIREMENTS
+The Service's minimum age and any parent or guardian consent requirements will be stated in the finalized Terms and registration flow. [CONFIRM THE POLICY AND IMPLEMENT REQUIRED AGE OR CONSENT CONTROLS BEFORE LAUNCH.] If you believe personal information about someone who cannot lawfully use Runly has been submitted, contact [PRIVACY EMAIL] so we can review the situation and take appropriate steps.
+
+14. CHANGES TO THIS POLICY
+We may revise this policy as our features, providers, or legal obligations change. We will update the effective date and provide additional notice or seek consent when required. Previous versions may be made available through the website's policy history.
+
+15. CONTACT
+For privacy questions and requests, contact [PRIVACY EMAIL]. [INSERT ALL ADDITIONAL CONTACT DETAILS, REPRESENTATIVE INFORMATION, OR REGULATOR/COMPLAINT DETAILS REQUIRED BY APPLICABLE LAW.]
+
+END OF DRAFT
