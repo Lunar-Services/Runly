@@ -12,7 +12,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "security:secrets": "node scripts/check-staged-secrets.mjs",
+    "check": "pnpm exec lint-staged && pnpm run lint && pnpm run security:secrets",
     "pretypecheck": "next typegen",
     "typecheck": "tsc --noEmit",
     "verify": "pnpm run lint && pnpm run typecheck && pnpm run build",
@@ -37,7 +40,12 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
     "husky": "9.1.7",
+    "lint-staged": "16.2.6",
+    "prettier": "3.6.2",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "lint-staged": {
+    "*.{js,cjs,mjs,ts,tsx,json,css,md,yml,yaml}": "prettier --write"
   }
 }
