@@ -11,9 +11,11 @@ Requirements: Node.js 20.19+ or 22.13+ and pnpm 10+. The pinned local runtime is
 ```bash
 corepack enable
 pnpm install --frozen-lockfile
-copy .env.example .env.local
+pnpm build
 pnpm dev
 ```
+
+Optionally copy `.env.example` to `.env.local` before starting if you want to configure Supabase or the AI route.
 
 Open `http://localhost:3000`. The design and static product surfaces work without credentials. Authentication and AI correctly remain in “not configured” states.
 
@@ -63,22 +65,22 @@ npx -p @google/design.md designmd lint DESIGN.md
 
 ## Implementation status
 
-| Capability | Status | Evidence / limitation |
-|---|---|---|
-| Vida-referenced responsive landing page | Implemented | Real Runly assets, prompt persistence, reduced-motion handling |
-| Signup/login UI | Implemented, setup-gated | Supabase email + GitHub OAuth client wiring; needs project credentials |
-| Dashboard/projects/settings | UI foundation | Honest empty/setup states; CRUD persistence not yet connected |
-| Responsive project workspace | UI foundation | Chat/files/preview surfaces; Monaco and sandbox worker not connected |
-| Cowork | UI foundation | Realtime, invitations, roles, and billing require integration |
-| Admin provider manager | UI foundation | Secret controls deliberately disabled until KMS/step-up auth exists |
-| Legal pages | Implemented as drafts | Full supplied draft text rendered; publication blockers retained |
-| Supabase schema and RLS | Implemented, not executed | All required core tables included; must run migration/advisor/RLS tests |
-| Atomic quota reservation | Implemented, not integration-tested | Dual 3h/7d checks and idempotent reservation function |
-| OpenAI route | Implemented, not live-tested | Server-only, auth + quota-gated; no API key was supplied |
-| GitHub repository flow | Not implemented | Requires GitHub App credentials and callback configuration |
-| Stripe billing | Not implemented | Requires Stripe account, price IDs, webhook and policy decisions |
-| Isolated preview worker | Not implemented | Must be a separate hardened execution service |
-| Security headers | Implemented | CSP, frame denial, nosniff, referrer and permissions policy; HSTS in production |
-| Production security review | Not performed | Threat model, dependency scanning, penetration testing, and independent review required |
+| Capability                              | Status                              | Evidence / limitation                                                                   |
+| --------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------- |
+| Vida-referenced responsive landing page | Implemented                         | Real Runly assets, prompt persistence, reduced-motion handling                          |
+| Signup/login UI                         | Implemented, setup-gated            | Supabase email + GitHub OAuth client wiring; needs project credentials                  |
+| Dashboard/projects/settings             | UI foundation                       | Honest empty/setup states; CRUD persistence not yet connected                           |
+| Responsive project workspace            | UI foundation                       | Chat/files/preview surfaces; Monaco and sandbox worker not connected                    |
+| Cowork                                  | UI foundation                       | Realtime, invitations, roles, and billing require integration                           |
+| Admin provider manager                  | UI foundation                       | Secret controls deliberately disabled until KMS/step-up auth exists                     |
+| Legal pages                             | Implemented as drafts               | Full supplied draft text rendered; publication blockers retained                        |
+| Supabase schema and RLS                 | Implemented, not executed           | All required core tables included; must run migration/advisor/RLS tests                 |
+| Atomic quota reservation                | Implemented, not integration-tested | Dual 3h/7d checks and idempotent reservation function                                   |
+| OpenAI route                            | Implemented, not live-tested        | Server-only, auth + quota-gated; no API key was supplied                                |
+| GitHub repository flow                  | Not implemented                     | Requires GitHub App credentials and callback configuration                              |
+| Stripe billing                          | Not implemented                     | Requires Stripe account, price IDs, webhook and policy decisions                        |
+| Isolated preview worker                 | Not implemented                     | Must be a separate hardened execution service                                           |
+| Security headers                        | Implemented                         | CSP, frame denial, nosniff, referrer and permissions policy; HSTS in production         |
+| Production security review              | Not performed                       | Threat model, dependency scanning, penetration testing, and independent review required |
 
 No feature in this table should be treated as production-verified unless its row explicitly says it was tested.
