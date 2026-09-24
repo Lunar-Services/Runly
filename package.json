@@ -12,9 +12,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "security:secrets": "node scripts/check-staged-secrets.mjs",
     "pretypecheck": "next typegen",
     "typecheck": "tsc --noEmit",
-    "verify": "pnpm run lint && pnpm run typecheck && pnpm run build"
+    "verify": "pnpm run lint && pnpm run typecheck && pnpm run build",
+    "prepare": "husky"
   },
   "dependencies": {
     "@number-flow/react": "0.6.2",
@@ -34,6 +36,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
+    "husky": "9.1.7",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
