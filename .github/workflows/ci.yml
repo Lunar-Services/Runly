@@ -9,6 +9,27 @@ permissions:
   contents: read
 
 jobs:
+  migrations:
+    name: Migration smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Starts an isolated Docker Supabase stack, then rebuilds it from every
+      # committed migration. This catches ordering, SQL, and schema errors.
+      - run: pnpm migrate
+      - run: pnpm db:reset
+      - if: always()
+        run: pnpm db:stop
+
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15

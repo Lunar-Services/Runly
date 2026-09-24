@@ -27,7 +27,7 @@ const suggestions = [
 export function LandingPage({
   account,
 }: {
-  account: { email: string } | null;
+  account: { email: string; displayName: string; avatarUrl: string } | null;
 }) {
   const [prompt, setPrompt] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -148,6 +148,17 @@ export function LandingPage({
     }
   }
 
+  const initials =
+    account?.displayName
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase() ||
+    account?.email.slice(0, 1).toUpperCase() ||
+    "R";
+
   return (
     <div className={`marketing-shell cat-site${darkTheme ? " is-dark" : ""}`}>
       <header className="site-header" ref={header}>
@@ -183,8 +194,18 @@ export function LandingPage({
                   onClick={() => setAccountMenuOpen((open) => !open)}
                   aria-expanded={accountMenuOpen}
                   aria-controls="account-menu-options"
+                  aria-label="Open account menu"
                 >
-                  <span>{account.email}</span>
+                  <span
+                    className="account-menu-avatar"
+                    style={
+                      account.avatarUrl
+                        ? { backgroundImage: `url(${account.avatarUrl})` }
+                        : undefined
+                    }
+                  >
+                    {!account.avatarUrl && initials}
+                  </span>
                   <ChevronDown size={15} aria-hidden="true" />
                 </button>
                 {accountMenuOpen && (

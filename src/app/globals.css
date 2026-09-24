@@ -447,7 +447,7 @@ a {
 .meet-intro h2,
 .workflow-heading h2,
 .trust-heading h2 {
-  font: 400 clamp(48px, 6vw, 82px)/0.98 var(--serif);
+  font: 400 clamp(48px, 6vw, 82px) / 0.98 var(--serif);
   letter-spacing: -0.055em;
   margin: 22px 0;
 }
@@ -961,7 +961,7 @@ a {
 .story-grid h2,
 .pricing-head h2,
 .final-cta h2 {
-  font: 400 clamp(46px, 6vw, 82px)/0.98 var(--serif);
+  font: 400 clamp(46px, 6vw, 82px) / 0.98 var(--serif);
   letter-spacing: -0.055em;
   margin: 0;
 }
@@ -1116,7 +1116,7 @@ a {
   color: #c9ccc5;
 }
 .cowork-copy h2 {
-  font: 400 clamp(48px, 6vw, 84px)/0.96 var(--serif);
+  font: 400 clamp(48px, 6vw, 84px) / 0.96 var(--serif);
   letter-spacing: -0.055em;
   margin: 0 0 32px;
 }
@@ -1753,6 +1753,111 @@ a {
   font-size: 11px;
   color: #777;
 }
+.billing-status-row {
+  gap: 18px;
+}
+.billing-plan-name {
+  display: block;
+  margin-top: 5px;
+}
+.billing-period {
+  display: block;
+  margin-top: 5px;
+  line-height: 1.45;
+}
+.billing-active-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #e6f5e9;
+  color: #176b35;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.billing-actions {
+  margin-top: 20px;
+}
+.billing-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+.billing-dialog-section {
+  border-top: 1px solid #eee;
+  margin-top: 20px;
+  padding-top: 18px;
+}
+.billing-dialog-section h3 {
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+.billing-upgrade-option {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 0;
+  border: 0;
+  border-bottom: 1px solid #eee;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.billing-upgrade-option span:first-child {
+  display: grid;
+  gap: 3px;
+}
+.billing-upgrade-option small {
+  color: #777;
+}
+.billing-upgrade-option > span:last-child {
+  font-weight: 800;
+}
+.billing-cancel-section {
+  margin-bottom: 20px;
+}
+.billing-invoices {
+  align-self: start;
+}
+.invoice-list {
+  display: grid;
+  margin-top: 8px;
+}
+.invoice-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+.invoice-row strong,
+.invoice-row small {
+  display: block;
+}
+.invoice-row strong {
+  font-size: 13px;
+}
+.invoice-row small {
+  margin-top: 3px;
+  color: #777;
+  font-size: 11px;
+  text-transform: capitalize;
+}
+.invoice-amount {
+  font-size: 13px;
+  font-weight: 700;
+}
+.invoice-row a {
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .service-row small {
   display: block;
   color: #888;
@@ -1981,6 +2086,22 @@ a {
   margin: 25px auto;
   color: #70746d;
   line-height: 1.6;
+}
+.stripe-payment-mark {
+  width: 54px;
+  display: block;
+  margin: 26px auto 0;
+  line-height: 0;
+}
+.stripe-payment-logo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 1;
+  background: url("/brand/stripe-wordmark-slate.png") center / contain no-repeat;
+}
+.stripe-payment-mark:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 5px;
 }
 .standalone-prices {
   max-width: 1100px;
