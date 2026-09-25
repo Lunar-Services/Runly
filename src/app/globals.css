@@ -2,11 +2,11 @@
 
 :root {
   --ink: #101110;
-  --paper: #f7f8f6;
-  --white: #fff;
+  --paper: #d9dcde;
+  --white: #e8eaeb;
   --muted: #6d716d;
-  --line: #dedfdb;
-  --soft: #eceeea;
+  --line: #adb4b8;
+  --soft: #d1d5d7;
   --signal: #cdf54a;
   --danger: #b33a2f;
   --serif: Georgia, "Times New Roman", serif;
@@ -1579,10 +1579,16 @@ a {
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
+  gap: 18px;
   padding: 0 34px;
   position: sticky;
   top: 0;
   z-index: 10;
+}
+@media (max-width: 900px) {
+  .app-topbar {
+    gap: 12px;
+  }
 }
 .app-topbar > div {
   flex: 1;

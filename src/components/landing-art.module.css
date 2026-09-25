@@ -1,0 +1,195 @@
+.workbench {
+  max-width: 1050px;
+  margin: 105px auto 0;
+  text-align: left;
+}
+
+.workbenchCopy {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+  column-gap: clamp(38px, 6vw, 96px);
+  align-items: start;
+}
+
+.workbenchCopy h3 {
+  margin: 0 0 14px;
+  color: var(--text-main);
+  font: 400 clamp(34px, 3.5vw, 49px) / 1.08 var(--serif);
+  letter-spacing: -0.04em;
+}
+
+.workbenchCopy p {
+  max-width: 380px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.workbenchCopy > :last-child {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.asciiImage {
+  display: block;
+  height: auto;
+  filter: grayscale(1) invert(1);
+  mix-blend-mode: multiply;
+}
+
+.pricing {
+  position: relative;
+  isolation: isolate;
+}
+
+.hangingCat {
+  position: absolute;
+  top: 12px;
+  right: max(4%, calc((100vw - 1240px) / 2));
+  width: clamp(130px, 14vw, 185px);
+  height: auto;
+  filter: grayscale(1);
+  mix-blend-mode: multiply;
+  transform-origin: 50% 4%;
+  pointer-events: none;
+}
+
+.close {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: 390px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.close h2,
+.close a {
+  position: relative;
+  z-index: 1;
+}
+
+.reachingHands {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+}
+
+.leftHand,
+.rightHand {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  background-color: var(--text-main);
+  opacity: 0.48;
+  mask-image: url("/inspiration/ascii-hands.jpg");
+  mask-mode: luminance;
+  mask-size: 200% auto;
+  mask-repeat: no-repeat;
+}
+
+.leftHand {
+  left: 0;
+  mask-position: left center;
+  transform-origin: 0% 45%;
+}
+
+.rightHand {
+  right: 0;
+  mask-position: right center;
+  transform-origin: 100% 45%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hangingCat {
+    animation: hangingSwing 6.5s ease-in-out infinite alternate;
+  }
+  .leftHand {
+    animation: reachLeft 5.5s ease-in-out infinite alternate;
+  }
+  .rightHand {
+    animation: reachRight 5.5s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes hangingSwing {
+  from {
+    transform: rotate(-2deg);
+  }
+  to {
+    transform: rotate(2deg);
+  }
+}
+
+@keyframes reachLeft {
+  from {
+    transform: translateX(-7%) rotate(-2deg);
+  }
+  to {
+    transform: translateX(4%) rotate(1deg);
+  }
+}
+
+@keyframes reachRight {
+  from {
+    transform: translateX(7%) rotate(2deg);
+  }
+  to {
+    transform: translateX(-4%) rotate(-1deg);
+  }
+}
+
+:global(html[data-theme="dark"]) .asciiImage {
+  filter: grayscale(1);
+  mix-blend-mode: screen;
+}
+
+:global(html[data-theme="dark"]) .hangingCat {
+  filter: grayscale(1) invert(1);
+  mix-blend-mode: screen;
+}
+
+@media (max-width: 800px) {
+  .workbench {
+    margin-top: 85px;
+  }
+
+  .workbenchCopy {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .workbenchCopy p {
+    margin-bottom: 28px;
+  }
+
+  .workbenchCopy > :last-child {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .hangingCat {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 150px;
+    margin: -36px auto 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .workbench {
+    margin-top: 72px;
+  }
+
+  .close {
+    min-height: 330px;
+  }
+  .reachingHands {
+    opacity: 0.7;
+  }
+}

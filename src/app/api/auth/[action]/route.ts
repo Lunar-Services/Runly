@@ -7,8 +7,8 @@ export async function POST(request: Request, context: { params: Promise<{ action
   try {
     sameOrigin(request);
     const { action } = await context.params;
-    if (!["login", "signup", "verify", "logout", "forgot", "reset", "github"].includes(action)) throw new ApiError(404, "Unknown action.");
-    await rateLimit(request, `auth:${action}`, "", action === "forgot" ? 3 : 10);
+    if (!["login", "signup", "verify", "resend", "logout", "forgot", "reset", "github"].includes(action)) throw new ApiError(404, "Unknown action.");
+    await rateLimit(request, `auth:${action}`, "", action === "forgot" || action === "resend" ? 3 : 10);
     const db = await createServerSupabaseClient();
     if (!db) { console.error("Runly setup: configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.local."); throw new ApiError(503, "Accounts are temporarily unavailable. Please try again later."); }
     const origin = appOrigin(request);
@@ -28,9 +28,17 @@ export async function POST(request: Request, context: { params: Promise<{ action
     if (action === "verify") {
       const parsed = z.object({ email: z.email().max(254), code: z.string().regex(/^\d{6}$/) }).safeParse(input);
       if (!parsed.success) throw new ApiError(400, "Enter the six-digit code from your email.");
-      const { error } = await db.auth.verifyOtp({ email: parsed.data.email, token: parsed.data.code, type: "email" });
-      if (error) throw new ApiError(400, "That code is invalid or has expired. Request a new code and try again.");
+      const { data, error } = await db.auth.verifyOtp({ email: parsed.data.email, token: parsed.data.code, type: "email" });
+      if (error || !data.session || !data.user?.email_confirmed_at) throw new ApiError(400, "That code is invalid or has expired. Request a new code and try again.");
       return Response.json({ message: "Email verified.", redirect: "/dashboard" });
+    }
+    if (action === "resend") {
+      const parsed = z.object({ email: z.email().max(254) }).safeParse(input);
+      if (!parsed.success) throw new ApiError(400, "Enter the email address you used to create your account.");
+      const { error } = await db.auth.resend({ type: "signup", email: parsed.data.email });
+      if (error?.code === "over_email_send_rate_limit" || error?.code === "over_request_rate_limit") throw new ApiError(429, "Please wait a minute before requesting another code.");
+      if (error) throw new ApiError(503, "A new code could not be sent. Please try again later.");
+      return Response.json({ message: "A new six-digit code is on its way." });
     }
     if (action === "forgot") {
       const parsed = z.object({ email: z.email().max(254) }).safeParse(input);
@@ -60,6 +68,11 @@ export async function POST(request: Request, context: { params: Promise<{ action
       const message = code === "email_not_confirmed" ? "Enter the six-digit code Supabase emailed you before signing in." : code === "over_email_send_rate_limit" || code === "over_request_rate_limit" ? "Please wait a minute before trying again." : action === "login" ? "The email or password is incorrect." : "Couldn't create the account. Try signing in if you already registered.";
       throw new ApiError(400, message);
     }
-    return Response.json(action === "login" ? { redirect: "/dashboard", message: "Signed in." } : { message: "Supabase has emailed a six-digit verification code.", redirect: result.data.session ? "/dashboard" : "/verify-email" });
+    if (action === "signup" && result.data.session) {
+      await db.auth.signOut();
+      console.error("Runly setup: Supabase email confirmations must be enabled before account creation is available.");
+      throw new ApiError(503, "Email verification is temporarily unavailable. Please try again later.");
+    }
+    return Response.json(action === "login" ? { redirect: "/dashboard", message: "Signed in." } : { message: "We emailed you a six-digit verification code.", redirect: `/verify-email?email=${encodeURIComponent(email)}` });
   } catch (error) { return failure(error); }
 }

@@ -23,14 +23,19 @@ const supported = [
 
 export default async function CatchAllPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string[] }>;
+  searchParams: Promise<{ email?: string | string[] }>;
 }) {
   const { slug } = await params;
   if (!supported.includes(slug[0])) notFound();
   if (slug[0] === "login" || slug[0] === "signup")
     return <AuthPanel mode={slug[0]} />;
-  if (slug[0] === "verify-email") return <AuthPanel mode="verify" />;
+  if (slug[0] === "verify-email") {
+    const query = await searchParams;
+    return <AuthPanel mode="verify" initialEmail={typeof query.email === "string" ? query.email.slice(0, 254) : ""} />;
+  }
   if (slug[0] === "forgot-password") return <AuthPanel mode="forgot" />;
   if (slug[0] === "reset-password") return <AuthPanel mode="reset" />;
   if (
