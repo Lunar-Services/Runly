@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 const command = join(
@@ -8,8 +8,15 @@ const command = join(
   ".bin",
   process.platform === "win32" ? "supabase.cmd" : "supabase",
 );
+const localSupabaseHome = join(process.cwd(), ".supabase-local");
+mkdirSync(localSupabaseHome, { recursive: true });
+const localEnvironment = {
+  ...process.env,
+  SUPABASE_HOME: localSupabaseHome,
+  SUPABASE_TELEMETRY: "false",
+};
 
-function run(args, { capture = false, env = process.env } = {}) {
+function run(args, { capture = false, env = localEnvironment } = {}) {
   if (!existsSync(command))
     throw new Error("Supabase CLI is missing. Run pnpm install first.");
   return new Promise((resolve, reject) => {
@@ -24,7 +31,15 @@ function run(args, { capture = false, env = process.env } = {}) {
       child.stdout.on("data", (chunk) => {
         output += chunk;
       });
-    child.on("error", reject);
+    child.on("error", (error) => {
+      if (error.code === "ENOENT" && args[0] === "start")
+        reject(
+          new Error(
+            "Docker could not be started. Install Docker Desktop, start its Linux engine, and run pnpm dev again.",
+          ),
+        );
+      else reject(error);
+    });
     child.on("close", (code) => {
       if (code === 0) resolve(output);
       else
@@ -54,7 +69,9 @@ export async function startAndMigrateLocalSupabase() {
   );
   const publishableKey = values.PUBLISHABLE_KEY || values.ANON_KEY;
   if (!values.API_URL || !publishableKey || !values.SERVICE_ROLE_KEY)
-    throw new Error("Local Supabase did not return its API URL and keys.");
+    throw new Error(
+      "Local Supabase did not return its API URL and keys. Make sure Docker Desktop is running and restart pnpm dev.",
+    );
   return {
     url: values.API_URL,
     publishableKey,

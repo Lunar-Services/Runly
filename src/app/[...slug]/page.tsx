@@ -26,7 +26,10 @@ export default async function CatchAllPage({
   searchParams,
 }: {
   params: Promise<{ slug: string[] }>;
-  searchParams: Promise<{ email?: string | string[] }>;
+  searchParams: Promise<{
+    email?: string | string[];
+    token_hash?: string | string[];
+  }>;
 }) {
   const { slug } = await params;
   if (!supported.includes(slug[0])) notFound();
@@ -34,7 +37,19 @@ export default async function CatchAllPage({
     return <AuthPanel mode={slug[0]} />;
   if (slug[0] === "verify-email") {
     const query = await searchParams;
-    return <AuthPanel mode="verify" initialEmail={typeof query.email === "string" ? query.email.slice(0, 254) : ""} />;
+    return (
+      <AuthPanel
+        mode="verify"
+        initialEmail={
+          typeof query.email === "string" ? query.email.slice(0, 254) : ""
+        }
+        initialTokenHash={
+          typeof query.token_hash === "string"
+            ? query.token_hash.slice(0, 512)
+            : ""
+        }
+      />
+    );
   }
   if (slug[0] === "forgot-password") return <AuthPanel mode="forgot" />;
   if (slug[0] === "reset-password") return <AuthPanel mode="reset" />;

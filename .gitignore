@@ -45,3 +45,4 @@ next-env.d.ts
 
 # Supabase CLI runtime state (the tracked config and migrations remain above).
 supabase/.temp/
+.supabase-local/
