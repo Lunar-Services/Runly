@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useTheme } from "./theme-provider";
+import { ThemeToggle, useTheme } from "./theme-provider";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -10,13 +10,14 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  Moon,
-  Sun,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Brand } from "./brand";
 import { BusinessMotion, PlanComparison } from "./business-motion";
+import { SubscriptionComparison } from "./subscription-comparison";
+import { CodeCard } from "./code-card";
+import art from "./landing-art.module.css";
 
 const suggestions = [
   "A personal website",
@@ -34,7 +35,7 @@ export function LandingPage({
   const [message, setMessage] = useState("");
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const { darkTheme, toggleTheme } = useTheme();
+  const { darkTheme } = useTheme();
   const router = useRouter();
   const watcher = useRef<HTMLDivElement>(null);
   const header = useRef<HTMLElement>(null);
@@ -161,7 +162,14 @@ export function LandingPage({
 
   return (
     <div className={`marketing-shell cat-site${darkTheme ? " is-dark" : ""}`}>
-      <header className="site-header" ref={header}>
+      <header
+        className="site-header"
+        ref={header}
+        style={{
+          backdropFilter: "var(--marketing-header-blur)",
+          WebkitBackdropFilter: "var(--marketing-header-blur)",
+        }}
+      >
         <Brand />
         <nav
           id="main-navigation"
@@ -242,16 +250,7 @@ export function LandingPage({
                 </Link>
               </>
             )}
-            <button
-              className="theme-toggle"
-              type="button"
-              onClick={toggleTheme}
-              aria-pressed={darkTheme}
-              aria-label={darkTheme ? "Use light theme" : "Use dark theme"}
-              title={darkTheme ? "Use light theme" : "Use dark theme"}
-            >
-              {darkTheme ? <Sun size={17} /> : <Moon size={17} />}
-            </button>
+            <ThemeToggle />
           </div>
         </nav>
         <button
@@ -378,6 +377,16 @@ export function LandingPage({
               <p>Review the work, change your mind, and keep going.</p>
             </article>
           </div>
+          <div className={art.workbench}>
+            <div className={art.workbenchCopy}>
+              <h3>See the idea take shape.</h3>
+              <p>
+                Start with a sentence, inspect the work, then change what needs
+                changing.
+              </p>
+              <CodeCard />
+            </div>
+          </div>
         </section>
 
         <section id="cowork" className="cat-team">
@@ -394,20 +403,28 @@ export function LandingPage({
             </Link>
           </div>
           <Image
-            className="cat-sleeping"
-            src="/cats/sleeping.png"
-            alt="A black cat curled up asleep"
-            width={1280}
-            height={1280}
+            className="cat-working"
+            src="/cats/working.png"
+            alt="A black cat working at a laptop"
+            width={1024}
+            height={1024}
             sizes="(max-width: 800px) 90vw, 500px"
           />
         </section>
 
-        <section id="pricing" className="cat-pricing">
+        <section id="pricing" className={`cat-pricing ${art.pricing}`}>
           <div className="cat-pricing-head">
             <h2>A plan for your pace.</h2>
             <p>Start on your own. Bring a team when you’re ready.</p>
           </div>
+          <Image
+            className={art.hangingCat}
+            src="/inspiration/hanging-cat.jpg"
+            alt="A black cat hanging playfully from above"
+            width={736}
+            height={736}
+            sizes="(max-width: 800px) 150px, 185px"
+          />
           <PlanComparison />
           <div className="cat-plans">
             {[
@@ -439,10 +456,15 @@ export function LandingPage({
               </article>
             ))}
           </div>
+          <SubscriptionComparison />
         </section>
 
         <BusinessMotion />
-        <section className="cat-close">
+        <section className={`cat-close ${art.close}`}>
+          <div className={art.reachingHands} aria-hidden="true">
+            <span className={art.leftHand} />
+            <span className={art.rightHand} />
+          </div>
           <h2>What are you thinking?</h2>
           <a className="button button-dark" href="#hero-prompt">
             Let’s start
