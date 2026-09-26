@@ -116,7 +116,7 @@ export function ProjectsDashboard() {
           New project
         </button>
       </div>
-      <section className="panel">
+      <section className="panel projects-panel">
         <div className="panel-head">
           <h2>Recent projects</h2>
           <label className="search-field">
