@@ -204,7 +204,7 @@ export function AppShell({
           </button>
           <Link
             className="icon-action"
-            href="/project/new"
+            href="/dashboard/projects"
             aria-label="Open AI builder"
           >
             <Bot size={19} />
