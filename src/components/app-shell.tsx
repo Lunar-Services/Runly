@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
   Blocks,
-  Bot,
   CreditCard,
   FolderKanban,
   KeyRound,
@@ -202,13 +201,6 @@ export function AppShell({
           >
             {darkTheme ? <Sun size={17} /> : <Moon size={17} />}
           </button>
-          <Link
-            className="icon-action"
-            href="/project/new"
-            aria-label="Open AI builder"
-          >
-            <Bot size={19} />
-          </Link>
         </header>
         <div className="app-content">
           {cancellation && !bannerDismissed && (

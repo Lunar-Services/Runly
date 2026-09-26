@@ -34,6 +34,7 @@ export function LandingPage({
   const [message, setMessage] = useState("");
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [startingProject, setStartingProject] = useState(false);
   const { darkTheme, toggleTheme } = useTheme();
   const router = useRouter();
   const watcher = useRef<HTMLDivElement>(null);
@@ -118,10 +119,34 @@ export function LandingPage({
     };
   }, []);
 
-  function startBuilding() {
+  async function startBuilding() {
     if (!prompt.trim()) return;
+    const firstMessage = prompt.trim();
+    if (account) {
+      setStartingProject(true);
+      setMessage("");
+      try {
+        const response = await fetch("/api/projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: firstMessage }),
+          signal: AbortSignal.timeout(20_000),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message);
+        router.push(`/project/${result.project.id}`);
+      } catch (error) {
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Couldn't create the project.",
+        );
+        setStartingProject(false);
+      }
+      return;
+    }
     try {
-      sessionStorage.setItem("runly:draft-prompt", prompt.trim());
+      sessionStorage.setItem("runly:draft-prompt", firstMessage);
       router.push("/signup?intent=build");
     } catch {
       setMessage(
@@ -310,7 +335,8 @@ export function LandingPage({
                 <button
                   className="cat-send"
                   type="submit"
-                  disabled={!prompt.trim()}
+                  disabled={!prompt.trim() || startingProject}
+                  aria-busy={startingProject}
                   aria-label="Start building"
                 >
                   <ArrowUp size={19} />

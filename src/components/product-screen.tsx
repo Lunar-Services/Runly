@@ -7,27 +7,25 @@ import {
   Bot,
   CheckCircle2,
   Clock3,
-  Code2,
   FileCode2,
-  GitBranch,
-  MoreHorizontal,
   Plus,
   Search,
   ShieldCheck,
-  Sparkles,
   Users,
 } from "lucide-react";
 import { AppShell } from "./app-shell";
 import { Brand } from "./brand";
 import { BillingSettings, PricingPlans, UpgradePlans } from "./billing";
 import { AdminBillingPlans } from "./admin-billing-plans";
+import { ProjectWorkspace as InteractiveProjectWorkspace } from "./project-workspace";
 
 export function ProductScreen({ slug }: { slug: string[] }) {
   const route = `/${slug.join("/")}`;
   if (route === "/terms" || route === "/privacy")
     return <LegalPage kind={route.slice(1) as "terms" | "privacy"} />;
   if (route === "/pricing") return <PricingPage />;
-  if (route.startsWith("/project/")) return <ProjectWorkspace />;
+  if (route.startsWith("/project/"))
+    return <InteractiveProjectWorkspace projectId={slug[1] || ""} />;
   if (route.startsWith("/cowork/workspace/")) return <CoworkWorkspace />;
   if (route.startsWith("/cowork")) return <CoworkHome />;
   if (route.startsWith("/admin")) return <AdminScreen route={route} />;
@@ -45,7 +43,7 @@ function Dashboard({ route }: { route: string }) {
             ? "Search and manage everything you build."
             : "Your workspace is ready when the services are."}
         </p>
-        <Link className="button button-dark" href="/project/new">
+        <Link className="button button-dark" href="/dashboard/projects">
           <Plus size={16} /> New project
         </Link>
       </div>
@@ -85,7 +83,7 @@ function Dashboard({ route }: { route: string }) {
             Start with a sentence. Runly will create project files and a
             recoverable checkpoint.
           </p>
-          <Link className="button button-dark" href="/project/new">
+          <Link className="button button-dark" href="/dashboard/projects">
             Create your first project <ArrowRight size={16} />
           </Link>
         </div>
@@ -109,107 +107,6 @@ function Metric({
       <strong>{value}</strong>
       <small>{note}</small>
     </article>
-  );
-}
-
-function ProjectWorkspace() {
-  return (
-    <div className="builder-shell">
-      <header className="builder-top">
-        <Link href="/dashboard/projects">← Projects</Link>
-        <span className="project-name">
-          Untitled project <small>Draft</small>
-        </span>
-        <div>
-          <button
-            className="button button-outline"
-            disabled
-            title="Connect Supabase before GitHub"
-          >
-            <GitBranch size={15} /> Connect GitHub
-          </button>
-          <button
-            className="button button-dark"
-            disabled
-            title="A successful preview is required before publishing"
-          >
-            Publish
-          </button>
-        </div>
-      </header>
-      <main className="builder-grid">
-        <section className="chat-pane">
-          <div className="pane-title">
-            <Bot size={17} /> Runly AI{" "}
-            <span className="setup-badge">Not configured</span>
-          </div>
-          <div className="chat-empty">
-            <Sparkles />
-            <h1>What are we building?</h1>
-            <p>
-              Describe the product, audience, and the first thing it should help
-              them do.
-            </p>
-          </div>
-          <div className="composer">
-            <textarea
-              className="resize-none"
-              aria-label="Message Runly"
-              placeholder="Ask Runly to build or change something…"
-            />
-            <div>
-              <span>Provider setup required</span>
-              <button disabled>
-                <ArrowRight />
-              </button>
-            </div>
-          </div>
-        </section>
-        <section className="files-pane">
-          <div className="pane-title">
-            <Code2 size={17} /> Files{" "}
-            <button
-              disabled
-              title="File actions become available after a project is created"
-              aria-label="File actions"
-            >
-              <MoreHorizontal />
-            </button>
-          </div>
-          <div className="file-tree">
-            <p>
-              <b>⌄</b> app
-            </p>
-            <span className="selected">page.tsx</span>
-            <span>layout.tsx</span>
-            <p>
-              <b>›</b> components
-            </p>
-            <p>
-              <b>›</b> public
-            </p>
-            <span>package.json</span>
-          </div>
-        </section>
-        <section className="preview-pane">
-          <div className="preview-toolbar">
-            <span />
-            <span />
-            <span />
-            <div>Preview unavailable until a build worker is connected</div>
-          </div>
-          <div className="preview-empty">
-            <ShieldCheck />
-            <h2>Isolated preview</h2>
-            <p>
-              Generated code never runs on the main Runly host. Connect a
-              sandbox worker to build here.
-            </p>
-            <Link href="/settings">View setup checklist</Link>
-          </div>
-        </section>
-      </main>
-    </div>
   );
 }
 
