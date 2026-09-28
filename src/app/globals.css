@@ -2,11 +2,11 @@
 
 :root {
   --ink: #101110;
-  --paper: #f7f8f6;
-  --white: #fff;
+  --paper: #d9dcde;
+  --white: #e8eaeb;
   --muted: #6d716d;
-  --line: #dedfdb;
-  --soft: #eceeea;
+  --line: #adb4b8;
+  --soft: #d1d5d7;
   --signal: #cdf54a;
   --danger: #b33a2f;
   --serif: Georgia, "Times New Roman", serif;
@@ -1409,6 +1409,40 @@ a {
   padding: 0 13px;
   background: #fff;
 }
+.auth-email-display {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.auth-email-display strong {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 13px;
+  border: 1px solid #cfd1cc;
+  border-radius: 10px;
+  background: #f7f8f6;
+  color: #30322f;
+  overflow-wrap: anywhere;
+}
+.auth-code-slots {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 9px;
+}
+.auth-code-slot {
+  width: 100%;
+  height: 52px !important;
+  padding: 0 !important;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+}
+.auth-code-slot:focus {
+  outline: 2px solid #111;
+  outline-offset: 2px;
+}
 .password-field {
   position: relative;
   display: block;
@@ -1579,10 +1613,16 @@ a {
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
+  gap: 18px;
   padding: 0 34px;
   position: sticky;
   top: 0;
   z-index: 10;
+}
+@media (max-width: 900px) {
+  .app-topbar {
+    gap: 12px;
+  }
 }
 .app-topbar > div {
   flex: 1;

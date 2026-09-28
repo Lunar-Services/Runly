@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
+  Bot,
   Blocks,
   CreditCard,
   FolderKanban,
@@ -11,16 +12,14 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  Moon,
   Scale,
   Settings,
-  Sun,
   Users,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useTheme } from "./theme-provider";
+import { ThemeToggle, useTheme } from "./theme-provider";
 import { Brand } from "./brand";
 
 type NavigationItem = readonly [href: string, label: string, Icon: LucideIcon];
@@ -64,7 +63,7 @@ export function AppShell({
     avatarUrl: string;
     role: "user" | "admin";
   } | null>(null);
-  const { darkTheme, toggleTheme } = useTheme();
+  const { darkTheme } = useTheme();
   const router = useRouter();
   useEffect(() => {
     async function loadAccount() {
@@ -192,15 +191,14 @@ export function AppShell({
             <p>{eyebrow}</p>
             <h1>{title}</h1>
           </div>
-          <button
-            className="theme-toggle app-theme-toggle"
-            type="button"
-            onClick={toggleTheme}
-            aria-pressed={darkTheme}
-            aria-label={darkTheme ? "Use light theme" : "Use dark theme"}
+          <ThemeToggle />
+          <Link
+            className="icon-action"
+            href="/project/new"
+            aria-label="Open AI builder"
           >
-            {darkTheme ? <Sun size={17} /> : <Moon size={17} />}
-          </button>
+            <Bot size={19} />
+          </Link>
         </header>
         <div className="app-content">
           {cancellation && !bannerDismissed && (

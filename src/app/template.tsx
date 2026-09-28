@@ -1,7 +1,9 @@
-"use client";
-import { usePathname } from "next/navigation";
+import { ViewTransition } from "react";
 
 export default function Template({ children }: { children: React.ReactNode }) {
-  const path = usePathname();
-  return <div className="route-enter" key={path}>{children}</div>;
+  return (
+    <ViewTransition enter="runly-page" exit="runly-page" default="none">
+      <div className="route-view">{children}</div>
+    </ViewTransition>
+  );
 }

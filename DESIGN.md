@@ -4,11 +4,11 @@ name: "Runly"
 description: "An editorial monochrome AI-building workspace with a kinetic arrow mark and quiet operational UI."
 colors:
   ink: "#101110"
-  paper: "#F7F8F6"
-  white: "#FFFFFF"
+  paper: "#E6E9EB"
+  white: "#F2F4F5"
   muted: "#6D716D"
-  line: "#DEDFDB"
-  soft: "#ECEEEA"
+  line: "#ADB4B8"
+  soft: "#D1D5D7"
   signal: "#CDF54A"
   danger: "#B33A2F"
 typography:
@@ -34,7 +34,7 @@ components:
   button:
     minHeight: "2.75rem"
   card:
-    border: "1px solid #DEDFDB"
+    border: "1px solid #ADB4B8"
   dialog:
     radius: "1.125rem"
   input:
@@ -63,6 +63,8 @@ The supplied Viskey & Vida screenshot and saved site are compositional reference
 ## Colors
 
 Ink and paper create the primary contrast. White separates functional surfaces. Signal is reserved for healthy/live state, never large decorative fills. Danger is reserved for destructive or publication-blocking states. The global focus ring uses a darker signal-derived green to meet contrast on white.
+
+The light appearance uses a soft cool-gray canvas and lighter neutral card surfaces, without a warm or yellow cast. Text, button, and action colors remain unchanged when the canvas is recalibrated. Dark appearance retains its near-black palette.
 
 ## Typography
 
@@ -94,7 +96,7 @@ Solid ink is primary, outline is secondary, and white-on-ink is the dark-surface
 
 Marketing navigation collapses into a contained menu. Product navigation transforms into an off-canvas drawer. Empty states explain the next action and never invent project or usage data.
 
-The marketing header matches the page at the top. Once content scrolls beneath it, it becomes an 86%-opaque paper surface in light mode or ink surface in dark mode with restrained blur. Primary section links remain centered while account actions occupy the right edge. Below 900px they form one contained menu. A fine 96px texture has 1.2% opacity in light mode and 1.8% in dark mode.
+The marketing header spans the page at the top. Once content scrolls beneath it, it becomes a compact rounded pill with a strongly frosted, cool-gray or charcoal translucent surface and 48px background blur. Its text remains solid and legible; reduced-transparency preference receives an opaque card surface. Primary section links remain centered while account actions occupy the right edge. Below 900px they form one contained menu. A fine 96px texture has 1.2% opacity in light mode and 1.8% in dark mode.
 
 Theme ownership: `ThemeProvider` in the root layout owns the persisted cookie and document appearance across routes. `src/app/themes.css` owns semantic page, card, raised-surface, text, border, action, focus, and danger tokens and their light/dark adaptations. No page owns a separate theme store. Primary actions reverse their contrast in dark mode; outline and ghost controls use raised surfaces on hover. CSS image inversion is limited to the monochrome logo.
 
@@ -110,19 +112,22 @@ Lucide line icons at 15–20px. Text labels remain on consequential controls.
 
 ### Motion
 
-The static Runly mark accompanies branded wordmarks in headers, footers, account screens, and workspace navigation. Cats remain the only ambient illustration: a 14-second slow standing-cat sway, pointer-following seated cat, and 4.8-second sleeping-cat breathing. No animated R or orbit decoration.
+The static Runly mark accompanies branded wordmarks in headers, footers, account screens, and workspace navigation. The cats and ASCII artwork are ambient illustrations: a slow standing-cat sway, pointer-following seated cat, gently breathing working cat at the Cowork laptop, and restrained motion on the section artwork. No animated R or orbit decoration.
 
 Interaction tokens are canonical in `src/app/interactions.css`: `--motion-fast:150ms`, `--motion-normal:200ms`, `--motion-enter:250ms`, `--motion-ease:cubic-bezier(.2,.8,.2,1)`. Buttons, fields, menus, notices, navigation, and route fades consume these shared tokens. Neutral grey focus replaces the former green ring. Reduced-motion disables motion globally. Existing layout and black-and-white identity stay unchanged.
 
-### Content and data visualization
+The subscription comparison has one illustrative 12-second idea-to-outline-to-preview sequence. It has a pause control and becomes a static idea card under reduced-motion preference. Its terminal moment is decorative storytelling, never an application's loading state. Light and dark appearances use matching page and header tones; the animated scene may use contained paper or terminal surfaces for contrast.
 
+The decorative code sketch stands on its own within Meet Runly, using a white card in light mode and a dark card in dark mode. The ASCII portrait, ASCII cat, and teacup are not placed beside it or in Cowork. The hanging cat sits beside Pricing. At the final invitation, the user-supplied reaching-hands artwork is split into two independently masked hand layers; only the hands move toward one another, never the entire picture. Reduced-motion preference makes them still. These details are illustrative site accents, never application loading states or claims of generated output.
+
+### Content and data visualization
 
 Voice is plain, specific, and builder-facing. Setup gaps are labeled “Not configured” or “Setup required”; they are never shown as successful integrations.
 
 ## Do's and Don'ts
 
 - **Do:** Keep the Runly mark as the single expressive object.
-- **Current visual direction:** Use the three user-supplied black cats as transparent, lightly grained illustrations. The logo stays in the wordmark only. Follow Vida's open composition, serif headings, plain navigation, and simple composer. No floating project artifacts, fake activity, decorative trust cards, automatic workflow carousel, oversized moving R, or orbit motifs. Animate cats with restrained breathing and occasional tilt, with reduced-motion support.
+- **Current visual direction:** Keep the user-supplied cat and ASCII artwork as restrained, section-specific illustrations rather than a separate gallery. The logo stays in the wordmark only. Follow Vida's open composition, serif headings, plain navigation, and simple composer. No floating project artifacts, fake activity, decorative trust cards, oversized moving R, or orbit motifs. Animate cats and select supporting artwork gently, with reduced-motion support.
 - **Don't:** use atom-like rings, orbital paths, spinning particles, or science-themed decoration. Follow the supplied Vida page's clean, open composition; use subtle entrance and interface motion.
 - **Do:** Show truthful empty, setup, and unavailable states.
 - **Don't:** add generic gradients, glowing blobs, or decorative glass cards.
