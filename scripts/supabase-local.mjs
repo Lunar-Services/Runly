@@ -47,7 +47,9 @@ function parseEnvironment(output) {
 }
 
 export async function startAndMigrateLocalSupabase() {
-  await run(["start"]);
+  // CLI startup prints local service credentials. Capture it rather than
+  // copying those values into development logs or test output.
+  await run(["start"], { capture: true });
   await run(["migration", "up", "--local"]);
   const values = parseEnvironment(
     await run(["status", "--output", "env"], { capture: true }),

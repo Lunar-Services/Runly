@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiError, body, failure, sameOrigin, session } from "@/lib/api";
 import { projectNameFromPrompt } from "@/lib/project-name";
+import { enqueueRuntime } from "@/lib/runtime/server";
 
 export async function GET() {
   try {
@@ -62,29 +63,18 @@ export async function POST(request: Request) {
     let conversationId: string | null = null;
     if (input.data.prompt) {
       conversationId = crypto.randomUUID();
-      const { error: conversationError } = await db
-        .from("conversations")
-        .insert({
-          id: conversationId,
-          project_id: project.id,
-          created_at: now,
-        });
-      const { error: messageError } = conversationError
-        ? { error: conversationError }
-        : await db.from("messages").insert({
-            id: crypto.randomUUID(),
-            conversation_id: conversationId,
-            actor_id: user.id,
-            role: "user",
-            body: input.data.prompt,
-            created_at: now,
-          });
-      if (conversationError || messageError) {
-        await db.from("projects").delete().eq("id", project.id);
-        throw new ApiError(
-          502,
-          "Couldn't save the first project message. Please try again.",
+      try {
+        await enqueueRuntime(
+          project.id,
+          user.id,
+          "agent",
+          conversationId,
+          conversationId,
+          input.data.prompt,
         );
+      } catch (error) {
+        await db.from("projects").delete().eq("id", project.id);
+        throw error;
       }
     }
     return Response.json(

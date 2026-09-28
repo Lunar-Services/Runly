@@ -1,5 +1,13 @@
 import { z } from "zod";
-import { ApiError, body, failure, sameOrigin, session } from "@/lib/api";
+import {
+  ApiError,
+  body,
+  failure,
+  sameOrigin,
+  session,
+  rateLimit,
+} from "@/lib/api";
+import { enqueueRuntime } from "@/lib/runtime/server";
 
 export async function POST(
   request: Request,
@@ -11,42 +19,52 @@ export async function POST(
     if (!z.string().uuid().safeParse(projectId).success)
       throw new ApiError(400, "Invalid project.");
     const input = z
-      .object({ message: z.string().trim().min(1).max(12_000) })
+      .object({
+        message: z.string().trim().min(1).max(12_000),
+        chatId: z.string().uuid().optional(),
+        requestId: z.string().uuid(),
+      })
       .safeParse(await body(request, 16_384));
     if (!input.success) throw new ApiError(400, "Write a message first.");
     const { db, user } = await session();
+    await rateLimit(request, "agent-message", user.id, 10);
     const { data: project } = await db
       .from("projects")
       .select("id")
       .eq("id", projectId)
       .maybeSingle();
     if (!project) throw new ApiError(404, "Project not found.");
-    let { data: conversation } = await db
-      .from("conversations")
-      .select("id")
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (!conversation) {
-      conversation = { id: crypto.randomUUID() };
-      const { error } = await db.from("conversations").insert({
-        id: conversation.id,
-        project_id: projectId,
-      });
-      if (error)
-        throw new ApiError(502, "Couldn't start the project conversation.");
-    }
+    let conversation = input.data.chatId
+      ? (
+          await db
+            .from("conversations")
+            .select("id")
+            .eq("project_id", projectId)
+            .eq("id", input.data.chatId)
+            .maybeSingle()
+        ).data
+      : null;
+    if (input.data.chatId && !conversation)
+      throw new ApiError(404, "Chat not found in this project.");
+    // The transaction creates this deterministic chat ID if needed, so retries
+    // cannot create orphan conversations or bill the same message twice.
+    if (!conversation) conversation = { id: input.data.requestId };
     const message = {
-      id: crypto.randomUUID(),
+      id: input.data.requestId,
       conversation_id: conversation.id,
       actor_id: user.id,
       role: "user" as const,
       body: input.data.message,
       created_at: new Date().toISOString(),
     };
-    const { error } = await db.from("messages").insert(message);
-    if (error) throw new ApiError(502, "Couldn't save your message.");
+    await enqueueRuntime(
+      projectId,
+      user.id,
+      "agent",
+      message.id,
+      conversation.id,
+      input.data.message,
+    );
     return Response.json(
       {
         message: {
@@ -56,6 +74,7 @@ export async function POST(
           created_at: message.created_at,
         },
         conversationId: conversation.id,
+        jobId: message.id,
       },
       { status: 201 },
     );
