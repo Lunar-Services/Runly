@@ -153,7 +153,7 @@
   margin: 0 0 14px;
 }
 .cat-notes p {
-  color: #747474;
+  color: var(--text-secondary);
   font-size: 15px;
   line-height: 1.7;
   margin: 0;
@@ -171,11 +171,11 @@
   font-size: 13px;
   display: block;
   margin-bottom: 26px;
-  color: #777;
+  color: var(--text-secondary);
 }
 .cat-team p {
   font-size: 17px;
-  color: #747474;
+  color: var(--text-secondary);
   line-height: 1.75;
   max-width: 400px;
   margin: 0 0 24px;
@@ -215,7 +215,7 @@
   margin-bottom: 65px;
 }
 .cat-pricing-head p {
-  color: #747474;
+  color: var(--text-secondary);
   font-size: 17px;
   line-height: 1.6;
 }
@@ -236,7 +236,7 @@
 }
 .cat-plans p {
   font-size: 14px;
-  color: #777;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 .cat-price {
@@ -248,7 +248,7 @@
   font:
     14px Arial,
     sans-serif;
-  color: #888;
+  color: var(--text-secondary);
   letter-spacing: 0;
   margin-left: 8px;
 }

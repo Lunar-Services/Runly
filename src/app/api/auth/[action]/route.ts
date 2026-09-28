@@ -35,10 +35,18 @@ export async function POST(
       ].includes(action)
     )
       throw new ApiError(404, "Unknown action.");
+    const input = action === "logout" ? {} : await body(request, 4096);
+    const rateLimitAccount =
+      input &&
+      typeof input === "object" &&
+      "email" in input &&
+      typeof input.email === "string"
+        ? `email:${input.email.trim()}`
+        : "";
     await rateLimit(
       request,
       `auth:${action}`,
-      "",
+      rateLimitAccount,
       action === "forgot" || action === "resend" ? 3 : 10,
     );
     const db = await createServerSupabaseClient();
@@ -59,8 +67,15 @@ export async function POST(
       return Response.json({ message: "Signed out." });
     }
     if (action === "github") {
-      const input = await body(request);
-      if (input.signup && input.accepted !== true)
+      const githubInput = z
+        .object({
+          signup: z.boolean().optional(),
+          accepted: z.boolean().optional(),
+        })
+        .safeParse(input);
+      if (!githubInput.success)
+        throw new ApiError(400, "The request could not be validated.");
+      if (githubInput.data.signup && githubInput.data.accepted !== true)
         throw new ApiError(
           400,
           "Please accept the Terms and acknowledge the Privacy Policy.",
@@ -76,7 +91,6 @@ export async function POST(
         );
       return Response.json({ url: data.url });
     }
-    const input = await body(request, 4096);
     if (action === "verify") {
       const parsed = z
         .object({
@@ -85,7 +99,10 @@ export async function POST(
             .string()
             .regex(/^\d{6}$/)
             .optional(),
-          token_hash: z.string().min(20).max(512).optional(),
+          token_hash: z.preprocess(
+            (value) => (value === "" || value === null ? undefined : value),
+            z.string().min(20).max(512).optional(),
+          ),
         })
         .refine((value) => value.token_hash || (value.email && value.code))
         .safeParse(input);
@@ -101,11 +118,16 @@ export async function POST(
             token: parsed.data.code!,
             type: "email",
           });
-      if (error || !data.session || !data.user?.email_confirmed_at)
+      if (error || !data.session || !data.user?.email_confirmed_at) {
+        console.error(
+          "Runly email verification failed",
+          error?.code || "missing_session",
+        );
         throw new ApiError(
           400,
           "That code is invalid or has expired. Request a new code and try again.",
         );
+      }
       return Response.json({
         message: "Email verified.",
         redirect: "/dashboard",

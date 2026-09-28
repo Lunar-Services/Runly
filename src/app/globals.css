@@ -1204,7 +1204,7 @@ a {
 }
 .price-card > p {
   font-size: 13px;
-  color: #777b75;
+  color: var(--text-secondary);
 }
 .price {
   display: flex;
@@ -1217,7 +1217,7 @@ a {
 }
 .price span {
   font-size: 12px;
-  color: #8a8d87;
+  color: var(--text-secondary);
   margin-bottom: 7px;
 }
 .price-card ul {
@@ -1307,7 +1307,7 @@ a {
   gap: 20px;
 }
 .marketing-shell footer p {
-  color: #777;
+  color: var(--text-secondary);
 }
 .marketing-shell footer div {
   display: flex;
@@ -1315,7 +1315,7 @@ a {
   font-size: 13px;
 }
 .marketing-shell footer small {
-  color: #888;
+  color: var(--text-secondary);
 }
 /* Auth */
 .auth-page {
@@ -2353,7 +2353,7 @@ a {
 }
 .legal-meta {
   font: 11px monospace;
-  color: #8a8d87;
+  color: var(--text-secondary);
 }
 .legal-page .lede {
   font-size: 20px;
@@ -2398,7 +2398,7 @@ a {
 }
 .legal-source .legal-meta {
   font: 11px/1.55 monospace;
-  color: #858982;
+  color: var(--text-secondary);
   margin: 4px 0;
 }
 @media (max-width: 900px) {

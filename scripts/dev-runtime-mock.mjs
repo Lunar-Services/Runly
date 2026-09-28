@@ -215,6 +215,9 @@ async function main() {
     ]),
     RUNLY_RUNTIME_GATEWAY_ID: "local-mock",
     RUNLY_RUNTIME_PORT: "4001",
+    // The gateway validates its production preview hostname at startup even
+    // though mock-provider replaces preview URLs with loopback ports.
+    RUNLY_PREVIEW_DOMAIN: "preview.localhost",
     RUNLY_SITE_URL: "http://localhost:3000",
     RUNLY_RUNTIME_MAX_ACTIVE: "3",
   };

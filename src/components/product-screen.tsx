@@ -376,24 +376,31 @@ function PricingPage() {
           Start building
         </Link>
       </div>
-      <section className="standalone-head">
-        <p className="eyebrow">Pricing</p>
-        <h1>
-          Pay for momentum,
-          <br />
-          not complexity.
-        </h1>
-        <a
-          className="stripe-payment-mark"
-          href="https://stripe.com"
-          target="_blank"
-          rel="noreferrer"
-          aria-label="Payments securely processed by Stripe"
-        >
-          <span className="stripe-payment-logo" aria-hidden="true" />
-        </a>
-      </section>
-      <PricingPlans />
+      <main>
+        <section className="standalone-head">
+          <p className="eyebrow">Pricing</p>
+          <h1>
+            Pay for momentum,
+            <br />
+            not complexity.
+          </h1>
+          <a
+            className="stripe-payment-mark"
+            href="https://stripe.com"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Payments securely processed by Stripe"
+          >
+            <span className="stripe-payment-logo" aria-hidden="true" />
+          </a>
+        </section>
+        <section aria-labelledby="pricing-options-title">
+          <h2 id="pricing-options-title" className="cat-sr-only">
+            Choose a plan
+          </h2>
+          <PricingPlans />
+        </section>
+      </main>
     </div>
   );
 }

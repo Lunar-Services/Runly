@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "./supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
+import { rateLimitSubject } from "./rate-limit";
 
 export class ApiError extends Error {
   constructor(
@@ -97,13 +98,13 @@ export function failure(error: unknown) {
 // An additional per-process guard for localhost; hosted deployments require the shared database limiter.
 const localBuckets = new Map<string, { count: number; until: number }>();
 export async function rateLimit(
-  _request: Request,
+  request: Request,
   scope: string,
   userId = "",
   limit = 30,
 ) {
   const key = createHash("sha256")
-    .update(`${scope}:${userId || "anonymous"}`)
+    .update(`${scope}:${rateLimitSubject(request, userId)}`)
     .digest("hex");
   if (
     process.env.RUNLY_SITE_URL &&
