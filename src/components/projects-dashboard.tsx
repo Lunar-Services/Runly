@@ -2,9 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "./app-shell";
 import { Plus, Search, X } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type Project = { id: string; name: string; status: string; updated_at: string };
 export function ProjectsDashboard() {
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -16,6 +19,7 @@ export function ProjectsDashboard() {
   const dialog = useRef<HTMLDialogElement>(null);
   const nameInput = useRef<HTMLInputElement>(null);
   const lock = useRef(false);
+  const resumedDraft = useRef(false);
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/projects", { signal: controller.signal })
@@ -34,6 +38,31 @@ export function ProjectsDashboard() {
       });
     return () => controller.abort();
   }, [reload]);
+  useEffect(() => {
+    if (resumedDraft.current) return;
+    resumedDraft.current = true;
+    const prompt = sessionStorage.getItem("runly:draft-prompt");
+    if (!prompt) return;
+    fetch("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+      signal: AbortSignal.timeout(20_000),
+    })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message);
+        sessionStorage.removeItem("runly:draft-prompt");
+        router.replace(`/project/${result.project.id}`);
+      })
+      .catch((reason) => {
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Couldn't create the project.",
+        );
+      });
+  }, [router]);
   async function create(event: React.FormEvent) {
     event.preventDefault();
     if (!name.trim()) {
@@ -57,6 +86,7 @@ export function ProjectsDashboard() {
       setProjects((old) => [result.project, ...old]);
       setName("");
       dialog.current?.close();
+      router.push(`/project/${result.project.id}`);
     } catch (reason) {
       setFormError(
         reason instanceof Error
@@ -86,7 +116,7 @@ export function ProjectsDashboard() {
           New project
         </button>
       </div>
-      <section className="panel">
+      <section className="panel projects-panel">
         <div className="panel-head">
           <h2>Recent projects</h2>
           <label className="search-field">
@@ -134,17 +164,23 @@ export function ProjectsDashboard() {
         ) : visible.length ? (
           <div className="saved-projects">
             {visible.map((project) => (
-              <article key={project.id}>
-                <h3>{project.name}</h3>
-                <p>
-                  Saved · {new Date(project.updated_at).toLocaleDateString()}
-                </p>
-                <small>
-                  {project.status === "draft"
-                    ? "Draft project"
-                    : "Active project"}
-                </small>
-              </article>
+              <Link
+                className="saved-project-link"
+                href={`/project/${project.id}`}
+                key={project.id}
+              >
+                <article>
+                  <h3>{project.name}</h3>
+                  <p>
+                    Saved · {new Date(project.updated_at).toLocaleDateString()}
+                  </p>
+                  <small>
+                    {project.status === "draft"
+                      ? "Draft project"
+                      : "Active project"}
+                  </small>
+                </article>
+              </Link>
             ))}
           </div>
         ) : (

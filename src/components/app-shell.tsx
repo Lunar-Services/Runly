@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
-  Blocks,
   Bot,
+  Blocks,
   CreditCard,
   FolderKanban,
   KeyRound,

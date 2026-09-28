@@ -2,6 +2,10 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { startAndMigrateLocalSupabase } from "./supabase-local.mjs";
+import nextEnv from "@next/env";
+
+// Load the same env files Next uses, before applying local Supabase overrides.
+nextEnv.loadEnvConfig(process.cwd(), true);
 
 const local = await startAndMigrateLocalSupabase();
 const next = join(
@@ -46,7 +50,34 @@ const child = spawn(next, ["dev"], {
   stdio: "inherit",
   shell: process.platform === "win32",
 });
+// Both services receive the same local database credentials. The explicit flag
+// allows real provider spending; normal `pnpm dev` never launches this worker.
+const runtime = process.argv.includes("--runtime")
+  ? spawn(process.execPath, ["--import", "tsx", "runtime/gateway.ts"], {
+      cwd: process.cwd(),
+      env: environment,
+      stdio: "inherit",
+    })
+  : null;
+runtime?.on("error", (error) => {
+  console.error("Runtime failed to start", error.message);
+  child.kill();
+});
+runtime?.on("exit", (code) => {
+  if (code) {
+    console.error("Runtime exited; stopping the dev server.");
+    child.kill();
+  }
+});
+for (const signal of ["SIGINT", "SIGTERM"])
+  process.on(signal, () => {
+    runtime?.kill();
+    child.kill();
+  });
 child.on("error", (error) => {
   throw error;
 });
-child.on("close", (code) => process.exit(code ?? 0));
+child.on("close", (code) => {
+  runtime?.kill();
+  process.exit(code ?? 0);
+});
