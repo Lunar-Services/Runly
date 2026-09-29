@@ -94,7 +94,7 @@ export async function POST(
       const { data, error } = parsed.data.token_hash
         ? await db.auth.verifyOtp({
             token_hash: parsed.data.token_hash,
-            type: "email",
+            type: "signup",
           })
         : await db.auth.verifyOtp({
             email: parsed.data.email!,
