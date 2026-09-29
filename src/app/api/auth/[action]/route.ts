@@ -94,12 +94,12 @@ export async function POST(
       const { data, error } = parsed.data.token_hash
         ? await db.auth.verifyOtp({
             token_hash: parsed.data.token_hash,
-            type: "signup",
+            type: "email",
           })
         : await db.auth.verifyOtp({
             email: parsed.data.email!,
             token: parsed.data.code!,
-            type: "signup",
+            type: "email",
           });
       if (error || !data.session || !data.user?.email_confirmed_at)
         throw new ApiError(
