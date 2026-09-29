@@ -2,11 +2,11 @@
 
 :root {
   --ink: #101110;
-  --paper: #d9dcde;
-  --white: #e8eaeb;
+  --paper: #fafafa;
+  --white: #ffffff;
   --muted: #6d716d;
-  --line: #adb4b8;
-  --soft: #d1d5d7;
+  --line: #d6d6d6;
+  --soft: #f0f0f0;
   --signal: #121412;
   --danger: #b33a2f;
   --serif: Georgia, "Times New Roman", serif;

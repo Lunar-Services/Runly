@@ -1,6 +1,6 @@
 :global(.admin-shell) {
-  --admin-page: #e9e9e9;
-  --admin-panel: #f8f8f8;
+  --admin-page: #fafafa;
+  --admin-panel: #ffffff;
   --admin-panel-raised: #fff;
   --admin-soft: #eeeeee;
   --admin-line: #d0d0d0;
@@ -17,10 +17,10 @@
   background: var(--admin-page);
 }
 :global(.admin-shell.is-dark) {
-  --admin-page: #0c0c0c;
-  --admin-panel: #131313;
-  --admin-panel-raised: #181818;
-  --admin-soft: #1d1d1d;
+  --admin-page: #050505;
+  --admin-panel: #0e0e0e;
+  --admin-panel-raised: #151515;
+  --admin-soft: #191919;
   --admin-line: #2c2c2c;
   --admin-ink: #eeeeee;
   --admin-muted: #949494;

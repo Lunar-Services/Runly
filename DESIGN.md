@@ -4,11 +4,11 @@ name: "Runly"
 description: "An editorial monochrome AI-building workspace with a kinetic arrow mark and quiet operational UI."
 colors:
   ink: "#101110"
-  paper: "#E6E9EB"
-  white: "#F2F4F5"
+  paper: "#FAFAFA"
+  white: "#FFFFFF"
   muted: "#6D716D"
-  line: "#ADB4B8"
-  soft: "#D1D5D7"
+  line: "#D6D6D6"
+  soft: "#F0F0F0"
   signal: "#171717"
   danger: "#B33A2F"
 typography:
@@ -34,7 +34,7 @@ components:
   button:
     minHeight: "2.75rem"
   card:
-    border: "1px solid #ADB4B8"
+    border: "1px solid #D6D6D6"
   dialog:
     radius: "1.125rem"
   input:
@@ -64,7 +64,7 @@ The supplied Viskey & Vida screenshot and saved site are compositional reference
 
 Ink and paper create the primary contrast. White separates functional surfaces. Signal is reserved for healthy/live state, never large decorative fills. Danger is reserved for destructive or publication-blocking states. The global focus ring uses a darker signal-derived green to meet contrast on white.
 
-The light appearance uses a soft cool-gray canvas and lighter neutral card surfaces, without a warm or yellow cast. Text, button, and action colors remain unchanged when the canvas is recalibrated. Dark appearance retains its near-black palette.
+The light appearance uses a near-white canvas (#FAFAFA) and white cards. Dark appearance uses a deeper black canvas (#050505), dark cards (#0E0E0E), and raised controls (#191919). Borders preserve surface separation and readable contrast. The closing call to action uses a plain theme surface without the hand artwork.
 
 ## Typography
 

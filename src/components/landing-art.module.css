@@ -67,37 +67,6 @@
   text-shadow: 0 3px 28px rgba(255, 255, 255, 0.68);
 }
 
-.closingArtwork {
-  position: absolute;
-  z-index: 0;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      ellipse 34% 25% at center,
-      rgba(238, 240, 238, 0.94),
-      rgba(238, 240, 238, 0) 82%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(235, 237, 236, 0.04),
-      rgba(235, 237, 236, 0.12)
-    ),
-    url("/runly-closing-hands-light-4k.webp") center / cover no-repeat;
-  transform: scale(1.015);
-}
-
-:global(html[data-theme="dark"]) .closingArtwork {
-  background:
-    radial-gradient(
-      ellipse 34% 25% at center,
-      rgba(3, 4, 3, 0.95),
-      rgba(3, 4, 3, 0) 82%
-    ),
-    linear-gradient(180deg, rgba(6, 8, 7, 0.02), rgba(6, 8, 7, 0.2)),
-    url("/runly-closing-hands-dark-4k.webp") center / cover no-repeat;
-}
-
 :global(html[data-theme="dark"]) .close h2 {
   color: #f5f6f2;
   text-shadow: 0 3px 30px rgba(0, 0, 0, 0.6);
@@ -140,8 +109,5 @@
 
   .close {
     min-height: 420px;
-  }
-  .closingArtwork {
-    background-position: center;
   }
 }

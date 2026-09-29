@@ -370,7 +370,6 @@ export function LandingPage({
 
         <BusinessMotion />
         <section className={`cat-close ${art.close}`}>
-          <div className={art.closingArtwork} aria-hidden="true" />
           <h2>What are you thinking?</h2>
           <a className="button button-dark" href="#hero-prompt">
             Let’s start
