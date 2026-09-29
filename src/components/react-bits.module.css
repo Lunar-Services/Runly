@@ -161,19 +161,35 @@
   border-radius: 10px;
   background: transparent;
 }
-.branchMenu > div {
-  position: absolute;
-  z-index: 20;
-  right: 0;
-  top: 44px;
-  min-width: 180px;
+.branchPanel {
+  position: fixed;
+  z-index: 10000;
+  width: 220px;
+  max-height: 280px;
   padding: 6px;
+  overflow-y: auto;
   border: 1px solid var(--border-ui, #d8dbd5);
   border-radius: 12px;
-  background: var(--surface-card, #fff);
-  box-shadow: 0 18px 45px rgba(18, 20, 17, 0.16);
+  background: #fff;
+  color: #181818;
+  box-shadow: 0 22px 60px rgba(18, 20, 17, 0.24);
+  isolation: isolate;
+  opacity: 1;
+  animation: branch-panel-in 160ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
-.branchMenu > div button {
+.branchPanel[data-side="above"] {
+  transform-origin: bottom right;
+}
+.branchPanel[data-side="below"] {
+  transform-origin: top right;
+}
+:global(html[data-theme="dark"]) .branchPanel {
+  border-color: #373737;
+  background: #181818;
+  color: #f2f2f2;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.52);
+}
+.branchPanel button {
   width: 100%;
   display: flex;
   align-items: center;
@@ -182,14 +198,28 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
+  color: inherit;
   text-align: left;
   font-size: 12px;
+  cursor: pointer;
 }
-.branchMenu > div button:hover {
-  background: var(--surface-raised, #f1f2ef);
+.branchPanel button:hover,
+.branchPanel button:focus-visible {
+  outline: 0;
+  background: #eeeeee;
 }
-.branchMenu .dangerAction {
+:global(html[data-theme="dark"]) .branchPanel button:hover,
+:global(html[data-theme="dark"]) .branchPanel button:focus-visible {
+  background: #2a2a2a;
+}
+.branchPanel .dangerAction {
   color: #aa3026;
+}
+@keyframes branch-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
 }
 .flexCarousel {
   display: flex;
@@ -207,5 +237,8 @@
   .lattice i {
     animation: none;
     opacity: 0.7;
+  }
+  .branchPanel {
+    animation: none;
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
 import styles from "./react-bits.module.css";
 
@@ -102,37 +103,107 @@ export function BranchedMenu({
   actions: Array<{ label: string; danger?: boolean; onSelect: () => void }>;
 }) {
   const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0, side: "below" });
   const id = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (
+        !triggerRef.current?.contains(target) &&
+        !panelRef.current?.contains(target)
+      )
+        setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    const closeOnViewportChange = () => setOpen(false);
+    document.addEventListener("pointerdown", closeOnOutsidePress);
+    document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("resize", closeOnViewportChange);
+    window.addEventListener("scroll", closeOnViewportChange, true);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePress);
+      document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("resize", closeOnViewportChange);
+      window.removeEventListener("scroll", closeOnViewportChange, true);
+    };
+  }, [open]);
+
+  const toggle = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const panelWidth = 220;
+    const panelHeight = Math.min(actions.length * 41 + 12, 280);
+    const gap = 7;
+    const openAbove =
+      window.innerHeight - rect.bottom < panelHeight + gap &&
+      rect.top > panelHeight + gap;
+    setPosition({
+      top: openAbove
+        ? Math.max(8, rect.top - panelHeight - gap)
+        : Math.min(window.innerHeight - panelHeight - 8, rect.bottom + gap),
+      left: Math.max(
+        8,
+        Math.min(rect.right - panelWidth, window.innerWidth - panelWidth - 8),
+      ),
+      side: openAbove ? "above" : "below",
+    });
+    setOpen(true);
+  };
+
+  const panel = open ? (
+    <div
+      className={styles.branchPanel}
+      data-side={position.side}
+      id={id}
+      role="menu"
+      ref={panelRef}
+      style={{ top: position.top, left: position.left }}
+    >
+      {actions.map((action) => (
+        <button
+          type="button"
+          role="menuitem"
+          className={action.danger ? styles.dangerAction : ""}
+          key={action.label}
+          onClick={() => {
+            setOpen(false);
+            action.onSelect();
+          }}
+        >
+          {action.label}
+          <ChevronDown size={16} />
+        </button>
+      ))}
+    </div>
+  ) : null;
+
   return (
     <div className={styles.branchMenu}>
       <button
+        ref={triggerRef}
         type="button"
         aria-label={label}
         aria-expanded={open}
         aria-controls={id}
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggle}
       >
         <MoreHorizontal size={21} />
       </button>
-      {open && (
-        <div id={id} role="menu">
-          {actions.map((action) => (
-            <button
-              type="button"
-              role="menuitem"
-              className={action.danger ? styles.dangerAction : ""}
-              key={action.label}
-              onClick={() => {
-                setOpen(false);
-                action.onSelect();
-              }}
-            >
-              {action.label}
-              <ChevronDown size={16} />
-            </button>
-          ))}
-        </div>
-      )}
+      {panel && createPortal(panel, document.body)}
     </div>
   );
 }
