@@ -99,7 +99,7 @@ export async function POST(
         : await db.auth.verifyOtp({
             email: parsed.data.email!,
             token: parsed.data.code!,
-            type: "email",
+            type: "signup",
           });
       if (error || !data.session || !data.user?.email_confirmed_at)
         throw new ApiError(
