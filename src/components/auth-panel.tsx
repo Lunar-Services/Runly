@@ -44,22 +44,19 @@ export function AuthPanel({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const fields = new FormData(event.currentTarget);
+    const email =
+      mode === "verify" ? verificationEmail : String(fields.get("email") || "");
+    const code =
+      mode === "verify" ? verificationCode : String(fields.get("code") || "");
     const invalid: Record<string, string> = {};
-    if (
-      mode !== "reset" &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(fields.get("email") || ""))
-    )
+    if (mode !== "reset" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       invalid.email = "Enter a valid email address.";
     if (
       ["login", "signup", "reset"].includes(mode) &&
       String(fields.get("password") || "").length < 8
     )
       invalid.password = "Use at least 8 characters.";
-    if (
-      mode === "verify" &&
-      !initialTokenHash &&
-      !/^\d{6}$/.test(String(fields.get("code") || ""))
-    )
+    if (mode === "verify" && !initialTokenHash && !/^\d{6}$/.test(code))
       invalid.code = "Enter the six-digit code from your email.";
     if (mode === "signup" && !accepted)
       invalid.accepted =
@@ -74,10 +71,10 @@ export function AuthPanel({
       return;
     }
     await run(mode, {
-      email: fields.get("email"),
+      email,
       token_hash: initialTokenHash,
       password: fields.get("password"),
-      code: fields.get("code"),
+      code,
       accepted,
     });
   }
