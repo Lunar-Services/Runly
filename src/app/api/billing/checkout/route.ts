@@ -4,6 +4,7 @@ import {
   appOrigin,
   body,
   failure,
+  rateLimit,
   sameOrigin,
   session,
 } from "@/lib/api";
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
   try {
     sameOrigin(request);
     const { user } = await session();
+    await rateLimit(request, "billing-checkout", user.id, 10);
     if (!user.email)
       throw new ApiError(
         400,

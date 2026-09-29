@@ -7,6 +7,9 @@ import { AppShell } from "./app-shell";
 export function AccountSettings() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [githubLinked, setGithubLinked] = useState(false);
+  const [githubInstallations, setGithubInstallations] = useState(0);
+  const [newPassword, setNewPassword] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState("");
@@ -30,6 +33,20 @@ export function AccountSettings() {
       .then((result) => {
         setName(result.displayName);
         setEmail(result.email);
+        setGithubLinked(Boolean(result.githubLinked));
+        if (result.githubLinked)
+          void fetch("/api/github/repositories")
+            .then((response) => response.json())
+            .then((repos) =>
+              setGithubInstallations(
+                new Set(
+                  (repos.repositories || []).map(
+                    (repo: { installationId: number }) => repo.installationId,
+                  ),
+                ).size,
+              ),
+            )
+            .catch(() => undefined);
         setAvatarUrl(result.avatarUrl);
       })
       .catch((error) => {
@@ -140,6 +157,67 @@ export function AccountSettings() {
     email.slice(0, 1).toUpperCase() ||
     "R";
   const displayedAvatar = removeAvatar ? "" : avatarPreview || avatarUrl;
+  async function linkGithub() {
+    setPending(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/account/github", { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message);
+      if (result.url) window.location.assign(result.url);
+      else setGithubLinked(true);
+    } catch (error) {
+      setFailed(true);
+      setMessage(
+        error instanceof Error ? error.message : "Couldn't link GitHub.",
+      );
+      setPending(false);
+    }
+  }
+  async function installGithubApp() {
+    setPending(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/github/install", {
+        cache: "no-store",
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message);
+      window.location.assign(result.url);
+    } catch (error) {
+      setFailed(true);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Couldn't open GitHub installation.",
+      );
+      setPending(false);
+    }
+  }
+  async function setEmailPassword(event: React.FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setMessage("");
+    setFailed(false);
+    try {
+      const response = await fetch("/api/account/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message);
+      setNewPassword("");
+      setMessage(result.message);
+    } catch (error) {
+      setFailed(true);
+      setMessage(
+        error instanceof Error ? error.message : "Couldn't set password.",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
   return (
     <AppShell title="Account settings">
       <section className="panel form-panel profile-settings">
@@ -242,6 +320,59 @@ export function AccountSettings() {
               {message}
             </p>
           )}
+        </form>
+      </section>
+      <section className="panel form-panel profile-settings">
+        <h2>Connected accounts</h2>
+        <p className="muted">
+          Link GitHub to use repository controls in your projects. Email sign-in
+          remains available for accounts with a password.
+        </p>
+        <button
+          type="button"
+          className="button button-outline"
+          disabled={loading || pending || githubLinked}
+          onClick={() => void linkGithub()}
+        >
+          {githubLinked ? "GitHub linked" : "Connect GitHub"}
+        </button>
+        {githubLinked && (
+          <>
+            <p className="muted">
+              {githubInstallations
+                ? `${githubInstallations} personal GitHub installation${githubInstallations === 1 ? "" : "s"} connected`
+                : "Install the Runly GitHub App to grant access to selected repositories."}
+            </p>
+            <button
+              type="button"
+              className="button button-outline"
+              disabled={pending}
+              onClick={() => void installGithubApp()}
+            >
+              {githubInstallations
+                ? "Manage repository access"
+                : "Install GitHub App"}
+            </button>
+          </>
+        )}
+        <form onSubmit={(event) => void setEmailPassword(event)}>
+          <label>
+            Set or change email password
+            <input
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              maxLength={128}
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+            />
+          </label>
+          <button
+            className="button button-outline"
+            disabled={pending || newPassword.length < 8}
+          >
+            Save password
+          </button>
         </form>
       </section>
     </AppShell>

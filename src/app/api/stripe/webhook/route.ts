@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { ApiError, readRawBody } from "@/lib/api";
 import { getStripe, StripeConfigurationError } from "@/lib/stripe";
 import {
   claimWebhook,
@@ -17,7 +18,14 @@ export async function POST(request: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!signature || !secret)
     return new Response("Webhook configuration is missing.", { status: 400 });
-  const payload = await request.text();
+  let payload: string;
+  try {
+    payload = (await readRawBody(request, 2 * 1024 * 1024)).toString("utf8");
+  } catch (error) {
+    return new Response("Webhook payload is too large.", {
+      status: error instanceof ApiError ? error.status : 400,
+    });
+  }
   let event: Stripe.Event;
   try {
     event = getStripe().webhooks.constructEvent(payload, signature, secret);

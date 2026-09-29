@@ -335,15 +335,15 @@ export function AuthPanel({
         {(mode === "login" || mode === "signup") && (
           <>
             <button
+              type="button"
               className="button button-outline"
-              disabled
-              aria-describedby="github-unavailable"
+              disabled={pending}
+              onClick={() =>
+                void run("github", { signup: mode === "signup", accepted })
+              }
             >
               Continue with GitHub
             </button>
-            <p id="github-unavailable" className="auth-provider-note">
-              GitHub sign-in is not enabled yet. Use email and password.
-            </p>
           </>
         )}
         <div className="auth-feedback" aria-live="polite">

@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { ApiError, adminClient, session } from "@/lib/api";
-import { gateways, gatewayFor, signTicket } from "./shared";
+import { gateways, gatewayFor, signTicket, validWorkspacePath } from "./shared";
 import { reconcileUserBilling } from "@/lib/billing";
 
 export async function runtimeAccess(projectId: string) {
@@ -124,7 +124,9 @@ export async function runtimeView(project: string, user: string) {
     mode: process.env.RUNLY_RUNTIME_MODE === "mock" ? "mock" : "openai",
     state: runtime?.state || "stopped",
     error: runtime?.error,
-    files: files || [],
+    // Older snapshots may predate the path guard. Never serialize secret-like
+    // files to the browser, even if they remain in the service-role table.
+    files: (files || []).filter((file) => validWorkspacePath(file.path)),
     jobs: jobs || [],
     connection,
   };

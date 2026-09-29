@@ -41,7 +41,13 @@ import { useTheme } from "./theme-provider";
 import { useProjectRuntime, type WorkspaceFile } from "./use-project-runtime";
 import { WorkspaceTerminal } from "./workspace-terminal";
 
-type Project = { id: string; name: string; status: string };
+type Project = {
+  id: string;
+  name: string;
+  status: string;
+  github_repo_id?: number | null;
+  github_branch?: string | null;
+};
 type ProjectSummary = Project & { updated_at?: string };
 type ChatSummary = { id: string; title: string };
 type DayPart = "Morning" | "Afternoon" | "Evening";
@@ -60,6 +66,28 @@ type ExplorerNode = {
 };
 type ExplorerMenu = { x: number; y: number; parentPath: string };
 type ChatMenu = { x: number; y: number; chat: ChatSummary };
+type UsageWindow = { used: number; reserved: number; limit: number };
+type UsageSummary = {
+  active: boolean;
+  plan?: string;
+  threeHour?: UsageWindow;
+  sevenDay?: UsageWindow;
+};
+type GithubRepo = {
+  id: number;
+  fullName: string;
+  defaultBranch: string;
+  installationId: number;
+  archived: boolean;
+};
+type GitStatus = {
+  initialized: boolean;
+  branch: string | null;
+  branches: string[];
+  dirty: boolean;
+  commit?: string | null;
+  repository?: string;
+};
 
 function folderPathsFor(files: ProjectFile[], folders: string[]) {
   const paths = new Set<string>();
@@ -166,6 +194,49 @@ function devCommandFor(files: ProjectFile[]) {
   return null;
 }
 
+const starterFiles = [
+  {
+    path: "app/layout.tsx",
+    content: `import type { ReactNode } from "react";\nexport default function Layout({ children }: { children: ReactNode }) {\n  return <html lang="en"><body style={{ margin: 0, fontFamily: "system-ui, sans-serif" }}>{children}</body></html>;\n}\n`,
+  },
+  {
+    path: "app/api/hello/route.ts",
+    content: `export async function GET() {\n  return Response.json({ message: "Hello from the Runly API", time: new Date().toISOString() });\n}\n`,
+  },
+  {
+    path: "app/page.tsx",
+    content: `"use client";\nimport { useEffect, useState } from "react";\nexport default function Home() {\n  const [message, setMessage] = useState("Loading the API…");\n  useEffect(() => {\n    fetch("/api/hello").then((response) => response.json()).then((data) => setMessage(data.message)).catch(() => setMessage("API unavailable"));\n  }, []);\n  return <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#f3f5ed", color: "#1f2820" }}>\n    <section style={{ textAlign: "center", padding: 32 }}>\n      <p style={{ fontSize: 48, margin: 0 }}>🐈</p>\n      <h1>Welcome to your Runly app</h1>\n      <p>The frontend and backend share this workspace.</p>\n      <strong role="status">{message}</strong>\n    </section>\n  </main>;\n}\n`,
+  },
+  {
+    path: "package.json",
+    content:
+      JSON.stringify(
+        {
+          name: "runly-starter",
+          private: true,
+          version: "0.1.0",
+          scripts: {
+            dev: "next dev",
+            build: "next build",
+            start: "next start",
+          },
+          dependencies: {
+            next: "16.3.6",
+            react: "19.2.8",
+            "react-dom": "19.2.8",
+          },
+          devDependencies: {
+            typescript: "^5",
+            "@types/node": "^22",
+            "@types/react": "^19",
+          },
+        },
+        null,
+        2,
+      ) + "\n",
+  },
+];
+
 export function ProjectWorkspace({ projectId }: { projectId: string }) {
   const router = useRouter();
   const { darkTheme, toggleTheme } = useTheme();
@@ -222,8 +293,19 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
   const [renameChatError, setRenameChatError] = useState("");
   const [renamingChatBusy, setRenamingChatBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [usageOpen, setUsageOpen] = useState(false);
+  const [usage, setUsage] = useState<UsageSummary | null>(null);
+  const [usageError, setUsageError] = useState("");
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
+  const [githubLinked, setGithubLinked] = useState(false);
+  const [githubRepos, setGithubRepos] = useState<GithubRepo[]>([]);
+  const [gitStatus, setGitStatus] = useState<GitStatus | null>(null);
+  const [gitBusy, setGitBusy] = useState(false);
+  const [gitError, setGitError] = useState("");
+  const [gitBranchInput, setGitBranchInput] = useState("");
+  const [gitCommitMessage, setGitCommitMessage] = useState("Update from Runly");
+  const [starterBusy, setStarterBusy] = useState(false);
   const [appMenuOpen, setAppMenuOpen] = useState<"view" | "help" | null>(null);
   const activeChatRef = useRef(activeChatId);
   useEffect(() => {
@@ -288,6 +370,122 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
   const newFileInput = useRef<HTMLInputElement>(null);
   const renameChatInput = useRef<HTMLInputElement>(null);
   const composerInput = useRef<HTMLTextAreaElement>(null);
+
+  async function openUsage() {
+    setUsageOpen(true);
+    setUsage(null);
+    setUsageError("");
+    try {
+      const response = await fetch(`/api/projects/${projectId}/usage`, {
+        cache: "no-store",
+      });
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.message || "Couldn't load usage.");
+      setUsage(result);
+    } catch (reason) {
+      setUsageError(
+        reason instanceof Error ? reason.message : "Couldn't load usage.",
+      );
+    }
+  }
+
+  async function createStarter() {
+    if (devCommandFor(files) || starterBusy) return;
+    setStarterBusy(true);
+    setError("");
+    try {
+      const conflict = starterFiles.find((item) =>
+        files.some((file) => file.path === item.path),
+      );
+      if (conflict)
+        throw new Error(
+          `${conflict.path} already exists. Rename it before adding the starter.`,
+        );
+      for (const item of starterFiles) {
+        await runtimeRequest("write", {
+          path: item.path,
+          content: item.content,
+          hash: "",
+          create: true,
+        });
+      }
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Couldn't create the starter app.",
+      );
+    } finally {
+      setStarterBusy(false);
+    }
+  }
+
+  async function loadGit() {
+    setGitBusy(true);
+    setGitError("");
+    try {
+      const response = await fetch("/api/github/repositories", {
+        cache: "no-store",
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      setGithubLinked(Boolean(data.linked));
+      setGithubRepos(Array.isArray(data.repositories) ? data.repositories : []);
+      if (project?.github_repo_id) await gitAction("status", {}, false);
+    } catch (reason) {
+      setGitError(
+        reason instanceof Error
+          ? reason.message
+          : "Couldn't load GitHub repositories.",
+      );
+    } finally {
+      setGitBusy(false);
+    }
+  }
+
+  async function gitAction(
+    action: "link" | "status" | "branch" | "checkout" | "pull" | "push",
+    extra: Record<string, unknown> = {},
+    manageBusy = true,
+  ) {
+    if (manageBusy) setGitBusy(true);
+    setGitError("");
+    try {
+      if (action !== "status") await runtime.flush();
+      const response = await fetch(`/api/projects/${projectId}/git`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...extra }),
+      });
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.message || "Git operation failed.");
+      setGitStatus(data);
+      if (action === "link" || action === "branch" || action === "checkout") {
+        setProject(
+          (current) =>
+            current && {
+              ...current,
+              github_repo_id:
+                action === "link"
+                  ? Number(extra.repositoryId)
+                  : current.github_repo_id,
+              github_branch: data.branch || current.github_branch,
+            },
+        );
+      }
+      if (action !== "status") setBranchMenuOpen(false);
+      return data as GitStatus;
+    } catch (reason) {
+      setGitError(
+        reason instanceof Error ? reason.message : "Git operation failed.",
+      );
+      return null;
+    } finally {
+      if (manageBusy) setGitBusy(false);
+    }
+  }
 
   function resizeBottomPanel(height: number) {
     const maxHeight = Math.max(150, window.innerHeight - 44 - 48 - 140);
@@ -1091,14 +1289,21 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               <div className="editor-dropdown project-dropdown">
                 <button
                   type="button"
-                  onClick={() => window.location.assign("/dashboard/projects")}
+                  onClick={() => router.push("/dashboard/projects")}
                 >
                   <PlusCircle size={15} /> New Project…
                 </button>
                 <button type="button" onClick={() => setProjectMenuOpen(false)}>
                   <FolderOpen size={15} /> Open…
                 </button>
-                <button type="button" onClick={() => setProjectMenuOpen(false)}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProjectMenuOpen(false);
+                    setBranchMenuOpen(true);
+                    void loadGit();
+                  }}
+                >
                   <GitBranch size={15} /> Clone Repository…
                 </button>
                 <div className="editor-dropdown-divider" />
@@ -1121,24 +1326,145 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               className="editor-branch-selector"
               aria-expanded={branchMenuOpen}
               onClick={() => {
+                if (!branchMenuOpen) void loadGit();
                 setBranchMenuOpen((open) => !open);
                 setProjectMenuOpen(false);
               }}
             >
-              <GitBranch size={15} /> master <ChevronDown size={13} />
+              <GitBranch size={15} />{" "}
+              {gitStatus?.branch || project.github_branch || "GitHub"}{" "}
+              <ChevronDown size={13} />
             </button>
             {branchMenuOpen && (
               <div className="editor-dropdown branch-dropdown">
-                <p>Git branches</p>
-                <button type="button" className="selected-branch">
-                  <GitBranch size={15} /> master
-                </button>
-                <button type="button" onClick={() => setBranchMenuOpen(false)}>
-                  <PlusCircle size={15} /> New branch…
-                </button>
-                <button type="button" onClick={() => setBranchMenuOpen(false)}>
-                  Manage branches…
-                </button>
+                <p>GitHub repository</p>
+                {gitBusy && <p role="status">Connecting to workspace…</p>}
+                {gitError && (
+                  <p role="alert" className="workspace-git-error">
+                    {gitError}
+                  </p>
+                )}
+                {!githubLinked && !gitBusy && (
+                  <Link href="/settings/account">
+                    Connect GitHub in Account settings
+                  </Link>
+                )}
+                {githubLinked && !githubRepos.length && !gitBusy && (
+                  <Link href="/settings/account">
+                    Install the Runly GitHub App
+                  </Link>
+                )}
+                {githubLinked &&
+                  !project.github_repo_id &&
+                  githubRepos.map((repo) => (
+                    <button
+                      type="button"
+                      key={repo.id}
+                      disabled={gitBusy || repo.archived}
+                      onClick={() =>
+                        void gitAction("link", {
+                          repositoryId: repo.id,
+                          installationId: repo.installationId,
+                        })
+                      }
+                    >
+                      <FolderOpen size={15} /> {repo.fullName}
+                    </button>
+                  ))}
+                {!!project.github_repo_id && (
+                  <>
+                    <p>
+                      {githubRepos.find(
+                        (repo) => repo.id === project.github_repo_id,
+                      )?.fullName || "Connected repository"}
+                      {gitStatus?.dirty ? " · changes" : ""}
+                    </p>
+                    {(gitStatus?.branches?.length
+                      ? gitStatus.branches
+                      : [gitStatus?.branch || project.github_branch || "main"]
+                    ).map((branch) => (
+                      <button
+                        key={branch}
+                        type="button"
+                        disabled={
+                          gitBusy ||
+                          branch ===
+                            (gitStatus?.branch || project.github_branch)
+                        }
+                        className={
+                          branch ===
+                          (gitStatus?.branch || project.github_branch)
+                            ? "selected-branch"
+                            : ""
+                        }
+                        onClick={() => void gitAction("checkout", { branch })}
+                      >
+                        <GitBranch size={15} /> {branch}
+                      </button>
+                    ))}
+                    <label className="workspace-git-field">
+                      Branch name
+                      <input
+                        value={gitBranchInput}
+                        onChange={(event) =>
+                          setGitBranchInput(event.target.value)
+                        }
+                        placeholder="feature/new-branch"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={gitBusy || !gitBranchInput.trim()}
+                      onClick={() =>
+                        void gitAction("branch", {
+                          branch: gitBranchInput.trim(),
+                        })
+                      }
+                    >
+                      <PlusCircle size={15} /> Create branch
+                    </button>
+                    <button
+                      type="button"
+                      disabled={gitBusy || !gitBranchInput.trim()}
+                      onClick={() =>
+                        void gitAction("checkout", {
+                          branch: gitBranchInput.trim(),
+                        })
+                      }
+                    >
+                      <GitBranch size={15} /> Checkout remote branch
+                    </button>
+                    <div className="editor-dropdown-divider" />
+                    <button
+                      type="button"
+                      disabled={gitBusy}
+                      onClick={() => void gitAction("pull")}
+                    >
+                      <RotateCw size={15} /> Pull (fast-forward)
+                    </button>
+                    <label className="workspace-git-field">
+                      Commit message
+                      <input
+                        value={gitCommitMessage}
+                        onChange={(event) =>
+                          setGitCommitMessage(event.target.value)
+                        }
+                        maxLength={120}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={gitBusy || !gitCommitMessage.trim()}
+                      onClick={() =>
+                        void gitAction("push", {
+                          message: gitCommitMessage.trim(),
+                        })
+                      }
+                    >
+                      <ArrowUp size={15} /> Commit &amp; push
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -1420,7 +1746,12 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                   <button type="button" aria-label="Attach image">
                     <ImageIcon size={17} />
                   </button>
-                  <button type="button" aria-label="Usage" title="Usage">
+                  <button
+                    type="button"
+                    aria-label="Usage"
+                    title="Usage"
+                    onClick={() => void openUsage()}
+                  >
                     <Gauge size={18} />
                   </button>
                   <button type="button" aria-label="Voice input">
@@ -1643,6 +1974,18 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                       ? "Add a package.json with a dev script to run an app in Preview."
                       : "Preview starts the first package.json dev script it finds in this project.")}
                 </p>
+                {runtime.state === "ready" && !devCommandFor(files) && (
+                  <button
+                    type="button"
+                    disabled={starterBusy}
+                    onClick={() => void createStarter()}
+                  >
+                    <PlusCircle size={14} />{" "}
+                    {starterBusy
+                      ? "Creating starter…"
+                      : "Create sample Next.js app"}
+                  </button>
+                )}
                 {runtime.state === "ready" && (
                   <button
                     type="button"
@@ -1936,6 +2279,81 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+      {usageOpen && (
+        <div
+          className="workspace-dialog-backdrop"
+          onMouseDown={() => setUsageOpen(false)}
+        >
+          <section
+            className="workspace-file-dialog workspace-usage-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workspace-usage-title"
+            onMouseDown={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setUsageOpen(false);
+            }}
+          >
+            <div className="workspace-dialog-heading">
+              <h2 id="workspace-usage-title">AI usage</h2>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setUsageOpen(false)}
+                aria-label="Close usage"
+              >
+                <X size={17} />
+              </button>
+            </div>
+            {usageError && <p role="alert">{usageError}</p>}
+            {!usage && !usageError && <p>Loading usage…</p>}
+            {usage && !usage.active && (
+              <p>An active plan is required to use the coding agent.</p>
+            )}
+            {usage?.active && (
+              <>
+                <p>{usage.plan} plan · rolling token allowances</p>
+                {(
+                  [
+                    ["Last 3 hours", usage.threeHour],
+                    ["Last 7 days", usage.sevenDay],
+                  ] as const
+                ).map(
+                  ([label, window]) =>
+                    window && (
+                      <div className="workspace-usage-window" key={label}>
+                        <div>
+                          <strong>{label}</strong>
+                          <span>
+                            {(window.used + window.reserved).toLocaleString()} /{" "}
+                            {window.limit.toLocaleString()} tokens
+                          </span>
+                        </div>
+                        <progress
+                          max={window.limit}
+                          value={Math.min(
+                            window.limit,
+                            window.used + window.reserved,
+                          )}
+                          aria-label={`${label} usage`}
+                        />
+                        <small>
+                          {window.used.toLocaleString()} used ·{" "}
+                          {window.reserved.toLocaleString()} reserved by pending
+                          or uncertain tasks
+                        </small>
+                      </div>
+                    ),
+                )}
+                <p className="muted">
+                  Reservations are estimates. Final usage is recorded when the
+                  provider reports token counts.
+                </p>
+              </>
+            )}
           </section>
         </div>
       )}

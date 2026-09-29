@@ -1,6 +1,9 @@
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 
+// Every production entry point, including the standalone gateway, must use
+// production-only safety gates even when the service manager omits NODE_ENV.
+process.env.NODE_ENV = "production";
 const envPath = resolve(process.cwd(), ".env.prod");
 process.loadEnvFile(envPath);
 

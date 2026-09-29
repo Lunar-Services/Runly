@@ -12,7 +12,9 @@ export async function GET(
     const { db, user } = await session();
     const { data: project, error } = await db
       .from("projects")
-      .select("id,name,status,created_at,updated_at")
+      .select(
+        "id,name,status,github_repo_id,github_branch,created_at,updated_at",
+      )
       .eq("id", projectId)
       .maybeSingle();
     if (error) throw new ApiError(502, "Couldn't load this project.");

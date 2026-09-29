@@ -4,7 +4,12 @@ import {
   type ServerResponse,
 } from "node:http";
 import { readFile } from "node:fs/promises";
-import { randomBytes, randomUUID } from "node:crypto";
+import {
+  createHmac,
+  randomBytes,
+  randomUUID,
+  timingSafeEqual,
+} from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { WebSocket, WebSocketServer } from "ws";
 import { createClient } from "@supabase/supabase-js";
@@ -20,6 +25,11 @@ import {
 // A stable gateway ID is a shard. Existing projects keep their assignment when
 // gateways are added. Run one active process per ID; use the proxy for TLS.
 const gatewayId = process.env.RUNLY_RUNTIME_GATEWAY_ID || "primary";
+if (
+  process.env.NODE_ENV === "production" &&
+  process.env.RUNLY_RUNTIME_MODE === "mock"
+)
+  throw new Error("Mock runtime is not allowed in production");
 const gateway = gateways().find((entry) => entry.id === gatewayId);
 const secret = process.env.RUNLY_RUNTIME_SECRET || "";
 if (!gateway || secret.length < 32)
@@ -79,6 +89,26 @@ type PreviewRequest = {
 const rooms = new Map<string, Room>();
 const previewRequests = new Map<string, PreviewRequest>();
 const previewDomain = process.env.RUNLY_PREVIEW_DOMAIN?.toLowerCase() || "";
+const sandboxDomains = [
+  new URL(gateway!.url).hostname.toLowerCase(),
+  "registry.npmjs.org",
+  "api.openai.com",
+  "codex-cloud-environments.chatgpt.com",
+  ...(process.env.RUNLY_SANDBOX_ALLOWED_DOMAINS || "")
+    .split(",")
+    .map((name) => name.trim().toLowerCase())
+    .filter(Boolean),
+];
+const allowedSandboxDomains = [...new Set(sandboxDomains)];
+if (
+  allowedSandboxDomains.length > 100 ||
+  (allowedSandboxDomains.some(
+    (name) =>
+      !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(name),
+  ) &&
+    process.env.RUNLY_RUNTIME_MODE !== "mock")
+)
+  throw new Error("Configure valid sandbox network allowlist domains");
 if (
   !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(
     previewDomain,
@@ -209,6 +239,7 @@ async function updateRuntime(project: string, values: Record<string, unknown>) {
 function callBridge(
   project: string,
   command: Record<string, unknown>,
+  timeoutMs = 30_000,
 ): Promise<unknown> {
   const value = room(project);
   if (!value.bridge || value.bridge.readyState !== WebSocket.OPEN)
@@ -224,7 +255,7 @@ function callBridge(
       reject(
         new Error("Workspace operation timed out; reload before retrying."),
       );
-    }, 30_000);
+    }, timeoutMs);
     value.pending.set(id, { resolve, reject, timer });
     send(value.bridge!, { ...command, type: "command", id });
   });
@@ -307,16 +338,19 @@ async function startWorkspace(project: string) {
     throw new Error(
       "Runtime capacity reached. Stop another workspace or retry later.",
     );
+  const savedFiles = await check(
+    db
+      .from("runtime_files")
+      .select("path,kind,content,hash")
+      .eq("project_id", project)
+      .limit(1000),
+  );
+  // Historical snapshots may contain names that are now excluded. Keep those
+  // records in storage for operator review, but never restore them into code.
   const files = z
     .array(fileSchema)
     .parse(
-      await check(
-        db
-          .from("runtime_files")
-          .select("path,kind,content,hash")
-          .eq("project_id", project)
-          .limit(1000),
-      ),
+      (savedFiles || []).filter((file) => validWorkspacePath(file.path)),
     ) as File[];
   if (
     files.reduce((size, file) => size + Buffer.byteLength(file.content), 0) >
@@ -354,7 +388,10 @@ async function startWorkspace(project: string) {
     metadata: { runly_project: project, runly_generation: generation },
     environment: {
       type: "openai_hosted",
-      network: { access: "enabled" },
+      network:
+        process.env.RUNLY_RUNTIME_MODE === "mock"
+          ? { access: "enabled" }
+          : { access: "restricted", allowed_domains: allowedSandboxDomains },
       packages: { python: ["websocket-client==1.8.0"] },
       env: {
         RUNLY_GATEWAY_URL: gateway!.url,
@@ -763,6 +800,8 @@ const requestHopHeaders = new Set([
   "upgrade",
   "host",
   "content-length",
+  "forwarded",
+  "x-real-ip",
 ]);
 const responseHopHeaders = new Set([
   ...requestHopHeaders,
@@ -916,7 +955,12 @@ async function proxyPreview(
   }
   const headers: [string, string][] = [];
   for (const [name, value] of Object.entries(request.headers)) {
-    if (!value || requestHopHeaders.has(name.toLowerCase())) continue;
+    if (
+      !value ||
+      requestHopHeaders.has(name.toLowerCase()) ||
+      name.toLowerCase().startsWith("x-forwarded-")
+    )
+      continue;
     for (const item of Array.isArray(value) ? value : [value])
       headers.push([name, item]);
   }
@@ -952,7 +996,125 @@ async function proxyPreview(
     plainResponse(response, 503, "Could not reach the preview workspace.");
   }
 }
+const internalNonces = new Map<string, number>();
+const internalGitSchema = z.object({
+  project: z.string().uuid(),
+  user: z.string().uuid(),
+  action: z.enum([
+    "status",
+    "link",
+    "restore",
+    "checkout",
+    "branch",
+    "pull",
+    "push",
+  ]),
+  branch: z.string().max(100).optional(),
+  url: z.string().url().max(300).optional(),
+  token: z.string().max(4096).optional(),
+  author: z.string().max(120).optional(),
+  email: z.email().max(254).optional(),
+  message: z.string().max(120).optional(),
+});
+async function handleInternalGit(
+  request: IncomingMessage,
+  response: ServerResponse,
+) {
+  try {
+    if (!hasLease || closing) throw new Error("Gateway is unavailable");
+    if (
+      !["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(
+        request.socket.remoteAddress || "",
+      )
+    )
+      throw new Error("Internal endpoint requires loopback access");
+    const stamp = Number(request.headers["x-runly-timestamp"]);
+    const nonce = String(request.headers["x-runly-nonce"] || "");
+    const signature = Buffer.from(
+      String(request.headers["x-runly-signature"] || ""),
+      "hex",
+    );
+    if (
+      !Number.isFinite(stamp) ||
+      Math.abs(Date.now() - stamp) > 30_000 ||
+      !/^[a-f0-9-]{36}$/.test(nonce) ||
+      internalNonces.has(nonce)
+    )
+      throw new Error("Invalid internal request");
+    const chunks: Buffer[] = [];
+    let length = 0;
+    for await (const part of request) {
+      const chunk = Buffer.from(part);
+      length += chunk.length;
+      if (length > 12_000) throw new Error("Request too large");
+      chunks.push(chunk);
+    }
+    const raw = Buffer.concat(chunks);
+    const expected = createHmac("sha256", secret)
+      .update(`${stamp}.${nonce}.`)
+      .update(raw)
+      .digest();
+    if (
+      signature.length !== expected.length ||
+      !timingSafeEqual(signature, expected)
+    )
+      throw new Error("Invalid internal signature");
+    for (const [key, until] of internalNonces)
+      if (until < Date.now()) internalNonces.delete(key);
+    internalNonces.set(nonce, Date.now() + 60_000);
+    const input = internalGitSchema.parse(JSON.parse(raw.toString("utf8")));
+    // The hosted sandbox runs arbitrary project code under the same OS user as
+    // the connector. Until Git runs in an isolated trusted worker, forwarding
+    // an installation token would expose it to that code.
+    if (
+      (process.env.NODE_ENV === "production" ||
+        !/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/.test(
+          process.env.RUNLY_SITE_URL || "",
+        )) &&
+      (input.action !== "status" || input.token)
+    )
+      throw new Error(
+        "Hosted Git writes require an isolated credential broker",
+      );
+    if (!(await access(input.project, input.user)))
+      throw new Error("Project access denied");
+    const value = room(input.project);
+    if (value.busy)
+      throw new Error(
+        "Wait for the agent to finish before managing Git branches",
+      );
+    value.lastActive = Date.now();
+    const result = await callBridge(
+      input.project,
+      { op: "git", ...input },
+      240_000,
+    );
+    await value.persistence;
+    response.writeHead(200, {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    });
+    response.end(JSON.stringify(result));
+  } catch (error) {
+    response.writeHead(409, {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    });
+    response.end(
+      JSON.stringify({
+        message:
+          error instanceof Error ? error.message : "Git operation failed",
+      }),
+    );
+  }
+}
 const http = createServer((request, response) => {
+  if (request.url === "/internal/git") {
+    if (request.method !== "POST")
+      return plainResponse(response, 405, "Method not allowed");
+    void handleInternalGit(request, response);
+    return;
+  }
   const host = (request.headers.host || "").split(":")[0].toLowerCase();
   const suffix = `.${previewDomain}`;
   if (host.endsWith(suffix)) {
@@ -1413,7 +1575,7 @@ for (const name of ["SIGTERM", "SIGINT"] as const)
     http.close();
     setTimeout(() => process.exit(0), 10_000).unref();
   });
-http.listen(Number(process.env.RUNLY_RUNTIME_PORT || 4001), "0.0.0.0", () => {
+http.listen(Number(process.env.RUNLY_RUNTIME_PORT || 4001), "127.0.0.1", () => {
   console.log(`Runly runtime gateway ${gatewayId} listening`);
   void work().catch((error) => {
     console.error("Runtime startup failed:", error.message);
