@@ -32,9 +32,8 @@ Current deliberate limits:
   recursive. Explorer editing is paused during agent work. The shared terminal
   is a single shell, not one shell per collaborator.
 - Local mock mode publishes an app port on the host loopback and renders it in a
-  sandboxed, cross-origin iframe. Hosted provider previews require an isolated
-  preview origin and bounded authenticated HTTP forwarding; WebSocket/HMR
-  forwarding is not implemented yet.
+  sandboxed, cross-origin iframe. Hosted provider previews still require a
+  separately isolated preview origin and authenticated HTTP/WebSocket forwarding.
   Never serve untrusted app HTML from the Runly application origin.
 - Logs are bounded in-memory tails, not durable audit logs. Saved files,
   messages, jobs and reported token usage are durable in Postgres.
@@ -81,16 +80,12 @@ RUNLY_RUNTIME_SECRET=<at-least-32-random-characters>
 RUNLY_RUNTIME_GATEWAYS=[{"id":"primary","url":"wss://runtime.your-domain.example"}]
 RUNLY_RUNTIME_GATEWAY_ID=primary
 RUNLY_RUNTIME_PORT=4001
-RUNLY_RUNTIME_INTERNAL_URL=http://127.0.0.1:4001
 RUNLY_RUNTIME_MAX_ACTIVE=10
 RUNLY_RUNTIME_IDLE_MINUTES=5
 RUNLY_AGENT_TIMEOUT_MINUTES=10
 RUNLY_SITE_URL=https://your-app.example
 NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
 SUPABASE_SERVICE_ROLE_KEY=<server-only-key>
-GITHUB_APP_ID=<github-app-id>
-GITHUB_APP_SLUG=<github-app-slug>
-GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\\n...\\n-----END RSA PRIVATE KEY-----"
 ```
 
 Generate the shared secret locally with
@@ -172,68 +167,12 @@ after reviewing quotas and provider spending limits. Start Next.js and the
 gateway as separate supervised services. Set `RUNLY_PREVIEW_DOMAIN=preview.runly-ai.xyz`
 in `.env.prod`, apply the runtime migrations (including the preview-token column),
 and configure DNS plus a valid wildcard TLS certificate before enabling Preview.
-The final auth migration removes automatic administrator grants based on an
-email address. Review existing `account_roles` and `platform_owners` rows,
-because previously granted roles are not silently revoked by that migration.
 The gateway relays bounded HTTP/1.1 request/response bodies (1 MiB request,
 8 MiB response) over the sandbox's existing WSS connection; it does not expose
 the sandbox port directly. WebSocket upgrades (including development HMR) are
 not yet tunneled, so use a production-style app server or refresh manually while
 developing. The `preview.runly-ai.xyz` subdomain is cross-origin but same-site
 with `runly-ai.xyz`; it is not a separate registrable-site security boundary.
-
-Security gate: hosted Git writes (link, branch, checkout, pull, and push) are
-disabled in production until Git commands run in a trusted isolated worker or
-through a credential broker. The hosted sandbox shares its environment with
-user code, so passing a GitHub installation token into the connector would
-expose it. Git status remains available. Do not bypass this gate by changing
-`NODE_ENV` or the site URL. The gateway listens on loopback only; keep the TLS
-reverse proxy on the same VPS. Project `.env*`, key, and credential files are
-excluded from Explorer snapshots, but never place platform secrets in a project
-sandbox. Use a different registrable domain for untrusted Preview before
-serving sensitive production accounts.
-Sandbox outbound networking is restricted to the runtime gateway, npm registry,
-and required OpenAI hosts by default. Add only reviewed exact hostnames through
-`RUNLY_SANDBOX_ALLOWED_DOMAINS` when a project's server-side app genuinely needs
-additional network access; browser-side Preview requests use the user's browser
-network instead.
-
-### GitHub setup and repository controls
-
-GitHub sign-in and repository operations are separate grants:
-
-1. In GitHub, create an **OAuth App** for Supabase Auth and configure its callback
-   to the URL displayed in Supabase's GitHub provider settings (normally
-   `https://<project-ref>.supabase.co/auth/v1/callback`). Enable GitHub in
-   Supabase Auth, enter the OAuth client ID/secret, allow the Runly callback
-   `https://runly-ai.xyz/auth/callback`, and enable **manual identity linking**.
-   GitHub-only users can add an email password in Account settings.
-2. Create a **GitHub App** with Repository Contents read/write and Metadata read.
-   If Runly should edit `.github/workflows`, also grant Workflows read/write.
-   Set its post-install Setup URL to `https://runly-ai.xyz/api/github/setup`
-   and do not require user authorization during installation. Generate a private
-   key. Set `GITHUB_APP_ID`, `GITHUB_APP_SLUG` and `GITHUB_APP_PRIVATE_KEY` in
-   the ignored `.env.prod`; encode PEM newlines as `\\n` in the quoted value.
-3. Link GitHub from Account settings, install the GitHub App on the linked
-   **personal** GitHub account, and select repositories. Organization installs
-   are deliberately rejected until GitHub user-access authorization can verify
-   installer membership. A GitHub App installation token is minted on the server
-   for one repository per operation and never returned to the browser.
-4. `RUNLY_RUNTIME_INTERNAL_URL` must point to the gateway's loopback listener
-   (for the single-VPS deployment, `http://127.0.0.1:4001`). The internal Git
-   endpoint rejects non-loopback callers and requires a short-lived HMAC request.
-   Keep port 4001 private behind the reverse proxy. Multi-VPS gateway routing
-   needs a private authenticated per-shard route before adding more shards.
-
-The project Git menu can import a repository into a blank project, attach an
-existing project to an empty repository, create/checkout branches, fast-forward
-pull, and commit/push. It refuses to merge a non-empty repository into a
-non-empty project, or to switch/pull over local edits. Git history is ephemeral
-in the hosted sandbox and is reconstructed without overwriting saved files on
-the next Git action after restart. Source files remain backed up in Postgres.
-Do not assume this replaces a full Git hosting client: conflicts, protected
-branches, very large or binary repositories, and organization installations
-require a separate workflow.
 
 ## Safety and failure behavior
 
@@ -303,29 +242,3 @@ to modify it; verify Explorer and `cat` see identical content; run an app and
 check logs; cancel a task and check usage; reconnect browser/gateway; stop and
 restart the workspace and compare files; test expired credentials, membership
 revocation, snapshot failure and idle shutdown. Only then enable customer traffic.
-
-### Production release gate
-
-After applying `202609290001_usage_windows.sql` and
-`202609290002_github_project_installation.sql` (and all earlier migrations),
-check these flows with a disposable paid test account and a disposable GitHub
-repository before accepting customer traffic:
-
-1. Sign up with email, then link GitHub; sign out and in with both providers.
-   For a GitHub-only account, set an email password and test email sign-in.
-   Verify an unlinked account receives HTTP 403 from project Git actions.
-2. Install the GitHub App on that personal account, import a non-empty repo into
-   a blank project, edit a file, commit/push, create and checkout a branch, and
-   fast-forward pull a remote change. Stop the sandbox and repeat status/push
-   after restart to test source snapshot and Git reconstruction.
-3. In a fresh blank project, open Preview and choose **Create sample Next.js
-   app**. Confirm the page renders and its API message appears. Verify Terminal
-   sees the same files and Console shows the server logs. Refresh Preview; HMR
-   is not supported. Test an app failure and retry path.
-4. Ask the agent to edit the sample app. Confirm Explorer, Terminal and Preview
-   show the result. Open Usage to check settled tokens. Exhaust a low test quota
-   and confirm another task is refused without making a provider call. Cancel a
-   task and reconcile any uncertain usage before interpreting the balance.
-5. Test preview wildcard TLS/DNS, private runtime loopback access, app origin
-   CSRF checks, project membership revocation, restart recovery, and billing
-   emergency stop. Disable the runtime policy if any of these fail.

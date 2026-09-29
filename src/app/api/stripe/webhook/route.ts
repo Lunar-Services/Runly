@@ -1,5 +1,4 @@
 import type Stripe from "stripe";
-import { ApiError, readRawBody } from "@/lib/api";
 import { getStripe, StripeConfigurationError } from "@/lib/stripe";
 import {
   claimWebhook,
@@ -8,7 +7,6 @@ import {
   syncCheckoutAttempt,
   syncStripeInvoice,
   syncStripeSubscription,
-  syncStripeSubscriptionById,
 } from "@/lib/billing";
 
 export const runtime = "nodejs";
@@ -18,14 +16,7 @@ export async function POST(request: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!signature || !secret)
     return new Response("Webhook configuration is missing.", { status: 400 });
-  let payload: string;
-  try {
-    payload = (await readRawBody(request, 2 * 1024 * 1024)).toString("utf8");
-  } catch (error) {
-    return new Response("Webhook payload is too large.", {
-      status: error instanceof ApiError ? error.status : 400,
-    });
-  }
+  const payload = await request.text();
   let event: Stripe.Event;
   try {
     event = getStripe().webhooks.constructEvent(payload, signature, secret);
@@ -56,12 +47,6 @@ export async function POST(request: Request) {
       event.type === "checkout.session.async_payment_succeeded"
     ) {
       const checkout = event.data.object as Stripe.Checkout.Session;
-      const subscriptionId =
-        typeof checkout.subscription === "string"
-          ? checkout.subscription
-          : checkout.subscription?.id;
-      if (subscriptionId)
-        await syncStripeSubscriptionById(subscriptionId, event.created);
       await syncCheckoutAttempt(checkout, event.created);
     }
     if (

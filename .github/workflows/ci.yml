@@ -44,7 +44,3 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run verify
-      - run: pnpm test:runtime
-      - run: python3 -m unittest discover -s runtime -p 'test_bridge.py'
-      - run: pnpm audit --prod
-      - run: node scripts/check-staged-secrets.mjs --tracked

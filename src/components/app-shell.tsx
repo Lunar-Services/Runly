@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  BarChart3,
-  Bot,
   Blocks,
   CreditCard,
+  Activity,
+  TicketPercent,
   FolderKanban,
+  Handshake,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -29,12 +30,16 @@ const items: readonly NavigationItem[] = [
   ["/dashboard/projects", "Projects", FolderKanban],
   ["/cowork", "Cowork", Users],
   ["/settings/billing", "Billing", CreditCard],
+  ["/affiliate", "Affiliates", Handshake],
   ["/settings", "Settings", Settings],
 ];
 const adminItems: readonly NavigationItem[] = [
   ["/admin", "Admin", Blocks],
+  ["/admin/monitoring", "AI Monitoring", Activity],
+  ["/admin/users", "Users", Users],
+  ["/admin/coupons", "Coupons", TicketPercent],
+  ["/admin/affiliates", "Affiliates", Handshake],
   ["/admin/billing", "Billing catalog", CreditCard],
-  ["/admin/usage", "Usage", BarChart3],
   ["/admin/ai-providers", "AI providers", KeyRound],
   ["/admin/legal", "Legal", Scale],
 ];
@@ -49,6 +54,7 @@ export function AppShell({
   eyebrow?: string;
 }) {
   const path = usePathname();
+  const admin = path.startsWith("/admin");
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -129,7 +135,9 @@ export function AppShell({
     account?.email?.slice(0, 1).toUpperCase() ||
     "R";
   return (
-    <div className={`app-shell${darkTheme ? " is-dark" : ""}`}>
+    <div
+      className={`app-shell${admin ? " admin-shell" : ""}${darkTheme ? " is-dark" : ""}`}
+    >
       <aside className={open ? "app-sidebar is-open" : "app-sidebar"}>
         <div className="sidebar-head">
           <Brand />
@@ -144,7 +152,7 @@ export function AppShell({
               href={href}
               key={href}
             >
-              <Icon size={18} />
+              <Icon size={23} />
               {label}
             </Link>
           ))}
@@ -172,7 +180,7 @@ export function AppShell({
             disabled={pending}
             aria-busy={pending}
           >
-            <LogOut size={17} />
+            <LogOut size={21} />
             {pending ? "Signing out…" : "Sign out"}
           </button>
           {error && <p role="alert">{error}</p>}
@@ -192,13 +200,6 @@ export function AppShell({
             <h1>{title}</h1>
           </div>
           <ThemeToggle />
-          <Link
-            className="icon-action"
-            href="/project/new"
-            aria-label="Open AI builder"
-          >
-            <Bot size={19} />
-          </Link>
         </header>
         <div className="app-content">
           {cancellation && !bannerDismissed && (

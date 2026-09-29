@@ -1,0 +1,40 @@
+.animation {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 820px;
+  aspect-ratio: 1;
+  overflow: clip;
+  margin-inline: auto;
+}
+.animation video {
+  position: absolute;
+  display: block;
+  width: 135%;
+  max-width: none;
+  height: auto;
+  left: -17.5%;
+  top: -20%;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 18px rgb(0 0 0 / 12%));
+}
+.hero {
+  max-width: 720px;
+}
+.wide {
+  max-width: 720px;
+  aspect-ratio: 2;
+}
+.wide video {
+  width: 145%;
+  left: -22.5%;
+  top: -67%;
+}
+@media (max-width: 800px) {
+  .hero {
+    max-width: 560px;
+  }
+  .animation {
+    width: 100%;
+  }
+}

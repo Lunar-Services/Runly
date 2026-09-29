@@ -1,11 +1,4 @@
-import {
-  adminClient,
-  ApiError,
-  failure,
-  rateLimit,
-  sameOrigin,
-  session,
-} from "@/lib/api";
+import { adminClient, ApiError, failure, sameOrigin, session } from "@/lib/api";
 import { randomUUID } from "node:crypto";
 
 const maxAvatarBytes = 5 * 1024 * 1024;
@@ -35,13 +28,7 @@ export async function POST(request: Request) {
     sameOrigin(request);
     if (!request.headers.get("content-type")?.startsWith("multipart/form-data"))
       throw new ApiError(415, "Upload an image file.");
-    // formData() buffers the multipart request before the File size is checked.
-    // Require a bounded body here and enforce the same limit at the edge.
-    const length = Number(request.headers.get("content-length"));
-    if (!Number.isSafeInteger(length) || length < 1 || length > 6 * 1024 * 1024)
-      throw new ApiError(413, "Profile image request is too large.");
     const { user } = await session();
-    await rateLimit(request, "avatar-upload", user.id, 5);
     const admin = adminClient();
     const form = await request.formData();
     const file = form.get("avatar");

@@ -4,6 +4,7 @@ import { AppShell } from "./app-shell";
 import { Plus, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ProjectActions } from "./project-actions";
 
 type Project = { id: string; name: string; status: string; updated_at: string };
 export function ProjectsDashboard() {
@@ -112,7 +113,7 @@ export function ProjectsDashboard() {
           className="button button-dark"
           onClick={() => dialog.current?.showModal()}
         >
-          <Plus size={16} />
+          <Plus size={20} />
           New project
         </button>
       </div>
@@ -120,7 +121,7 @@ export function ProjectsDashboard() {
         <div className="panel-head">
           <h2>Recent projects</h2>
           <label className="search-field">
-            <Search size={16} />
+            <Search size={20} />
             <input
               aria-label="Search saved projects"
               placeholder="Search projects"
@@ -132,7 +133,7 @@ export function ProjectsDashboard() {
                 aria-label="Clear project search"
                 onClick={() => setQuery("")}
               >
-                <X size={16} />
+                <X size={20} />
               </button>
             )}
           </label>
@@ -164,12 +165,11 @@ export function ProjectsDashboard() {
         ) : visible.length ? (
           <div className="saved-projects">
             {visible.map((project) => (
-              <Link
-                className="saved-project-link"
-                href={`/project/${project.id}`}
-                key={project.id}
-              >
-                <article>
+              <article className="saved-project-card" key={project.id}>
+                <Link
+                  className="saved-project-link"
+                  href={`/project/${project.id}`}
+                >
                   <h3>{project.name}</h3>
                   <p>
                     Saved · {new Date(project.updated_at).toLocaleDateString()}
@@ -179,8 +179,25 @@ export function ProjectsDashboard() {
                       ? "Draft project"
                       : "Active project"}
                   </small>
-                </article>
-              </Link>
+                </Link>
+                <ProjectActions
+                  project={project}
+                  onRename={(nextName) =>
+                    setProjects((current) =>
+                      current.map((item) =>
+                        item.id === project.id
+                          ? { ...item, name: nextName }
+                          : item,
+                      ),
+                    )
+                  }
+                  onDelete={() =>
+                    setProjects((current) =>
+                      current.filter((item) => item.id !== project.id),
+                    )
+                  }
+                />
+              </article>
             ))}
           </div>
         ) : (

@@ -43,23 +43,11 @@
   isolation: isolate;
 }
 
-.hangingCat {
-  position: absolute;
-  top: 12px;
-  right: max(4%, calc((100vw - 1240px) / 2));
-  width: clamp(130px, 14vw, 185px);
-  height: auto;
-  filter: grayscale(1);
-  mix-blend-mode: multiply;
-  transform-origin: 50% 4%;
-  pointer-events: none;
-}
-
 .close {
   position: relative;
   isolation: isolate;
   display: flex;
-  min-height: 390px;
+  min-height: clamp(430px, 48vw, 680px);
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -72,85 +60,56 @@
   z-index: 1;
 }
 
-.reachingHands {
+.close h2 {
+  max-width: 620px;
+  color: #171917;
+  text-align: center;
+  text-shadow: 0 3px 28px rgba(255, 255, 255, 0.68);
+}
+
+.closingArtwork {
   position: absolute;
   z-index: 0;
   inset: 0;
   pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 34% 25% at center,
+      rgba(238, 240, 238, 0.94),
+      rgba(238, 240, 238, 0) 82%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(235, 237, 236, 0.04),
+      rgba(235, 237, 236, 0.12)
+    ),
+    url("/runly-closing-hands-light-4k.webp") center / cover no-repeat;
+  transform: scale(1.015);
 }
 
-.leftHand,
-.rightHand {
-  position: absolute;
-  top: 0;
-  width: 50%;
-  height: 100%;
-  background-color: var(--text-main);
-  opacity: 0.48;
-  mask-image: url("/inspiration/ascii-hands.jpg");
-  mask-mode: luminance;
-  mask-size: 200% auto;
-  mask-repeat: no-repeat;
+:global(html[data-theme="dark"]) .closingArtwork {
+  background:
+    radial-gradient(
+      ellipse 34% 25% at center,
+      rgba(3, 4, 3, 0.95),
+      rgba(3, 4, 3, 0) 82%
+    ),
+    linear-gradient(180deg, rgba(6, 8, 7, 0.02), rgba(6, 8, 7, 0.2)),
+    url("/runly-closing-hands-dark-4k.webp") center / cover no-repeat;
 }
 
-.leftHand {
-  left: 0;
-  mask-position: left center;
-  transform-origin: 0% 45%;
+:global(html[data-theme="dark"]) .close h2 {
+  color: #f5f6f2;
+  text-shadow: 0 3px 30px rgba(0, 0, 0, 0.6);
 }
 
-.rightHand {
-  right: 0;
-  mask-position: right center;
-  transform-origin: 100% 45%;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .hangingCat {
-    animation: hangingSwing 6.5s ease-in-out infinite alternate;
-  }
-  .leftHand {
-    animation: reachLeft 5.5s ease-in-out infinite alternate;
-  }
-  .rightHand {
-    animation: reachRight 5.5s ease-in-out infinite alternate;
-  }
-}
-
-@keyframes hangingSwing {
-  from {
-    transform: rotate(-2deg);
-  }
-  to {
-    transform: rotate(2deg);
-  }
-}
-
-@keyframes reachLeft {
-  from {
-    transform: translateX(-7%) rotate(-2deg);
-  }
-  to {
-    transform: translateX(4%) rotate(1deg);
-  }
-}
-
-@keyframes reachRight {
-  from {
-    transform: translateX(7%) rotate(2deg);
-  }
-  to {
-    transform: translateX(-4%) rotate(-1deg);
-  }
+:global(html[data-theme="dark"]) .close a {
+  color: #151715;
+  background: #f3f4ef;
 }
 
 :global(html[data-theme="dark"]) .asciiImage {
   filter: grayscale(1);
-  mix-blend-mode: screen;
-}
-
-:global(html[data-theme="dark"]) .hangingCat {
-  filter: grayscale(1) invert(1);
   mix-blend-mode: screen;
 }
 
@@ -172,13 +131,6 @@
     grid-column: 1;
     grid-row: auto;
   }
-  .hangingCat {
-    position: relative;
-    top: auto;
-    right: auto;
-    width: 150px;
-    margin: -36px auto 16px;
-  }
 }
 
 @media (max-width: 560px) {
@@ -187,9 +139,9 @@
   }
 
   .close {
-    min-height: 330px;
+    min-height: 420px;
   }
-  .reachingHands {
-    opacity: 0.7;
+  .closingArtwork {
+    background-position: center;
   }
 }

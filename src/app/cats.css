@@ -7,51 +7,51 @@
   background: #fff;
   border: 0;
   max-width: none;
-  padding: 0 max(5vw, 24px);
-  height: 76px;
+  padding: 0 max(6.25vw, 30px);
+  height: 95px;
 }
 .cat-site .nav-links {
-  gap: 32px;
-  font-size: 14px;
+  gap: 40px;
+  font-size: 18px;
 }
 .cat-hero {
-  max-width: 1280px;
+  max-width: 1600px;
   margin: auto;
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
   align-items: center;
-  gap: 28px;
-  padding: 90px 40px 100px;
-  min-height: 730px;
+  gap: 35px;
+  padding: 113px 50px 125px;
+  min-height: 913px;
 }
 .cat-hero h1 {
-  font: 400 clamp(54px, 6.1vw, 88px) / 1.04 var(--serif);
+  font: 400 clamp(68px, 7.63vw, 110px) / 1.04 var(--serif);
   letter-spacing: -0.05em;
-  margin: 0 0 30px;
+  margin: 0 0 38px;
 }
 .cat-hero-copy > p {
-  font-size: 17px;
-  margin: 0 0 25px;
+  font-size: 21px;
+  margin: 0 0 31px;
   line-height: 1.6;
 }
 .cat-composer {
   background: #fff;
   border: 1px solid #ddd;
-  border-radius: 20px;
-  padding: 20px 16px 12px;
-  box-shadow: 0 6px 24px #00000005;
+  border-radius: 25px;
+  padding: 25px 20px 15px;
+  box-shadow: 0 8px 30px #00000005;
 }
 .cat-composer textarea {
   display: block;
   width: 100%;
   background: transparent;
   border: 0;
-  padding: 0 4px;
-  min-height: 90px;
+  padding: 0 5px;
+  min-height: 113px;
   line-height: 1.6;
-  font-size: 15px;
+  font-size: 20px;
   color: #222;
-  outline-offset: 4px;
+  outline-offset: 5px;
 }
 .cat-composer textarea::placeholder {
   color: #919191;
@@ -60,19 +60,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 13px;
 }
 .cat-suggestions {
   display: flex;
-  gap: 14px;
+  gap: 18px;
   flex-wrap: wrap;
 }
 .cat-suggestions button {
   border: 0;
   background: transparent;
   color: #727272;
-  font-size: 12px;
-  padding: 10px 0;
+  font-size: 15px;
+  padding: 13px 0;
 }
 .cat-suggestions button:hover {
   color: #111;
@@ -82,8 +82,8 @@
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 38px;
-  height: 38px;
+  width: 55px;
+  height: 55px;
   background: #eee;
   border: 0;
   border-radius: 50%;
@@ -110,7 +110,7 @@
 }
 .cat-hero-art img {
   width: 112%;
-  max-width: 560px;
+  max-width: 875px;
   height: auto;
   transform-origin: 50% 88%;
   animation: cat-curious 7s ease-in-out infinite;
@@ -118,75 +118,75 @@
 .cat-meet {
   text-align: center;
   background: #fff;
-  padding: 100px 40px 90px;
+  padding: 125px 50px 113px;
 }
 .cat-site h2 {
-  font: 400 clamp(40px, 4.5vw, 65px) / 1.08 var(--serif);
+  font: 400 clamp(50px, 5.63vw, 81px) / 1.08 var(--serif);
   letter-spacing: -0.045em;
-  margin: 0 0 24px;
+  margin: 0 0 30px;
 }
 .cat-meet > p {
-  font-size: 17px;
+  font-size: 21px;
   color: #747474;
   line-height: 1.75;
   margin: 0;
 }
 .cat-sitting {
-  width: min(520px, 90%);
+  width: min(813px, 90%);
   height: auto;
   display: block;
-  margin: -20px auto -60px;
+  margin: -25px auto -75px;
   animation: cat-breathe 5s ease-in-out infinite;
   transform-origin: 50% 75%;
 }
 .cat-notes {
-  max-width: 1020px;
+  max-width: 1275px;
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 60px;
+  gap: 75px;
   text-align: left;
 }
 .cat-notes h3 {
-  font: 400 26px/1.25 var(--serif);
+  font: 400 33px/1.25 var(--serif);
   letter-spacing: -0.025em;
-  margin: 0 0 14px;
+  margin: 0 0 18px;
 }
 .cat-notes p {
   color: #747474;
-  font-size: 15px;
+  font-size: 19px;
   line-height: 1.7;
   margin: 0;
 }
 .cat-team {
-  max-width: 1200px;
+  max-width: 1500px;
   display: grid;
   grid-template-columns: 1.1fr 1fr;
   align-items: center;
-  gap: 65px;
-  padding: 100px 40px;
+  gap: 81px;
+  padding: 125px 50px;
   margin: auto;
 }
 .cat-label {
-  font-size: 13px;
+  font-size: 16px;
   display: block;
-  margin-bottom: 26px;
+  margin-bottom: 33px;
   color: #777;
 }
 .cat-team p {
-  font-size: 17px;
+  font-size: 21px;
   color: #747474;
   line-height: 1.75;
-  max-width: 400px;
-  margin: 0 0 24px;
+  max-width: 500px;
+  margin: 0 0 30px;
 }
 .cat-text-link {
-  font-size: 15px;
+  font-size: 19px;
   border-bottom: 1px solid #aaa;
-  padding-bottom: 5px;
+  padding-bottom: 6px;
 }
 .cat-text-link span {
-  margin-left: 12px;
+  margin-left: 15px;
 }
 .cat-sleeping {
   width: 100%;
@@ -197,80 +197,110 @@
 .cat-working {
   width: 100%;
   height: auto;
-  max-width: 500px;
+  max-width: 781px;
   justify-self: center;
   transform-origin: 50% 77%;
 }
-@media (prefers-reduced-motion: no-preference) {
+@media (min-width: 0px) {
   .cat-working {
     animation: cat-breathe 6s ease-in-out infinite;
   }
 }
 .cat-pricing {
   background: #fff;
-  padding: 90px 40px 100px;
+  padding: 113px 50px 125px;
 }
 .cat-pricing-head {
   text-align: center;
-  margin-bottom: 65px;
+  margin-bottom: 81px;
 }
 .cat-pricing-head p {
   color: #747474;
-  font-size: 17px;
+  font-size: 21px;
   line-height: 1.6;
 }
 .cat-plans {
-  max-width: 1050px;
+  max-width: 1313px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 65px;
+  gap: 81px;
   margin: auto;
 }
 .cat-plans article {
   border-top: 1px solid #d6d6d6;
-  padding-top: 26px;
+  padding-top: 33px;
 }
 .cat-plans h3 {
-  font: 400 29px var(--serif);
-  margin: 0 0 13px;
+  font: 400 36px var(--serif);
+  margin: 0 0 16px;
 }
 .cat-plans p {
-  font-size: 14px;
+  font-size: 18px;
   color: #777;
   line-height: 1.6;
 }
 .cat-price {
-  font: 400 52px var(--serif);
+  font: 400 65px var(--serif);
   letter-spacing: -0.04em;
-  margin: 30px 0 22px;
+  margin: 38px 0 28px;
 }
 .cat-price span {
   font:
-    14px Arial,
+    18px Arial,
     sans-serif;
   color: #888;
   letter-spacing: 0;
-  margin-left: 8px;
+  margin-left: 10px;
 }
 .cat-allowance {
-  min-height: 44px;
+  min-height: 55px;
 }
 .cat-plans .button {
-  font-size: 14px;
-  min-width: 145px;
+  font-size: 18px;
+  min-width: 181px;
 }
 .cat-close {
   text-align: center;
-  padding: 95px 24px 110px;
+  padding: 119px 30px 138px;
 }
 .cat-close .button {
-  margin-top: 12px;
+  margin-top: 15px;
 }
 .cat-site footer {
   background: #fff;
   border-top: 1px solid #ededed;
-  font-size: 13px;
-  padding: 35px max(5vw, 24px);
+  font-size: 16px;
+  padding: 44px max(6.25vw, 30px);
+}
+.cat-team-animation {
+  width: min(100%, 781px);
+  min-width: 0;
+  justify-self: center;
+}
+.cat-hero-copy,
+.cat-notes article,
+.cat-plans article,
+.cat-team > div {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.cat-site :is(#product, #cowork, #pricing, #hero-prompt) {
+  scroll-margin-top: 138px;
+}
+.cat-skip-link {
+  position: fixed;
+  top: 15px;
+  left: 15px;
+  z-index: 200;
+  padding: 15px 25px;
+  background: var(--surface-card);
+  color: var(--text-main);
+  border: 2px solid currentColor;
+  border-radius: 10px;
+  transform: translateY(-160%);
+}
+.cat-skip-link:focus {
+  transform: translateY(0);
 }
 @keyframes cat-curious {
   0%,
@@ -278,7 +308,7 @@
     transform: translateY(0) rotate(-0.65deg);
   }
   50% {
-    transform: translateY(-3px) rotate(0.65deg);
+    transform: translateY(-4px) rotate(0.65deg);
   }
 }
 @keyframes cat-breathe {
@@ -287,42 +317,42 @@
     transform: scaleY(1) translateY(0);
   }
   50% {
-    transform: scaleY(1.045) translateY(-5px);
+    transform: scaleY(1.045) translateY(-6px);
   }
 }
 @media (max-width: 800px) {
   .cat-hero {
     grid-template-columns: 1fr;
-    padding: 55px 24px 30px;
+    padding: 69px 30px 38px;
     gap: 0;
   }
   .cat-hero h1 {
-    font-size: clamp(50px, 9vw, 74px);
+    font-size: clamp(63px, 11.25vw, 93px);
   }
   .cat-hero-art img {
     width: 85%;
-    max-width: 400px;
+    max-width: 500px;
   }
   .cat-meet {
-    padding: 70px 24px;
+    padding: 88px 30px;
   }
   .cat-notes {
-    gap: 30px;
+    gap: 38px;
   }
   .cat-team {
     grid-template-columns: 1fr;
-    padding: 70px 24px;
-    gap: 20px;
+    padding: 88px 30px;
+    gap: 25px;
   }
   .cat-sleeping {
-    max-width: 420px;
+    max-width: 656px;
     justify-self: center;
   }
   .cat-pricing {
-    padding: 65px 24px;
+    padding: 81px 30px;
   }
   .cat-plans {
-    gap: 30px;
+    gap: 38px;
   }
   .cat-site .nav-links.is-open {
     background: #fff;
@@ -333,44 +363,63 @@
   .cat-notes,
   .cat-plans {
     grid-template-columns: 1fr;
-    gap: 36px;
+    gap: 45px;
   }
   .cat-notes {
     text-align: center;
-    max-width: 300px;
+    max-width: 375px;
   }
   .cat-suggestions {
-    gap: 10px;
+    gap: 13px;
   }
   .cat-suggestions button {
-    font-size: 11px;
+    min-height: 55px;
+    font-size: 15px;
   }
   .cat-suggestions button:last-child {
-    display: none;
+    display: inline-block;
   }
   .cat-hero-copy > p {
-    font-size: 16px;
+    font-size: 20px;
   }
   .cat-meet > p {
-    font-size: 16px;
+    font-size: 20px;
   }
   .cat-sitting {
-    margin: -10px auto -30px;
+    margin: -13px auto -38px;
   }
   .cat-plans {
-    max-width: 340px;
+    max-width: 425px;
   }
   .cat-allowance {
     min-height: 0;
   }
   .cat-team h2 {
-    font-size: 43px;
+    font-size: 54px;
   }
   .cat-site footer {
-    gap: 20px;
+    gap: 25px;
   }
   .cat-desktop-break {
     display: none;
+  }
+}
+@media (max-width: 380px) {
+  .cat-hero {
+    padding-inline: 20px;
+  }
+  .cat-hero h1 {
+    font-size: clamp(3.125rem, 15vw, 3.9063rem);
+  }
+  .cat-composer {
+    padding-inline: 15px;
+  }
+  .cat-composer-actions {
+    align-items: flex-end;
+  }
+  .cat-suggestions {
+    column-gap: 15px;
+    row-gap: 0;
   }
 }
 .cat-hero-art img {
@@ -379,13 +428,17 @@
 }
 .cat-watcher {
   position: relative;
-  width: min(520px, 90%);
-  margin: -20px auto -60px;
+  width: min(813px, 90%);
+  margin: -25px auto -75px;
 }
 .cat-watcher .cat-sitting {
   width: 100%;
   margin: 0;
   animation: none;
+}
+.cat-watcher.cat-watcher-video {
+  width: min(760px, 82%);
+  margin: 35px auto 50px;
 }
 .cat-eye-glint {
   position: absolute;
@@ -411,8 +464,8 @@
 .cat-composer:focus-within {
   border-color: #999;
   box-shadow:
-    0 0 0 3px #17171708,
-    0 8px 28px #00000006;
+    0 0 0 4px #17171708,
+    0 10px 35px #00000006;
 }
 .cat-composer {
   transition:
@@ -438,7 +491,7 @@
 .button:not(:disabled):hover,
 .github-button:not(:disabled):hover {
   transform: translateY(-2px);
-  box-shadow: 0 5px 12px #00000012;
+  box-shadow: 0 6px 15px #00000012;
 }
 .button:not(:disabled):active,
 .github-button:not(:disabled):active,
@@ -469,7 +522,7 @@
   transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .button:hover svg {
-  transform: translateX(3px);
+  transform: translateX(4px);
 }
 .cat-send:hover svg {
   transform: translateY(-2px);
@@ -481,10 +534,10 @@
 }
 @media (max-width: 560px) {
   .cat-watcher {
-    margin: -10px auto -30px;
+    margin: -13px auto -38px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
+@media (max-width: 0px) {
   .cat-site img {
     animation: none;
   }

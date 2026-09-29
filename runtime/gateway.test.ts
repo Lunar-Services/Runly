@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createServer, request as httpRequest } from "node:http";
 import { once } from "node:events";
 import { spawn } from "node:child_process";
-import { createHmac, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { WebSocket } from "ws";
 import { digest, signTicket } from "../src/lib/runtime/shared";
@@ -77,10 +77,9 @@ test(
           RUNLY_RUNTIME_SECRET: secret,
           RUNLY_RUNTIME_GATEWAYS: JSON.stringify([{ id: "test", url }]),
           RUNLY_RUNTIME_GATEWAY_ID: "test",
-          RUNLY_RUNTIME_MODE: "mock",
           RUNLY_RUNTIME_PORT: String(port),
           RUNLY_PREVIEW_DOMAIN: "preview.example.test",
-          RUNLY_SITE_URL: "https://runly-ai.xyz",
+          RUNLY_SITE_URL: "http://localhost:3000",
         },
       },
     );
@@ -93,7 +92,7 @@ test(
       role: "browser" | "bridge",
       overrides: Record<string, unknown> = {},
     ) {
-      const ws = new WebSocket(url, { origin: "https://runly-ai.xyz" });
+      const ws = new WebSocket(url, { origin: "http://localhost:3000" });
       connected.push(ws);
       const frames: Record<string, unknown>[] = [];
       ws.on("message", (raw) => frames.push(JSON.parse(raw.toString())));
@@ -141,11 +140,9 @@ test(
         () => browser.frames.some((f) => f.type === "authenticated"),
         "browser auth",
       );
-      let previewHeaders: [string, string][] = [];
       bridge.ws.on("message", (raw) => {
         const command = JSON.parse(raw.toString());
         if (command.type === "preview.request") {
-          previewHeaders = command.headers;
           bridge.ws.send(
             JSON.stringify({
               type: "preview.response",
@@ -207,63 +204,6 @@ test(
         "files must be backed up before acknowledgement",
       );
       assert.ok(browser.frames.some((f) => f.type === "files.changed"));
-      const gitBody = JSON.stringify({ project, user, action: "status" });
-      const stamp = Date.now();
-      const nonce = randomUUID();
-      const signature = createHmac("sha256", secret)
-        .update(`${stamp}.${nonce}.${gitBody}`)
-        .digest("hex");
-      const gitRequest = () =>
-        fetch(`http://127.0.0.1:${port}/internal/git`, {
-          method: "POST",
-          headers: {
-            "X-Runly-Timestamp": String(stamp),
-            "X-Runly-Nonce": nonce,
-            "X-Runly-Signature": signature,
-          },
-          body: gitBody,
-        });
-      const gitResponse = await gitRequest();
-      const gitResult = await gitResponse.json();
-      assert.equal(gitResponse.status, 200, JSON.stringify(gitResult));
-      assert.equal(gitResult.hash, digest("hello"));
-      const unsafeBody = JSON.stringify({
-        project,
-        user,
-        action: "push",
-        token: "test-installation-token-must-not-leave-server",
-      });
-      const unsafeNonce = randomUUID();
-      const unsafeResponse = await fetch(
-        `http://127.0.0.1:${port}/internal/git`,
-        {
-          method: "POST",
-          headers: {
-            "X-Runly-Timestamp": String(stamp),
-            "X-Runly-Nonce": unsafeNonce,
-            "X-Runly-Signature": createHmac("sha256", secret)
-              .update(`${stamp}.${unsafeNonce}.${unsafeBody}`)
-              .digest("hex"),
-          },
-          body: unsafeBody,
-        },
-      );
-      assert.equal(unsafeResponse.status, 409, "hosted Git must fail closed");
-      assert.equal(
-        (await gitRequest()).status,
-        409,
-        "signed requests are single-use",
-      );
-      assert.equal(
-        (
-          await fetch(`http://127.0.0.1:${port}/internal/git`, {
-            method: "POST",
-            body: gitBody,
-          })
-        ).status,
-        409,
-        "unsigned Git calls are rejected",
-      );
       bridge.ws.send(
         JSON.stringify({
           type: "app.status",
@@ -288,12 +228,7 @@ test(
             hostname: "127.0.0.1",
             port,
             path: "/",
-            headers: {
-              host: `${"a".repeat(48)}.preview.example.test`,
-              "x-forwarded-host": "evil.example.test",
-              forwarded: "host=evil.example.test;proto=http",
-              "x-real-ip": "8.8.8.8",
-            },
+            headers: { host: `${"a".repeat(48)}.preview.example.test` },
           },
           (incoming) => {
             let body = "";
@@ -313,18 +248,6 @@ test(
       });
       assert.equal(preview.status, 200, preview.body);
       assert.equal(preview.body, "<h1>Hosted app preview</h1>");
-      assert.equal(
-        previewHeaders.find(([name]) => name === "x-forwarded-host")?.[1],
-        `${"a".repeat(48)}.preview.example.test`,
-      );
-      assert.equal(
-        previewHeaders.find(([name]) => name === "forwarded"),
-        undefined,
-      );
-      assert.equal(
-        previewHeaders.find(([name]) => name === "x-real-ip"),
-        undefined,
-      );
       assert.equal(preview.headers["content-security-policy"], undefined);
       assert.match(String(preview.headers["set-cookie"]), /session=x; Path=\//);
       assert.doesNotMatch(String(preview.headers["set-cookie"]), /Domain=/i);

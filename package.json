@@ -9,6 +9,7 @@
   "packageManager": "pnpm@10.18.3",
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "dev:preview": "next dev --hostname 127.0.0.1 --port 3001",
     "dev:stripe": "node scripts/dev.mjs --stripe",
     "dev:runtime": "node scripts/dev.mjs --external-services --runtime",
     "dev:mock": "node scripts/dev-runtime-mock.mjs",
@@ -35,6 +36,8 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@hugeicons/core-free-icons": "^4.3.5",
+    "@hugeicons/react": "^1.1.10",
     "@next/env": "16.3.6",
     "@number-flow/react": "0.6.2",
     "@supabase/ssr": "^0.12.7",
@@ -43,6 +46,7 @@
     "@xterm/xterm": "^6.0.0",
     "gsap": "^3.15.0",
     "lucide-react": "^1.47.0",
+    "motion": "^13.4.5",
     "next": "16.3.6",
     "openai": "^7.23.0",
     "react": "19.2.8",

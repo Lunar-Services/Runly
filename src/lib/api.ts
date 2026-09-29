@@ -49,13 +49,27 @@ export async function adminSession() {
   return value;
 }
 export function sameOrigin(request: Request) {
-  const configuredSite = process.env.RUNLY_SITE_URL;
-  if (!configuredSite && process.env.NODE_ENV === "production")
-    throw new ApiError(503, "This service is temporarily unavailable.");
-  const expected = configuredSite
-    ? new URL(configuredSite).origin
-    : new URL(request.url).origin;
-  if (request.headers.get("origin") !== expected)
+  const expected = new URL(
+    process.env.RUNLY_SITE_URL || new URL(request.url).origin,
+  );
+  const supplied = request.headers.get("origin");
+  let valid = supplied === expected.origin;
+
+  if (!valid && supplied) {
+    try {
+      const actual = new URL(supplied);
+      const loopback = new Set(["localhost", "127.0.0.1", "[::1]"]);
+      valid =
+        loopback.has(expected.hostname) &&
+        loopback.has(actual.hostname) &&
+        actual.protocol === expected.protocol &&
+        actual.port === expected.port;
+    } catch {
+      valid = false;
+    }
+  }
+
+  if (!valid)
     throw new ApiError(
       403,
       "This request could not be verified. Reload the page and try again.",
@@ -72,37 +86,14 @@ export function appOrigin(request: Request) {
 export async function body(request: Request, max = 250_000) {
   if (!request.headers.get("content-type")?.includes("application/json"))
     throw new ApiError(415, "Send a JSON request.");
-  const raw = await readRawBody(request, max);
+  const text = await request.text();
+  if (Buffer.byteLength(text) > max)
+    throw new ApiError(413, "This request is too large.");
   try {
-    return JSON.parse(raw.toString("utf8"));
+    return JSON.parse(text);
   } catch {
     throw new ApiError(400, "The request could not be read.");
   }
-}
-export async function readRawBody(request: Request, max: number) {
-  const statedLength = request.headers.get("content-length");
-  if (statedLength && Number(statedLength) > max)
-    throw new ApiError(413, "This request is too large.");
-  const chunks: Buffer[] = [];
-  let size = 0;
-  const reader = request.body?.getReader();
-  if (reader) {
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        size += value.byteLength;
-        if (size > max) {
-          await reader.cancel();
-          throw new ApiError(413, "This request is too large.");
-        }
-        chunks.push(Buffer.from(value));
-      }
-    } finally {
-      reader.releaseLock();
-    }
-  }
-  return Buffer.concat(chunks);
 }
 export function failure(error: unknown) {
   if (error instanceof ApiError)
@@ -128,8 +119,6 @@ export async function rateLimit(
   userId = "",
   limit = 30,
 ) {
-  if (!process.env.RUNLY_SITE_URL && process.env.NODE_ENV === "production")
-    throw new ApiError(503, "This service is temporarily unavailable.");
   const key = createHash("sha256")
     .update(`${scope}:${userId || "anonymous"}`)
     .digest("hex");

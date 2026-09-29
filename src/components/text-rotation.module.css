@@ -1,0 +1,38 @@
+.heading {
+  max-width: 100%;
+}
+.stage {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  padding-block: 0.08em;
+  min-height: 1.3em;
+}
+.word {
+  display: block;
+  color: var(--text-main);
+  animation: rotatePhrase 3s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes rotatePhrase {
+  0% {
+    opacity: 0;
+    transform: translateY(22px);
+    filter: blur(3px);
+  }
+  15%,
+  85% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px);
+    filter: blur(2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .word {
+    animation: none;
+  }
+}

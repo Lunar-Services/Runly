@@ -25,7 +25,7 @@ export function WorkspaceTerminal({
       ([{ Terminal }, { FitAddon }]) => {
         if (cancelled || !container.current) return;
         const terminal = new Terminal({
-          fontSize: 13,
+          fontSize: 16,
           fontFamily: "Consolas, monospace",
           cursorBlink: true,
           scrollback: 2000,

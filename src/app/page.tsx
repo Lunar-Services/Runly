@@ -6,9 +6,9 @@ import { redirect } from "next/navigation";
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ code?: string }>;
+  searchParams: Promise<{ code?: string; plan?: string; months?: string }>;
 }) {
-  const { code } = await searchParams;
+  const { code, plan, months } = await searchParams;
   // Supabase can fall back to its configured Site URL after email verification.
   if (typeof code === "string" && code.length <= 2048)
     redirect(`/auth/callback?code=${encodeURIComponent(code)}`);
@@ -43,5 +43,19 @@ export default async function Home({
           avatarUrl: signedAvatarUrl || profile?.avatar_url || "",
         }
       : null;
-  return <LandingPage account={account} />;
+  const initialPlan = ["standard", "pro", "cowork"].includes(plan || "")
+    ? plan
+    : undefined;
+  const parsedMonths = Number(months);
+  const initialMonths =
+    Number.isInteger(parsedMonths) && parsedMonths >= 1 && parsedMonths <= 12
+      ? parsedMonths
+      : undefined;
+  return (
+    <LandingPage
+      account={account}
+      initialPlan={initialPlan}
+      initialMonths={initialMonths}
+    />
+  );
 }

@@ -1,13 +1,5 @@
 import { z } from "zod";
-import {
-  adminClient,
-  ApiError,
-  body,
-  failure,
-  rateLimit,
-  sameOrigin,
-  session,
-} from "@/lib/api";
+import { ApiError, body, failure, sameOrigin, session } from "@/lib/api";
 import { projectNameFromPrompt } from "@/lib/project-name";
 import { enqueueRuntime } from "@/lib/runtime/server";
 
@@ -34,8 +26,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     sameOrigin(request);
-    const { user } = await session();
-    await rateLimit(request, "project-create", user.id, 10);
+    const { db, user } = await session();
     const input = z
       .object({
         name: z.string().trim().min(1).max(160).optional(),
@@ -48,8 +39,8 @@ export async function POST(request: Request) {
         400,
         "Enter a project name or describe what you want to build.",
       );
-    // The service role writes only the authenticated user's project. Browser
-    // credentials cannot insert directly and bypass this route's admission.
+    // Insert without a PostgREST representation request. This avoids a second RLS
+    // read in the same request, which was making legitimate inserts look failed.
     const now = new Date().toISOString();
     const project = {
       id: crypto.randomUUID(),
@@ -59,10 +50,15 @@ export async function POST(request: Request) {
       created_at: now,
       updated_at: now,
     };
-    const { error } = await adminClient().from("projects").insert(project);
+    const { error } = await db.from("projects").insert(project);
     if (error) {
       console.error("Runly project creation failed", error.code);
-      throw new ApiError(502, "Couldn't create the project. Please try again.");
+      throw new ApiError(
+        error.code === "42501" ? 403 : 502,
+        error.code === "42501"
+          ? "You don't have permission to create a project in this workspace."
+          : "Couldn't create the project. Please try again.",
+      );
     }
     let conversationId: string | null = null;
     if (input.data.prompt) {
@@ -77,11 +73,7 @@ export async function POST(request: Request) {
           input.data.prompt,
         );
       } catch (error) {
-        await adminClient()
-          .from("projects")
-          .delete()
-          .eq("id", project.id)
-          .eq("owner_id", user.id);
+        await db.from("projects").delete().eq("id", project.id);
         throw error;
       }
     }

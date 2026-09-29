@@ -5,9 +5,15 @@ export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link className="brand" href="/" aria-label="Runly AI home">
       <span className="brand-mark">
-        <Image src="/brand/runly-mark.png" alt="" width={28} height={28} priority />
+        <Image
+          src="/brand/runly-logo.png"
+          alt=""
+          width={1312}
+          height={1199}
+          priority
+        />
       </span>
-      {!compact && <span>Runly</span>}
+      {!compact && <span className="brand-gradient">Runly</span>}
     </Link>
   );
 }

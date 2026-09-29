@@ -93,6 +93,7 @@ export async function createCheckout(
   userId: string,
   email: string,
   planId: string,
+  months: number,
   origin: string,
 ) {
   const db = adminClient();
@@ -179,9 +180,13 @@ export async function createCheckout(
             runly_user_id: userId,
             runly_plan: planId,
             runly_billing_attempt_id: attempt.id,
+            runly_months: String(months),
           },
         },
-        metadata: { runly_billing_attempt_id: attempt.id },
+        metadata: {
+          runly_billing_attempt_id: attempt.id,
+          runly_months: String(months),
+        },
       },
       { idempotencyKey: `runly-checkout-${attempt.id}` },
     );
@@ -412,8 +417,29 @@ export async function syncCheckoutAttempt(
     typeof checkout.subscription === "string"
       ? checkout.subscription
       : checkout.subscription?.id;
-  if (subscriptionId)
-    await syncStripeSubscriptionById(subscriptionId, eventCreated);
+  if (subscriptionId) {
+    const months = Number(checkout.metadata?.runly_months);
+    if (Number.isInteger(months) && months >= 1 && months <= 12) {
+      const stripe = getStripe();
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      const end = new Date(subscription.start_date * 1000);
+      end.setUTCMonth(end.getUTCMonth() + months);
+      const cancelAt = Math.floor(end.getTime() / 1000);
+      const updated =
+        subscription.cancel_at === cancelAt
+          ? subscription
+          : await stripe.subscriptions.update(subscriptionId, {
+              cancel_at: cancelAt,
+              metadata: {
+                ...subscription.metadata,
+                runly_months: String(months),
+              },
+            });
+      await syncStripeSubscription(updated, eventCreated);
+    } else {
+      await syncStripeSubscriptionById(subscriptionId, eventCreated);
+    }
+  }
   const completed = checkout.status === "complete";
   const expired = checkout.status === "expired";
   await db

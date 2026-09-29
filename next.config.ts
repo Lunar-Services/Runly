@@ -52,7 +52,7 @@ const nextConfig: NextConfig = {
       },
       {
         key: "Content-Security-Policy",
-        value: `default-src 'self'; script-src ${scriptSource}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${supabaseSources}; connect-src 'self' ${supabaseSources} ${runtimeSources}; font-src 'self'; frame-src ${previewSources}; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';`,
+        value: `default-src 'self'; script-src ${scriptSource}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${supabaseSources}; connect-src 'self' ${supabaseSources} ${runtimeSources}; font-src 'self'; frame-src ${previewSources}; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none`,
       },
     ];
     if (process.env.NODE_ENV === "production") {

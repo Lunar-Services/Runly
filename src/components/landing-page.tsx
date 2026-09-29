@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ThemeToggle, useTheme } from "./theme-provider";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowUp,
@@ -18,6 +17,9 @@ import { BusinessMotion, PlanComparison } from "./business-motion";
 import { SubscriptionComparison } from "./subscription-comparison";
 import { CodeCard } from "./code-card";
 import art from "./landing-art.module.css";
+import { CatAnimation } from "./cat-animation";
+import { TextRotation } from "./text-rotation";
+import { GetStartedButton } from "./get-started-button";
 
 const suggestions = [
   "A personal website",
@@ -27,8 +29,12 @@ const suggestions = [
 
 export function LandingPage({
   account,
+  initialPlan,
+  initialMonths,
 }: {
   account: { email: string; displayName: string; avatarUrl: string } | null;
+  initialPlan?: string;
+  initialMonths?: number;
 }) {
   const [prompt, setPrompt] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -38,7 +44,6 @@ export function LandingPage({
   const [startingProject, setStartingProject] = useState(false);
   const { darkTheme } = useTheme();
   const router = useRouter();
-  const watcher = useRef<HTMLDivElement>(null);
   const header = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -47,77 +52,6 @@ export function LandingPage({
     update();
     window.addEventListener("scroll", update, { passive: true });
     return () => window.removeEventListener("scroll", update);
-  }, []);
-
-  useEffect(() => {
-    const element = watcher.current;
-    if (
-      !element ||
-      matchMedia("(prefers-reduced-motion: reduce)").matches ||
-      !matchMedia("(pointer: fine)").matches
-    )
-      return;
-    let frame = 0;
-    let lastTime = 0;
-    let targetX = 0,
-      targetY = 0,
-      currentX = 0,
-      currentY = 0;
-    const track = (event: PointerEvent) => {
-      const bounds = element.getBoundingClientRect();
-      targetX = Math.max(
-        -1,
-        Math.min(
-          1,
-          (event.clientX - bounds.left - bounds.width * 0.42) /
-            Math.max(bounds.width, 240),
-        ),
-      );
-      targetY = Math.max(
-        -1,
-        Math.min(
-          1,
-          (event.clientY - bounds.top - bounds.height * 0.5) /
-            Math.max(bounds.height, 240),
-        ),
-      );
-      start();
-    };
-    const reset = () => {
-      targetX = 0;
-      targetY = 0;
-      start();
-    };
-    const animate = (time: number) => {
-      const dt = lastTime ? Math.min(time - lastTime, 50) : 16;
-      lastTime = time;
-      const easing = 1 - Math.exp(-dt / 140);
-      currentX += (targetX - currentX) * easing;
-      currentY += (targetY - currentY) * easing;
-      // Percent-based travel remains inside the eye rings at every viewport size.
-      element.style.setProperty("--look-x", `${currentX * 70}%`);
-      element.style.setProperty("--look-y", `${currentY * 55}%`);
-      if (Math.abs(targetX - currentX) + Math.abs(targetY - currentY) > 0.001)
-        frame = requestAnimationFrame(animate);
-      else {
-        frame = 0;
-        lastTime = 0;
-      }
-    };
-    function start() {
-      if (!frame) frame = requestAnimationFrame(animate);
-    }
-    window.addEventListener("pointermove", track, { passive: true });
-    document.addEventListener("pointerleave", reset);
-    window.addEventListener("blur", reset);
-    window.addEventListener("scroll", reset, { passive: true });
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("pointermove", track);
-      document.removeEventListener("pointerleave", reset);
-      window.removeEventListener("blur", reset);
-      window.removeEventListener("scroll", reset);
-    };
   }, []);
 
   async function startBuilding() {
@@ -187,6 +121,9 @@ export function LandingPage({
 
   return (
     <div className={`marketing-shell cat-site${darkTheme ? " is-dark" : ""}`}>
+      <a className="cat-skip-link" href="#main-content">
+        Skip to content
+      </a>
       <header
         className="site-header"
         ref={header}
@@ -239,7 +176,7 @@ export function LandingPage({
                   >
                     {!account.avatarUrl && initials}
                   </span>
-                  <ChevronDown size={15} aria-hidden="true" />
+                  <ChevronDown size={19} aria-hidden="true" />
                 </button>
                 {accountMenuOpen && (
                   <div
@@ -252,7 +189,7 @@ export function LandingPage({
                       role="menuitem"
                       onClick={() => setAccountMenuOpen(false)}
                     >
-                      <LayoutDashboard size={16} />
+                      <LayoutDashboard size={20} />
                       Dashboard
                     </Link>
                     <button
@@ -261,7 +198,7 @@ export function LandingPage({
                       onClick={signOut}
                       disabled={signingOut}
                     >
-                      <LogOut size={16} />
+                      <LogOut size={20} />
                       {signingOut ? "Logging out…" : "Logout"}
                     </button>
                   </div>
@@ -270,9 +207,7 @@ export function LandingPage({
             ) : (
               <>
                 <Link href="/login">Log in</Link>
-                <Link className="button button-dark nav-cta" href="/signup">
-                  Get started
-                </Link>
+                <GetStartedButton />
               </>
             )}
             <ThemeToggle />
@@ -290,15 +225,10 @@ export function LandingPage({
         </button>
       </header>
 
-      <main>
+      <main id="main-content">
         <section className="cat-hero">
           <div className="cat-hero-copy">
-            <h1>
-              A little idea.
-              <br />A place to
-              <br />
-              make it real.
-            </h1>
+            <TextRotation />
             <p>Tell Runly what you want to build.</p>
             <form
               className="cat-composer"
@@ -338,7 +268,7 @@ export function LandingPage({
                   aria-busy={startingProject}
                   aria-label="Start building"
                 >
-                  <ArrowUp size={19} />
+                  <ArrowUp size={24} />
                 </button>
               </div>
             </form>
@@ -349,14 +279,12 @@ export function LandingPage({
             )}
           </div>
           <div className="cat-hero-art">
-            <Image
-              className="cat-standing"
-              src="/cats/standing.png"
-              alt="A curious hand-drawn black cat with white eyes"
-              width={1280}
-              height={1280}
-              sizes="(max-width: 800px) 85vw, 40vw"
-              priority
+            <CatAnimation
+              name="hero-loop"
+              label="A curious black cat looking around"
+              width={1250}
+              height={1250}
+              hero
             />
           </div>
         </section>
@@ -371,22 +299,12 @@ export function LandingPage({
             A space to work through an idea, try a change,
             <br className="cat-desktop-break" /> and see where it takes you.
           </p>
-          <div className="cat-watcher" ref={watcher}>
-            <Image
-              className="cat-sitting"
-              src="/cats/sitting.png"
-              alt="A seated black kitten with golden eyes following your pointer"
-              width={1280}
-              height={1280}
-              sizes="(max-width: 800px) 90vw, 520px"
-            />
-            <span
-              aria-hidden="true"
-              className="cat-eye-glint cat-eye-glint-left"
-            />
-            <span
-              aria-hidden="true"
-              className="cat-eye-glint cat-eye-glint-right"
+          <div className="cat-watcher cat-watcher-video">
+            <CatAnimation
+              name="curious-loop"
+              label="A little black cat turning its head curiously"
+              width={1500}
+              height={844}
             />
           </div>
           <div className="cat-notes">
@@ -428,14 +346,14 @@ export function LandingPage({
               Explore Cowork <span aria-hidden="true">↗</span>
             </Link>
           </div>
-          <Image
-            className="cat-working"
-            src="/cats/working.png"
-            alt="A black cat working at a laptop"
-            width={1024}
-            height={1024}
-            sizes="(max-width: 800px) 90vw, 500px"
-          />
+          <div className="cat-team-animation">
+            <CatAnimation
+              name="hero-loop"
+              label="A black cat keeping you company"
+              width={1250}
+              height={1250}
+            />
+          </div>
         </section>
 
         <section id="pricing" className={`cat-pricing ${art.pricing}`}>
@@ -443,54 +361,16 @@ export function LandingPage({
             <h2>A plan for your pace.</h2>
             <p>Start on your own. Bring a team when you’re ready.</p>
           </div>
-          <Image
-            className={art.hangingCat}
-            src="/inspiration/hanging-cat.jpg"
-            alt="A black cat hanging playfully from above"
-            width={736}
-            height={736}
-            sizes="(max-width: 800px) 150px, 185px"
+          <PlanComparison
+            initialPlan={initialPlan}
+            initialMonths={initialMonths}
           />
-          <PlanComparison />
-          <div className="cat-plans">
-            {[
-              [
-                "Standard",
-                "$3",
-                "For personal projects",
-                "100k tokens / 3 hours",
-              ],
-              ["Pro", "$9", "For your everyday work", "350k tokens / 3 hours"],
-              [
-                "Cowork",
-                "$19",
-                "For up to five people",
-                "1m shared tokens / 3 hours",
-              ],
-            ].map(([name, price, note, allowance]) => (
-              <article key={name}>
-                <h3>{name}</h3>
-                <p>{note}</p>
-                <div className="cat-price">
-                  {price}
-                  <span>/ month</span>
-                </div>
-                <p className="cat-allowance">{allowance}</p>
-                <Link className="button button-outline" href="/signup">
-                  Choose {name}
-                </Link>
-              </article>
-            ))}
-          </div>
           <SubscriptionComparison />
         </section>
 
         <BusinessMotion />
         <section className={`cat-close ${art.close}`}>
-          <div className={art.reachingHands} aria-hidden="true">
-            <span className={art.leftHand} />
-            <span className={art.rightHand} />
-          </div>
+          <div className={art.closingArtwork} aria-hidden="true" />
           <h2>What are you thinking?</h2>
           <a className="button button-dark" href="#hero-prompt">
             Let’s start

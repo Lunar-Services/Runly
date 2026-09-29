@@ -4,7 +4,6 @@ import hashlib
 import http.client
 import json
 import os
-import re
 from pathlib import Path
 import signal
 import subprocess
@@ -19,21 +18,14 @@ MAX_FILES = 1000
 MAX_PREVIEW_BODY = 1024 * 1024
 MAX_PREVIEW_RESPONSE = 8 * 1024 * 1024
 PREVIEW_METHODS = {"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
-IGNORED = {"node_modules", ".git", ".next", "dist", "build", ".cache", "__pycache__", ".venv", ".runly", ".npmrc", ".pypirc", ".netrc", ".ssh", ".aws"}
-GIT_BRANCH = re.compile(r"^(?!-)(?!.*(?:\.\.|@\{|//|\.lock(?:/|$)))[A-Za-z0-9_][A-Za-z0-9_./-]{0,99}$")
-GITHUB_URL = re.compile(r"^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.git$")
-
-
-def excluded_name(name):
-    name = name.lower()
-    return name in IGNORED or name.startswith(".env") or name.endswith((".pem", ".key")) or name in {"id_rsa", "id_ed25519", "credentials.json", "service-account.json"}
+IGNORED = {"node_modules", ".git", ".next", "dist", "build", ".cache", "__pycache__", ".venv", ".runly"}
 
 
 def safe_path(value):
     if not isinstance(value, str) or not value or len(value) > 1024 or "\\" in value or ":" in value or any(ord(c) < 32 for c in value):
         raise ValueError("Invalid relative file path")
     parts = value.split("/")
-    if any(p in ("", ".", "..") or excluded_name(p) for p in parts):
+    if any(p in ("", ".", "..") or p in IGNORED for p in parts):
         raise ValueError("Invalid relative file path")
     candidate = ROOT.joinpath(*parts)
     if not candidate.resolve().is_relative_to(ROOT) or any(p.is_symlink() for p in [candidate, *candidate.parents] if p != ROOT.parent):
@@ -57,7 +49,6 @@ class Bridge:
         self.alive = True
         self.preview_ready = False
         self.preview_slots = threading.BoundedSemaphore(32)
-        self.command_slots = threading.BoundedSemaphore(16)
 
     def handle_preview_request(self, message):
         request_id = message.get("id")
@@ -107,10 +98,8 @@ class Bridge:
         with self.lock:
             manifest, changed, total = {}, [], 0
             for directory, folders, names in os.walk(ROOT, followlinks=False):
-                folders[:] = sorted(p for p in folders if not excluded_name(p) and not Path(directory, p).is_symlink())
+                folders[:] = sorted(p for p in folders if p not in IGNORED and not Path(directory, p).is_symlink())
                 for name in folders + sorted(names):
-                    if excluded_name(name):
-                        continue
                     path = Path(directory, name)
                     if path.is_symlink():
                         continue
@@ -150,8 +139,7 @@ class Bridge:
             self.cache = {key: value for key, value in self.cache.items() if key in manifest}
 
     def environment(self):
-        blocked = ("RUNLY_", "OPENAI_", "CODEX_", "SUPABASE_", "STRIPE_", "GITHUB_", "AWS_", "GOOGLE_")
-        return {key: value for key, value in os.environ.items() if not key.startswith(blocked) and key != "GH_TOKEN"}
+        return {key: value for key, value in os.environ.items() if not key.startswith("RUNLY_")}
 
     def open_terminal(self, cols=100, rows=24):
         if self.terminal and self.terminal.poll() is None:
@@ -195,106 +183,6 @@ class Bridge:
             except subprocess.TimeoutExpired:
                 os.killpg(self.app.pid, signal.SIGKILL)
 
-    def git(self, message):
-        action = message.get("action")
-        branch = message.get("branch", "")
-        url = message.get("url", "")
-        token = message.get("token", "")
-        if action not in {"status", "link", "restore", "checkout", "branch", "pull", "push"}:
-            raise ValueError("Unknown Git action")
-        if action != "status" and (not isinstance(branch, str) or not GIT_BRANCH.fullmatch(branch)):
-            raise ValueError("Invalid Git branch")
-        if action != "status" and (not isinstance(url, str) or not GITHUB_URL.fullmatch(url)):
-            raise ValueError("Only GitHub repositories are supported")
-        if action != "status" and (not isinstance(token, str) or len(token) > 4096 or len(token) < 20):
-            raise ValueError("GitHub authorization is missing")
-        auth = base64.b64encode(("x-access-token:" + token).encode()).decode() if token else ""
-        env = {**self.environment(), "GIT_TERMINAL_PROMPT": "0", "GIT_CONFIG_NOSYSTEM": "1"}
-        if auth:
-            env.update({"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "http.https://github.com/.extraheader", "GIT_CONFIG_VALUE_0": "AUTHORIZATION: basic " + auth})
-        def run(*args, timeout=90, check=True):
-            result = subprocess.run(["git", *args], cwd=ROOT, env=env, capture_output=True, text=True, timeout=timeout)
-            if check and result.returncode:
-                # Never echo credentials or raw remote errors to the browser.
-                raise ValueError("Git operation failed. Check repository access, branch protection, and the workspace state.")
-            return result
-        initialized = (ROOT / ".git").exists()
-        if action == "status":
-            if not initialized:
-                return {"initialized": False, "branch": None, "branches": [], "dirty": False}
-            current = run("branch", "--show-current").stdout.strip()
-            branches = run("branch", "--format=%(refname:short)").stdout.splitlines()
-            dirty = bool(run("status", "--porcelain").stdout.strip())
-            return {"initialized": True, "branch": current, "branches": branches, "dirty": dirty}
-        if not initialized:
-            tracked = [item for item in ROOT.iterdir() if item.name not in {".git", ".runly"}]
-            remote_heads = run("ls-remote", "--heads", url, timeout=90).stdout.strip()
-            if tracked and remote_heads and action == "link":
-                raise ValueError("This project already has files. Import this non-empty repository into a new blank project instead.")
-            if not tracked and remote_heads and action == "link":
-                run("clone", "--depth", "1", "--branch", branch, url, ".", timeout=120)
-            else:
-                run("init", "-b", branch)
-                run("remote", "add", "origin", url)
-                if remote_heads:
-                    available = {line.split("refs/heads/", 1)[1] for line in remote_heads.splitlines() if "refs/heads/" in line}
-                    target = branch
-                    if target not in available:
-                        head = run("ls-remote", "--symref", url, "HEAD", timeout=90).stdout
-                        match = re.search(r"^ref: refs/heads/([^\s]+)\s+HEAD$", head, re.MULTILINE)
-                        target = match.group(1) if match else sorted(available)[0]
-                    run("fetch", "--depth", "1", "origin", target, timeout=120)
-                    # A mixed reset restores the index without overwriting saved workspace files.
-                    run("reset", "--mixed", "FETCH_HEAD")
-            initialized = True
-        remote = run("remote", "get-url", "origin").stdout.strip()
-        if remote != url:
-            raise ValueError("The workspace is connected to a different repository")
-        current_branch = run("branch", "--show-current").stdout.strip()
-        if action in ("pull", "push") and current_branch != branch:
-            raise ValueError("Workspace branch changed outside Runly. Refresh Git status before continuing.")
-        exclude = ROOT / ".git" / "info" / "exclude"
-        if exclude.exists():
-            existing = exclude.read_text()
-            ignore = "\nnode_modules/\n.next/\ndist/\nbuild/\n.cache/\n.venv/\n.runly/\n"
-            if ignore not in existing:
-                exclude.write_text(existing + ignore)
-        if action in ("link", "restore"):
-            self.scan(force=True)
-        elif action == "checkout":
-            if run("status", "--porcelain").stdout.strip():
-                raise ValueError("Save or push local changes before switching branches")
-            self.stop_app()
-            run("fetch", "--depth", "1", "origin", "+refs/heads/" + branch + ":refs/remotes/origin/" + branch, timeout=120)
-            if run("show-ref", "--verify", "refs/heads/" + branch, check=False).returncode == 0:
-                run("switch", branch)
-            else:
-                run("switch", "-c", branch, "--track", "origin/" + branch)
-            self.scan(force=True)
-        elif action == "branch":
-            if run("status", "--porcelain").stdout.strip():
-                raise ValueError("Save or push local changes before creating a branch")
-            run("switch", "-c", branch)
-        elif action == "pull":
-            if run("status", "--porcelain").stdout.strip():
-                raise ValueError("Push or discard local changes before pulling")
-            self.stop_app()
-            run("pull", "--ff-only", "origin", branch, timeout=120)
-            self.scan(force=True)
-        elif action == "push":
-            author = message.get("author", "")
-            email = message.get("email", "")
-            title = message.get("message", "")
-            if not isinstance(author, str) or not 1 <= len(author) <= 120 or not isinstance(email, str) or not 3 <= len(email) <= 254 or not isinstance(title, str) or not 1 <= len(title) <= 120:
-                raise ValueError("A commit author and message are required")
-            run("add", "-A")
-            if run("diff", "--cached", "--quiet", check=False).returncode != 0:
-                run("-c", "user.name=" + author, "-c", "user.email=" + email, "commit", "-m", title)
-            run("push", "-u", "origin", branch, timeout=120)
-        result = self.git({"action": "status"})
-        result["commit"] = run("rev-parse", "HEAD", check=False).stdout.strip() or None
-        return result
-
     def handle(self, message):
         operation = message.get("op")
         request_id = message.get("id")
@@ -314,8 +202,8 @@ class Bridge:
                         # Reject quota violations before replacing the file.
                         source_files = []
                         for directory, folders, names in os.walk(ROOT, followlinks=False):
-                            folders[:] = [name for name in folders if not excluded_name(name) and not Path(directory, name).is_symlink()]
-                            source_files.extend(Path(directory, name) for name in folders + names if not excluded_name(name) and not Path(directory, name).is_symlink())
+                            folders[:] = [name for name in folders if name not in IGNORED and not Path(directory, name).is_symlink()]
+                            source_files.extend(Path(directory, name) for name in folders + names if not Path(directory, name).is_symlink())
                         if sum(p.stat().st_size for p in source_files if p.is_file() and p != path) + len(content.encode()) > MAX_TOTAL:
                             raise ValueError("Workspace source files exceed the 8 MiB snapshot limit")
                         missing_parents = [p for p in path.parents if p.is_relative_to(ROOT) and not p.exists()]
@@ -408,8 +296,6 @@ class Bridge:
                     threading.Thread(target=output, daemon=True).start()
                 elif operation == "app.stop":
                     self.stop_app()
-                elif operation == "git":
-                    result = self.git(message)
                 else:
                     raise ValueError("Unknown workspace operation")
             self.send({"type": "reply", "id": request_id, "result": result})
@@ -443,15 +329,7 @@ def main():
                 status.update({"error": "This workspace session has no Preview address. Restart the workspace to enable Preview.", "restartRequired": True})
             bridge.send(status)
         elif message.get("type") == "command":
-            if not bridge.command_slots.acquire(blocking=False):
-                bridge.send({"type": "reply", "id": message.get("id"), "error": "Workspace is busy. Retry shortly."})
-            else:
-                def execute_command():
-                    try:
-                        bridge.handle(message)
-                    finally:
-                        bridge.command_slots.release()
-                threading.Thread(target=execute_command, daemon=True).start()
+            bridge.handle(message)
         elif message.get("type") == "preview.request":
             bridge.handle_preview_request(message)
     def on_error(ws, error):

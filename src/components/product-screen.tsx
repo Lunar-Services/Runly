@@ -15,9 +15,12 @@ import {
 } from "lucide-react";
 import { AppShell } from "./app-shell";
 import { Brand } from "./brand";
-import { BillingSettings, PricingPlans, UpgradePlans } from "./billing";
+import { BillingSettings, UpgradePlans } from "./billing";
+import { PlanComparison } from "./business-motion";
 import { AdminBillingPlans } from "./admin-billing-plans";
 import { ProjectWorkspace as InteractiveProjectWorkspace } from "./project-workspace";
+import { AdminMonitoring, AdminUsers } from "./admin-operations";
+import { FeatureComingSoon } from "./feature-coming-soon";
 
 export function ProductScreen({ slug }: { slug: string[] }) {
   const route = `/${slug.join("/")}`;
@@ -28,6 +31,7 @@ export function ProductScreen({ slug }: { slug: string[] }) {
     return <InteractiveProjectWorkspace projectId={slug[1] || ""} />;
   if (route.startsWith("/cowork/workspace/")) return <CoworkWorkspace />;
   if (route.startsWith("/cowork")) return <CoworkHome />;
+  if (route === "/affiliate") return <FeatureComingSoon title="Affiliates" />;
   if (route.startsWith("/admin")) return <AdminScreen route={route} />;
   if (route.startsWith("/settings")) return <SettingsScreen route={route} />;
   return <Dashboard route={route} />;
@@ -44,7 +48,7 @@ function Dashboard({ route }: { route: string }) {
             : "Your workspace is ready when the services are."}
         </p>
         <Link className="button button-dark" href="/dashboard/projects">
-          <Plus size={16} /> New project
+          <Plus size={20} /> New project
         </Link>
       </div>
       {!projects && (
@@ -66,7 +70,7 @@ function Dashboard({ route }: { route: string }) {
           </div>
           {projects && (
             <label className="search-field">
-              <Search size={16} />
+              <Search size={20} />
               <input
                 placeholder="Search projects"
                 aria-label="Search projects"
@@ -84,7 +88,7 @@ function Dashboard({ route }: { route: string }) {
             recoverable checkpoint.
           </p>
           <Link className="button button-dark" href="/dashboard/projects">
-            Create your first project <ArrowRight size={16} />
+            Create your first project <ArrowRight size={20} />
           </Link>
         </div>
       </section>
@@ -122,7 +126,7 @@ function CoworkHome() {
           disabled
           title="Connect Supabase to create workspaces"
         >
-          <Plus size={16} /> New workspace
+          <Plus size={20} /> New workspace
         </button>
       </div>
       <section className="panel">
@@ -230,9 +234,19 @@ function Service({ name, status }: { name: string; status: string }) {
 }
 
 function AdminScreen({ route }: { route: string }) {
+  if (
+    route === "/admin" ||
+    route === "/admin/monitoring" ||
+    route === "/admin/usage"
+  )
+    return <AdminMonitoring />;
+  if (route === "/admin/users") return <AdminUsers />;
+  if (route === "/admin/coupons") return <FeatureComingSoon title="Coupons" />;
+  if (route === "/admin/affiliates")
+    return <FeatureComingSoon title="Affiliates" />;
   const providers = route.includes("ai-providers"),
     legal = route.includes("legal"),
-    usage = route.includes("usage");
+    usage = false;
   if (route.includes("billing")) return <AdminBillingPlans />;
   return (
     <AppShell
@@ -393,7 +407,7 @@ function PricingPage() {
           <span className="stripe-payment-logo" aria-hidden="true" />
         </a>
       </section>
-      <PricingPlans />
+      <PlanComparison />
     </div>
   );
 }

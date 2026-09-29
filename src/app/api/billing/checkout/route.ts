@@ -4,7 +4,6 @@ import {
   appOrigin,
   body,
   failure,
-  rateLimit,
   sameOrigin,
   session,
 } from "@/lib/api";
@@ -17,13 +16,13 @@ import { StripeConfigurationError } from "@/lib/stripe";
 
 const checkoutInput = z.object({
   plan: z.string().regex(/^[a-z0-9][a-z0-9-]{1,62}$/),
+  months: z.number().int().min(1).max(12),
 });
 
 export async function POST(request: Request) {
   try {
     sameOrigin(request);
     const { user } = await session();
-    await rateLimit(request, "billing-checkout", user.id, 10);
     if (!user.email)
       throw new ApiError(
         400,
@@ -35,6 +34,7 @@ export async function POST(request: Request) {
       user.id,
       user.email,
       parsed.data.plan,
+      parsed.data.months,
       appOrigin(request),
     );
     return Response.json({ url });

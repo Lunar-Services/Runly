@@ -48,34 +48,17 @@ export function validWorkspacePath(value: string) {
     "__pycache__",
     ".venv",
     ".runly",
-    ".npmrc",
-    ".pypirc",
-    ".netrc",
-    ".ssh",
-    ".aws",
   ]);
   return (
     value.length > 0 &&
     value.length <= 1024 &&
     !/[\\\x00-\x1f:]/.test(value) &&
-    value.split("/").every((part) => {
-      const name = part.toLowerCase();
-      return (
-        part !== "" &&
-        part !== "." &&
-        part !== ".." &&
-        !ignored.has(name) &&
-        !name.startsWith(".env") &&
-        !name.endsWith(".pem") &&
-        !name.endsWith(".key") &&
-        ![
-          "id_rsa",
-          "id_ed25519",
-          "credentials.json",
-          "service-account.json",
-        ].includes(name)
-      );
-    })
+    value
+      .split("/")
+      .every(
+        (part) =>
+          part !== "" && part !== "." && part !== ".." && !ignored.has(part),
+      )
   );
 }
 export function gateways(): { id: string; url: string }[] {
@@ -87,26 +70,7 @@ export function gateways(): { id: string; url: string }[] {
     !Array.isArray(entries) ||
     !entries.length ||
     new Set(entries.map((entry) => entry.id)).size !== entries.length ||
-    entries.some((entry) => {
-      if (!entry.id || typeof entry.url !== "string") return true;
-      try {
-        const url = new URL(entry.url);
-        const localMock =
-          process.env.RUNLY_RUNTIME_MODE === "mock" &&
-          process.env.NODE_ENV !== "production" &&
-          url.protocol === "ws:" &&
-          ["localhost", "127.0.0.1"].includes(url.hostname);
-        return (
-          (!localMock && url.protocol !== "wss:") ||
-          !!url.username ||
-          !!url.password ||
-          !!url.search ||
-          !!url.hash
-        );
-      } catch {
-        return true;
-      }
-    })
+    entries.some((entry) => !entry.id || !/^wss?:\/\//.test(entry.url))
   )
     throw new Error("Configure RUNLY_RUNTIME_GATEWAYS");
   return entries;

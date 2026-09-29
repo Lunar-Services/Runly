@@ -1,13 +1,5 @@
 import { z } from "zod";
-import {
-  adminClient,
-  ApiError,
-  body,
-  failure,
-  rateLimit,
-  sameOrigin,
-  session,
-} from "@/lib/api";
+import { ApiError, body, failure, sameOrigin, session } from "@/lib/api";
 
 export async function PATCH(
   request: Request,
@@ -26,8 +18,7 @@ export async function PATCH(
       .safeParse(await body(request, 4096));
     if (!input.success)
       throw new ApiError(400, "Enter a chat name up to 80 characters.");
-    const { db, user } = await session();
-    await rateLimit(request, "chat-mutate", user.id, 20);
+    const { db } = await session();
     const { data: chat } = await db
       .from("conversations")
       .select("id")
@@ -35,7 +26,7 @@ export async function PATCH(
       .eq("project_id", projectId)
       .maybeSingle();
     if (!chat) throw new ApiError(404, "Chat not found.");
-    const { error } = await adminClient()
+    const { error } = await db
       .from("conversations")
       .update({ title: input.data.title })
       .eq("id", chatId)
@@ -59,8 +50,7 @@ export async function DELETE(
       !z.string().uuid().safeParse(chatId).success
     )
       throw new ApiError(400, "Invalid project or chat.");
-    const { db, user } = await session();
-    await rateLimit(request, "chat-mutate", user.id, 20);
+    const { db } = await session();
     const { data: chat } = await db
       .from("conversations")
       .select("id")
@@ -68,7 +58,7 @@ export async function DELETE(
       .eq("project_id", projectId)
       .maybeSingle();
     if (!chat) throw new ApiError(404, "Chat not found.");
-    const { error } = await adminClient()
+    const { error } = await db
       .from("conversations")
       .delete()
       .eq("id", chatId)

@@ -1,0 +1,95 @@
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 55px;
+  gap: 4px;
+  padding: 0 34px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 0 0 1px var(--ink);
+  font-size: 17px;
+  font-weight: 700;
+  transition:
+    color 600ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-radius 600ms cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 600ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 180ms ease;
+}
+
+.arrow {
+  position: absolute;
+  z-index: 2;
+  width: 22px;
+  fill: currentColor;
+  transition: transform 800ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.arrowEnd {
+  right: 15px;
+}
+.arrowStart {
+  left: 15px;
+  transform: translateX(-52px);
+}
+
+.text {
+  position: relative;
+  z-index: 2;
+  transform: translateX(-10px);
+  transition: transform 800ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--paper);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition:
+    width 800ms cubic-bezier(0.23, 1, 0.32, 1),
+    height 800ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 300ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button:hover {
+    color: var(--ink);
+    border-radius: 13px;
+    box-shadow: 0 0 0 10px transparent;
+  }
+  .button:hover .arrowEnd {
+    transform: translateX(52px);
+  }
+  .button:hover .arrowStart {
+    transform: translateX(0);
+  }
+  .button:hover .text {
+    transform: translateX(10px);
+  }
+  .button:hover .circle {
+    width: 230px;
+    height: 230px;
+    opacity: 1;
+  }
+}
+
+.button:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .arrow,
+  .text,
+  .circle {
+    transition-duration: 0.01ms;
+  }
+}

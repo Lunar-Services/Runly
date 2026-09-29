@@ -37,9 +37,9 @@ export async function POST(
       throw new ApiError(404, "Unknown action.");
     await rateLimit(
       request,
-      `auth-global:${action}`,
+      `auth:${action}`,
       "",
-      action === "forgot" || action === "resend" ? 120 : 300,
+      action === "forgot" || action === "resend" ? 3 : 10,
     );
     const db = await createServerSupabaseClient();
     if (!db) {
@@ -77,15 +77,6 @@ export async function POST(
       return Response.json({ url: data.url });
     }
     const input = await body(request, 4096);
-    // A tiny shared anonymous bucket let one caller lock everyone out. Keep a
-    // coarse global ceiling, then limit expensive email flows by subject.
-    if (typeof input?.email === "string")
-      await rateLimit(
-        request,
-        `auth-email:${action}`,
-        input.email.trim().toLowerCase(),
-        action === "forgot" || action === "resend" ? 3 : 10,
-      );
     if (action === "verify") {
       const parsed = z
         .object({
@@ -108,7 +99,7 @@ export async function POST(
         : await db.auth.verifyOtp({
             email: parsed.data.email!,
             token: parsed.data.code!,
-            type: "email",
+            type: "signup",
           });
       if (error || !data.session || !data.user?.email_confirmed_at)
         throw new ApiError(
@@ -164,8 +155,7 @@ export async function POST(
       });
     }
     if (action === "reset") {
-      const { user } = await session();
-      await rateLimit(request, "auth-reset", user.id, 5);
+      await session();
       const parsed = z
         .object({ password: z.string().min(8).max(128) })
         .safeParse(input);

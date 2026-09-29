@@ -1,0 +1,44 @@
+.actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.actions > button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.actions > button:hover,
+.actions > button:focus-visible {
+  background: var(--surface-raised);
+  color: var(--text-main);
+  border-color: var(--border-ui);
+}
+.dialog {
+  color: var(--text-main);
+  background: var(--surface-card);
+  max-width: min(440px, calc(100% - 32px));
+  text-align: left;
+}
+.dialog p {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.dialog input {
+  width: 100%;
+  min-height: 44px;
+}
+.dialog .danger {
+  color: #fff;
+  background: #a52828;
+  border: 1px solid #a52828;
+}
+.dialog .danger:hover {
+  background: #852020;
+}

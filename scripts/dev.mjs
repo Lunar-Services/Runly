@@ -22,7 +22,7 @@ const environment = {
   NEXT_PUBLIC_SUPABASE_URL: local.url,
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: local.publishableKey,
   SUPABASE_SERVICE_ROLE_KEY: local.serviceRoleKey,
-  RUNLY_SITE_URL: "http://localhost:3000",
+  RUNLY_SITE_URL: "http://127.0.0.1:3001",
   RUNLY_LOCAL_SUPABASE: "true",
 };
 
@@ -44,12 +44,16 @@ if (!externalServicesEnabled) {
   environment.OPENAI_MODEL = "";
 }
 
-const child = spawn(next, ["dev"], {
-  cwd: process.cwd(),
-  env: environment,
-  stdio: "inherit",
-  shell: process.platform === "win32",
-});
+const child = spawn(
+  next,
+  ["dev", "--hostname", "127.0.0.1", "--port", "3001"],
+  {
+    cwd: process.cwd(),
+    env: environment,
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  },
+);
 // Both services receive the same local database credentials. The explicit flag
 // allows real provider spending; normal `pnpm dev` never launches this worker.
 const runtime = process.argv.includes("--runtime")

@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowUp,
-  Bot,
   Blocks,
   ChevronDown,
   ChevronRight,
@@ -25,6 +24,7 @@ import {
   Play,
   PlusCircle,
   RotateCw,
+  Search,
   Settings,
   MessageSquare,
   Plug,
@@ -40,14 +40,9 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "./theme-provider";
 import { useProjectRuntime, type WorkspaceFile } from "./use-project-runtime";
 import { WorkspaceTerminal } from "./workspace-terminal";
+import { LatticeLoader } from "./react-bits";
 
-type Project = {
-  id: string;
-  name: string;
-  status: string;
-  github_repo_id?: number | null;
-  github_branch?: string | null;
-};
+type Project = { id: string; name: string; status: string };
 type ProjectSummary = Project & { updated_at?: string };
 type ChatSummary = { id: string; title: string };
 type DayPart = "Morning" | "Afternoon" | "Evening";
@@ -66,28 +61,6 @@ type ExplorerNode = {
 };
 type ExplorerMenu = { x: number; y: number; parentPath: string };
 type ChatMenu = { x: number; y: number; chat: ChatSummary };
-type UsageWindow = { used: number; reserved: number; limit: number };
-type UsageSummary = {
-  active: boolean;
-  plan?: string;
-  threeHour?: UsageWindow;
-  sevenDay?: UsageWindow;
-};
-type GithubRepo = {
-  id: number;
-  fullName: string;
-  defaultBranch: string;
-  installationId: number;
-  archived: boolean;
-};
-type GitStatus = {
-  initialized: boolean;
-  branch: string | null;
-  branches: string[];
-  dirty: boolean;
-  commit?: string | null;
-  repository?: string;
-};
 
 function folderPathsFor(files: ProjectFile[], folders: string[]) {
   const paths = new Set<string>();
@@ -159,6 +132,19 @@ function buildExplorerTree(files: ProjectFile[], folders: string[]) {
   return root;
 }
 
+function filterExplorerTree(
+  nodes: ExplorerNode[],
+  query: string,
+): ExplorerNode[] {
+  if (!query) return nodes;
+  return nodes.flatMap((node) => {
+    const children = filterExplorerTree(node.children, query);
+    return node.name.toLowerCase().includes(query) || children.length
+      ? [{ ...node, children }]
+      : [];
+  });
+}
+
 function devCommandFor(files: ProjectFile[]) {
   const manifests = files
     .filter((file) => file.path.split("/").at(-1) === "package.json")
@@ -194,49 +180,6 @@ function devCommandFor(files: ProjectFile[]) {
   return null;
 }
 
-const starterFiles = [
-  {
-    path: "app/layout.tsx",
-    content: `import type { ReactNode } from "react";\nexport default function Layout({ children }: { children: ReactNode }) {\n  return <html lang="en"><body style={{ margin: 0, fontFamily: "system-ui, sans-serif" }}>{children}</body></html>;\n}\n`,
-  },
-  {
-    path: "app/api/hello/route.ts",
-    content: `export async function GET() {\n  return Response.json({ message: "Hello from the Runly API", time: new Date().toISOString() });\n}\n`,
-  },
-  {
-    path: "app/page.tsx",
-    content: `"use client";\nimport { useEffect, useState } from "react";\nexport default function Home() {\n  const [message, setMessage] = useState("Loading the API…");\n  useEffect(() => {\n    fetch("/api/hello").then((response) => response.json()).then((data) => setMessage(data.message)).catch(() => setMessage("API unavailable"));\n  }, []);\n  return <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#f3f5ed", color: "#1f2820" }}>\n    <section style={{ textAlign: "center", padding: 32 }}>\n      <p style={{ fontSize: 48, margin: 0 }}>🐈</p>\n      <h1>Welcome to your Runly app</h1>\n      <p>The frontend and backend share this workspace.</p>\n      <strong role="status">{message}</strong>\n    </section>\n  </main>;\n}\n`,
-  },
-  {
-    path: "package.json",
-    content:
-      JSON.stringify(
-        {
-          name: "runly-starter",
-          private: true,
-          version: "0.1.0",
-          scripts: {
-            dev: "next dev",
-            build: "next build",
-            start: "next start",
-          },
-          dependencies: {
-            next: "16.3.6",
-            react: "19.2.8",
-            "react-dom": "19.2.8",
-          },
-          devDependencies: {
-            typescript: "^5",
-            "@types/node": "^22",
-            "@types/react": "^19",
-          },
-        },
-        null,
-        2,
-      ) + "\n",
-  },
-];
-
 export function ProjectWorkspace({ projectId }: { projectId: string }) {
   const router = useRouter();
   const { darkTheme, toggleTheme } = useTheme();
@@ -260,6 +203,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
   const [workspaceView, setWorkspaceView] = useState<
     "chat" | "code" | "preview" | "terminal"
   >("chat");
+  const [searchQuery, setSearchQuery] = useState("");
   const [bottomPanel, setBottomPanel] = useState<"terminal" | "logs">(
     "terminal",
   );
@@ -293,19 +237,8 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
   const [renameChatError, setRenameChatError] = useState("");
   const [renamingChatBusy, setRenamingChatBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [usageOpen, setUsageOpen] = useState(false);
-  const [usage, setUsage] = useState<UsageSummary | null>(null);
-  const [usageError, setUsageError] = useState("");
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
-  const [githubLinked, setGithubLinked] = useState(false);
-  const [githubRepos, setGithubRepos] = useState<GithubRepo[]>([]);
-  const [gitStatus, setGitStatus] = useState<GitStatus | null>(null);
-  const [gitBusy, setGitBusy] = useState(false);
-  const [gitError, setGitError] = useState("");
-  const [gitBranchInput, setGitBranchInput] = useState("");
-  const [gitCommitMessage, setGitCommitMessage] = useState("Update from Runly");
-  const [starterBusy, setStarterBusy] = useState(false);
   const [appMenuOpen, setAppMenuOpen] = useState<"view" | "help" | null>(null);
   const activeChatRef = useRef(activeChatId);
   useEffect(() => {
@@ -371,125 +304,9 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
   const renameChatInput = useRef<HTMLInputElement>(null);
   const composerInput = useRef<HTMLTextAreaElement>(null);
 
-  async function openUsage() {
-    setUsageOpen(true);
-    setUsage(null);
-    setUsageError("");
-    try {
-      const response = await fetch(`/api/projects/${projectId}/usage`, {
-        cache: "no-store",
-      });
-      const result = await response.json();
-      if (!response.ok)
-        throw new Error(result.message || "Couldn't load usage.");
-      setUsage(result);
-    } catch (reason) {
-      setUsageError(
-        reason instanceof Error ? reason.message : "Couldn't load usage.",
-      );
-    }
-  }
-
-  async function createStarter() {
-    if (devCommandFor(files) || starterBusy) return;
-    setStarterBusy(true);
-    setError("");
-    try {
-      const conflict = starterFiles.find((item) =>
-        files.some((file) => file.path === item.path),
-      );
-      if (conflict)
-        throw new Error(
-          `${conflict.path} already exists. Rename it before adding the starter.`,
-        );
-      for (const item of starterFiles) {
-        await runtimeRequest("write", {
-          path: item.path,
-          content: item.content,
-          hash: "",
-          create: true,
-        });
-      }
-    } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "Couldn't create the starter app.",
-      );
-    } finally {
-      setStarterBusy(false);
-    }
-  }
-
-  async function loadGit() {
-    setGitBusy(true);
-    setGitError("");
-    try {
-      const response = await fetch("/api/github/repositories", {
-        cache: "no-store",
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-      setGithubLinked(Boolean(data.linked));
-      setGithubRepos(Array.isArray(data.repositories) ? data.repositories : []);
-      if (project?.github_repo_id) await gitAction("status", {}, false);
-    } catch (reason) {
-      setGitError(
-        reason instanceof Error
-          ? reason.message
-          : "Couldn't load GitHub repositories.",
-      );
-    } finally {
-      setGitBusy(false);
-    }
-  }
-
-  async function gitAction(
-    action: "link" | "status" | "branch" | "checkout" | "pull" | "push",
-    extra: Record<string, unknown> = {},
-    manageBusy = true,
-  ) {
-    if (manageBusy) setGitBusy(true);
-    setGitError("");
-    try {
-      if (action !== "status") await runtime.flush();
-      const response = await fetch(`/api/projects/${projectId}/git`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, ...extra }),
-      });
-      const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.message || "Git operation failed.");
-      setGitStatus(data);
-      if (action === "link" || action === "branch" || action === "checkout") {
-        setProject(
-          (current) =>
-            current && {
-              ...current,
-              github_repo_id:
-                action === "link"
-                  ? Number(extra.repositoryId)
-                  : current.github_repo_id,
-              github_branch: data.branch || current.github_branch,
-            },
-        );
-      }
-      if (action !== "status") setBranchMenuOpen(false);
-      return data as GitStatus;
-    } catch (reason) {
-      setGitError(
-        reason instanceof Error ? reason.message : "Git operation failed.",
-      );
-      return null;
-    } finally {
-      if (manageBusy) setGitBusy(false);
-    }
-  }
-
   function resizeBottomPanel(height: number) {
-    const maxHeight = Math.max(150, window.innerHeight - 44 - 48 - 140);
-    setBottomPanelHeight(Math.max(120, Math.min(maxHeight, height)));
+    const maxHeight = Math.max(188, window.innerHeight - 55 - 60 - 175);
+    setBottomPanelHeight(Math.max(150, Math.min(maxHeight, height)));
   }
 
   useEffect(() => {
@@ -760,8 +577,8 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
           ? path.split("/").slice(0, -1).join("/")
           : "";
     setExplorerMenu({
-      x: Math.max(8, Math.min(event.clientX, window.innerWidth - 205)),
-      y: Math.max(8, Math.min(event.clientY, window.innerHeight - 112)),
+      x: Math.max(10, Math.min(event.clientX, window.innerWidth - 256)),
+      y: Math.max(10, Math.min(event.clientY, window.innerHeight - 140)),
       parentPath,
     });
     setChatMenu(null);
@@ -771,8 +588,8 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
     event.preventDefault();
     setExplorerMenu(null);
     setChatMenu({
-      x: Math.max(8, Math.min(event.clientX, window.innerWidth - 205)),
-      y: Math.max(8, Math.min(event.clientY, window.innerHeight - 112)),
+      x: Math.max(10, Math.min(event.clientX, window.innerWidth - 256)),
+      y: Math.max(10, Math.min(event.clientY, window.innerHeight - 140)),
       chat,
     });
   }
@@ -888,6 +705,16 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
   }
 
   const explorerTree = buildExplorerTree(files, folders);
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const visibleExplorerTree = filterExplorerTree(
+    explorerTree,
+    normalizedSearch,
+  );
+  const visibleChats = normalizedSearch
+    ? chats.filter((chat) =>
+        chat.title.toLowerCase().includes(normalizedSearch),
+      )
+    : chats;
 
   function renderExplorerNodes(
     nodes: ExplorerNode[],
@@ -901,7 +728,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
           <button
             type="button"
             className={`explorer-entry${activePath === node.path ? " active" : ""}${dropTarget === node.path ? " drop-target" : ""}${draggedFile === node.path ? " dragging" : ""}`}
-            style={{ paddingLeft: `${8 + depth * 14}px` }}
+            style={{ paddingLeft: `${10 + depth * 18}px` }}
             draggable={!isFolder}
             onClick={() =>
               isFolder ? toggleFolder(node.path) : openFile(node.path)
@@ -946,14 +773,14 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
             {isFolder ? (
               <>
                 {expanded ? (
-                  <ChevronDown size={13} />
+                  <ChevronDown size={16} />
                 ) : (
-                  <ChevronRight size={13} />
+                  <ChevronRight size={16} />
                 )}
-                {expanded ? <FolderOpen size={14} /> : <Folder size={14} />}
+                {expanded ? <FolderOpen size={18} /> : <Folder size={18} />}
               </>
             ) : (
-              <FileCode2 size={14} />
+              <FileCode2 size={18} />
             )}
             <span>{node.name}</span>
           </button>
@@ -1180,8 +1007,8 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
         <Link href="/dashboard/projects" className="editor-appbar-brand">
           <Image
             src="/brand/runly-lockup.png"
-            width={72}
-            height={24}
+            width={113}
+            height={38}
             alt="Runly"
             priority
           />
@@ -1281,30 +1108,23 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                 setBranchMenuOpen(false);
               }}
             >
-              <FolderOpen size={15} aria-hidden="true" />
+              <FolderOpen size={19} aria-hidden="true" />
               <span>{project.name}</span>
-              <ChevronDown size={14} />
+              <ChevronDown size={18} />
             </button>
             {projectMenuOpen && (
               <div className="editor-dropdown project-dropdown">
                 <button
                   type="button"
-                  onClick={() => router.push("/dashboard/projects")}
+                  onClick={() => window.location.assign("/dashboard/projects")}
                 >
-                  <PlusCircle size={15} /> New Project…
+                  <PlusCircle size={19} /> New Project…
                 </button>
                 <button type="button" onClick={() => setProjectMenuOpen(false)}>
-                  <FolderOpen size={15} /> Open…
+                  <FolderOpen size={19} /> Open…
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProjectMenuOpen(false);
-                    setBranchMenuOpen(true);
-                    void loadGit();
-                  }}
-                >
-                  <GitBranch size={15} /> Clone Repository…
+                <button type="button" onClick={() => setProjectMenuOpen(false)}>
+                  <GitBranch size={19} /> Clone Repository…
                 </button>
                 <div className="editor-dropdown-divider" />
                 <p>Open Projects</p>
@@ -1326,145 +1146,24 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               className="editor-branch-selector"
               aria-expanded={branchMenuOpen}
               onClick={() => {
-                if (!branchMenuOpen) void loadGit();
                 setBranchMenuOpen((open) => !open);
                 setProjectMenuOpen(false);
               }}
             >
-              <GitBranch size={15} />{" "}
-              {gitStatus?.branch || project.github_branch || "GitHub"}{" "}
-              <ChevronDown size={13} />
+              <GitBranch size={19} /> master <ChevronDown size={16} />
             </button>
             {branchMenuOpen && (
               <div className="editor-dropdown branch-dropdown">
-                <p>GitHub repository</p>
-                {gitBusy && <p role="status">Connecting to workspace…</p>}
-                {gitError && (
-                  <p role="alert" className="workspace-git-error">
-                    {gitError}
-                  </p>
-                )}
-                {!githubLinked && !gitBusy && (
-                  <Link href="/settings/account">
-                    Connect GitHub in Account settings
-                  </Link>
-                )}
-                {githubLinked && !githubRepos.length && !gitBusy && (
-                  <Link href="/settings/account">
-                    Install the Runly GitHub App
-                  </Link>
-                )}
-                {githubLinked &&
-                  !project.github_repo_id &&
-                  githubRepos.map((repo) => (
-                    <button
-                      type="button"
-                      key={repo.id}
-                      disabled={gitBusy || repo.archived}
-                      onClick={() =>
-                        void gitAction("link", {
-                          repositoryId: repo.id,
-                          installationId: repo.installationId,
-                        })
-                      }
-                    >
-                      <FolderOpen size={15} /> {repo.fullName}
-                    </button>
-                  ))}
-                {!!project.github_repo_id && (
-                  <>
-                    <p>
-                      {githubRepos.find(
-                        (repo) => repo.id === project.github_repo_id,
-                      )?.fullName || "Connected repository"}
-                      {gitStatus?.dirty ? " · changes" : ""}
-                    </p>
-                    {(gitStatus?.branches?.length
-                      ? gitStatus.branches
-                      : [gitStatus?.branch || project.github_branch || "main"]
-                    ).map((branch) => (
-                      <button
-                        key={branch}
-                        type="button"
-                        disabled={
-                          gitBusy ||
-                          branch ===
-                            (gitStatus?.branch || project.github_branch)
-                        }
-                        className={
-                          branch ===
-                          (gitStatus?.branch || project.github_branch)
-                            ? "selected-branch"
-                            : ""
-                        }
-                        onClick={() => void gitAction("checkout", { branch })}
-                      >
-                        <GitBranch size={15} /> {branch}
-                      </button>
-                    ))}
-                    <label className="workspace-git-field">
-                      Branch name
-                      <input
-                        value={gitBranchInput}
-                        onChange={(event) =>
-                          setGitBranchInput(event.target.value)
-                        }
-                        placeholder="feature/new-branch"
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      disabled={gitBusy || !gitBranchInput.trim()}
-                      onClick={() =>
-                        void gitAction("branch", {
-                          branch: gitBranchInput.trim(),
-                        })
-                      }
-                    >
-                      <PlusCircle size={15} /> Create branch
-                    </button>
-                    <button
-                      type="button"
-                      disabled={gitBusy || !gitBranchInput.trim()}
-                      onClick={() =>
-                        void gitAction("checkout", {
-                          branch: gitBranchInput.trim(),
-                        })
-                      }
-                    >
-                      <GitBranch size={15} /> Checkout remote branch
-                    </button>
-                    <div className="editor-dropdown-divider" />
-                    <button
-                      type="button"
-                      disabled={gitBusy}
-                      onClick={() => void gitAction("pull")}
-                    >
-                      <RotateCw size={15} /> Pull (fast-forward)
-                    </button>
-                    <label className="workspace-git-field">
-                      Commit message
-                      <input
-                        value={gitCommitMessage}
-                        onChange={(event) =>
-                          setGitCommitMessage(event.target.value)
-                        }
-                        maxLength={120}
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      disabled={gitBusy || !gitCommitMessage.trim()}
-                      onClick={() =>
-                        void gitAction("push", {
-                          message: gitCommitMessage.trim(),
-                        })
-                      }
-                    >
-                      <ArrowUp size={15} /> Commit &amp; push
-                    </button>
-                  </>
-                )}
+                <p>Git branches</p>
+                <button type="button" className="selected-branch">
+                  <GitBranch size={19} /> master
+                </button>
+                <button type="button" onClick={() => setBranchMenuOpen(false)}>
+                  <PlusCircle size={19} /> New branch…
+                </button>
+                <button type="button" onClick={() => setBranchMenuOpen(false)}>
+                  Manage branches…
+                </button>
               </div>
             )}
           </div>
@@ -1542,7 +1241,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
             aria-pressed={darkTheme}
             title={darkTheme ? "Use light theme" : "Use dark theme"}
           >
-            {darkTheme ? <Sun size={17} /> : <Moon size={17} />}
+            {darkTheme ? <Sun size={21} /> : <Moon size={21} />}
           </button>
         </nav>
       </header>
@@ -1564,12 +1263,27 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               title={workspaceView === "code" ? "New file" : "New chat"}
             >
               {workspaceView === "code" ? (
-                <FilePlus2 size={16} />
+                <FilePlus2 size={20} />
               ) : (
-                <Plus size={16} />
+                <Plus size={20} />
               )}
             </button>
           </div>
+          <label className="reference-search">
+            <Search size={17} aria-hidden="true" />
+            <span className="sr-only">
+              {workspaceView === "code" ? "Search files" : "Search chats"}
+            </span>
+            <input
+              type="search"
+              value={searchQuery}
+              autoComplete="off"
+              placeholder={
+                workspaceView === "code" ? "Search files…" : "Search chats…"
+              }
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
+          </label>
           {(error || runtime.error) && (
             <p className="reference-sidebar-error" role="alert">
               {error || runtime.error}
@@ -1622,14 +1336,18 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
           >
             {workspaceView === "code" ? (
               <>
-                {explorerTree.length ? (
-                  renderExplorerNodes(explorerTree)
+                {visibleExplorerTree.length ? (
+                  renderExplorerNodes(visibleExplorerTree)
                 ) : (
                   <div
                     className={`explorer-root-drop${dropTarget === "" ? " drop-target" : ""}`}
                   >
-                    <FileCode2 size={15} />
-                    <span>Right-click or use + to add files</span>
+                    <FileCode2 size={19} />
+                    <span>
+                      {normalizedSearch
+                        ? "No matching files"
+                        : "Right-click or use + to add files"}
+                    </span>
                   </div>
                 )}
                 {!!explorerTree.length && !!draggedFile && (
@@ -1642,7 +1360,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               </>
             ) : (
               <>
-                {chats.map((chat) => (
+                {visibleChats.map((chat) => (
                   <button
                     type="button"
                     className={`reference-chat-item${chat.id === activeChatId ? " active" : ""}`}
@@ -1654,12 +1372,14 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                     key={chat.id}
                     title={chat.title}
                   >
-                    <MessageSquare size={14} />
+                    <MessageSquare size={18} />
                     <span>{chat.title}</span>
                   </button>
                 ))}
-                {!chats.length && (
-                  <span className="reference-chat-empty">No chats yet</span>
+                {!visibleChats.length && (
+                  <span className="reference-chat-empty">
+                    {normalizedSearch ? "No matching chats" : "No chats yet"}
+                  </span>
                 )}
               </>
             )}
@@ -1667,16 +1387,16 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
         </section>
         <nav className="reference-sidebar-apps" aria-label="Runly tools">
           <Link href="/plugins">
-            <Plug size={15} /> Plugins
+            <Plug size={19} /> Plugins
           </Link>
           <Link href="/skills">
-            <Sparkles size={15} /> Skills
+            <Sparkles size={19} /> Skills
           </Link>
           <Link href="/workshop">
-            <Blocks size={15} /> Workshop
+            <Blocks size={19} /> Workshop
           </Link>
           <button type="button" onClick={() => setSettingsOpen(true)}>
-            <Settings size={15} /> Settings
+            <Settings size={19} /> Settings
           </button>
         </nav>
         <footer className="reference-account">
@@ -1699,8 +1419,8 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                       <Image
                         className="reference-message-mark"
                         src="/brand/runly-mark.png"
-                        width={15}
-                        height={15}
+                        width={24}
+                        height={24}
                         alt=""
                       />
                     )}
@@ -1709,7 +1429,6 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                 ))
               ) : (
                 <div className="reference-empty">
-                  <Bot size={30} />
                   <h1>
                     {dayPart
                       ? `Good ${dayPart}, ${userName}`
@@ -1721,6 +1440,15 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                       : "Describe your idea and Runly will plan the project with you."}
                   </p>
                 </div>
+              )}
+              {(sending || runtime.agentBusy) && (
+                <LatticeLoader
+                  label={
+                    sending
+                      ? "Sending your request"
+                      : "Runly is editing the project"
+                  }
+                />
               )}
             </div>
             <form className="reference-composer" onSubmit={sendMessage}>
@@ -1744,18 +1472,13 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               <div>
                 <span>
                   <button type="button" aria-label="Attach image">
-                    <ImageIcon size={17} />
+                    <ImageIcon size={21} />
                   </button>
-                  <button
-                    type="button"
-                    aria-label="Usage"
-                    title="Usage"
-                    onClick={() => void openUsage()}
-                  >
-                    <Gauge size={18} />
+                  <button type="button" aria-label="Usage" title="Usage">
+                    <Gauge size={23} />
                   </button>
                   <button type="button" aria-label="Voice input">
-                    <Mic size={17} />
+                    <Mic size={21} />
                   </button>
                 </span>
                 <button
@@ -1763,7 +1486,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                   disabled={!prompt.trim() || sending}
                   aria-label="Send message"
                 >
-                  <ArrowUp size={17} />
+                  <ArrowUp size={21} />
                 </button>
               </div>
             </form>
@@ -1779,7 +1502,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
           >
             <header className="reference-tool-head">
               <button onClick={() => setWorkspaceView("chat")}>
-                <ArrowLeft size={15} /> Chat
+                <ArrowLeft size={19} /> Chat
               </button>
               <strong>{activeFile?.path || "Code editor"}</strong>
               <span>
@@ -1792,16 +1515,16 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                   </button>
                 )}
                 <button onClick={() => addFile()} aria-label="New file">
-                  <FilePlus2 size={15} />
+                  <FilePlus2 size={19} />
                 </button>
                 <button onClick={renameFile} aria-label="Rename file">
-                  <Pencil size={14} />
+                  <Pencil size={18} />
                 </button>
                 <button onClick={deleteFile} aria-label="Delete file">
-                  <Trash2 size={14} />
+                  <Trash2 size={18} />
                 </button>
                 <button onClick={() => setWorkspaceView("preview")}>
-                  <Play size={14} /> Preview
+                  <Play size={18} /> Preview
                 </button>
               </span>
             </header>
@@ -1825,7 +1548,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                 </div>
               ) : (
                 <div className="reference-tool-empty">
-                  <Code2 size={25} />
+                  <Code2 size={31} />
                   <h2>No code yet</h2>
                   <p>Ask Runly to build something or create a file manually.</p>
                   <button onClick={() => addFile()}>Create a file</button>
@@ -1880,13 +1603,13 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                   className={bottomPanel === "terminal" ? "active" : ""}
                   onClick={() => setBottomPanel("terminal")}
                 >
-                  <SquareTerminal size={14} /> Terminal
+                  <SquareTerminal size={18} /> Terminal
                 </button>
                 <button
                   className={bottomPanel === "logs" ? "active" : ""}
                   onClick={() => setBottomPanel("logs")}
                 >
-                  <PanelBottom size={14} /> Console / logs
+                  <PanelBottom size={18} /> Console / logs
                 </button>
               </div>
               {bottomPanel === "terminal" ? (
@@ -1928,11 +1651,11 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
           <section className="reference-tool-stage">
             <header className="reference-tool-head">
               <button onClick={() => setWorkspaceView("chat")}>
-                <ArrowLeft size={15} /> Chat
+                <ArrowLeft size={19} /> Chat
               </button>
               <strong>Preview</strong>
               <button onClick={() => setWorkspaceView("code")}>
-                <Code2 size={14} /> Code
+                <Code2 size={18} /> Code
               </button>
               {runtime.previewUrl && (
                 <button
@@ -1940,7 +1663,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                   title="Refresh preview"
                   onClick={() => setPreviewReload((value) => value + 1)}
                 >
-                  <RotateCw size={14} />
+                  <RotateCw size={18} />
                 </button>
               )}
             </header>
@@ -1955,7 +1678,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               />
             ) : (
               <div className="workspace-preview-empty">
-                <Eye size={28} />
+                <Eye size={35} />
                 <h2>
                   {error
                     ? "Preview needs attention"
@@ -1974,18 +1697,6 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                       ? "Add a package.json with a dev script to run an app in Preview."
                       : "Preview starts the first package.json dev script it finds in this project.")}
                 </p>
-                {runtime.state === "ready" && !devCommandFor(files) && (
-                  <button
-                    type="button"
-                    disabled={starterBusy}
-                    onClick={() => void createStarter()}
-                  >
-                    <PlusCircle size={14} />{" "}
-                    {starterBusy
-                      ? "Creating starter…"
-                      : "Create sample Next.js app"}
-                  </button>
-                )}
                 {runtime.state === "ready" && (
                   <button
                     type="button"
@@ -1998,7 +1709,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                       }
                     }}
                   >
-                    <RotateCw size={14} />
+                    <RotateCw size={18} />
                     {previewNeedsRestart
                       ? "Restart workspace for Preview"
                       : "Retry preview"}
@@ -2012,7 +1723,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
           <section className="reference-tool-stage">
             <header className="reference-tool-head">
               <button onClick={() => setWorkspaceView("chat")}>
-                <ArrowLeft size={15} /> Chat
+                <ArrowLeft size={19} /> Chat
               </button>
               <strong>Terminal</strong>
             </header>
@@ -2043,14 +1754,14 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               role="menuitem"
               onClick={() => openNewItem("file", explorerMenu.parentPath)}
             >
-              <FilePlus2 size={15} /> New file
+              <FilePlus2 size={19} /> New file
             </button>
             <button
               type="button"
               role="menuitem"
               onClick={() => addFolder(explorerMenu.parentPath)}
             >
-              <Folder size={15} /> New folder
+              <Folder size={19} /> New folder
             </button>
           </div>
         </div>
@@ -2073,7 +1784,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               role="menuitem"
               onClick={() => startRenamingChat(chatMenu.chat)}
             >
-              <Pencil size={14} /> Rename
+              <Pencil size={18} /> Rename
             </button>
             <button
               type="button"
@@ -2084,7 +1795,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                 setChatMenu(null);
               }}
             >
-              <Trash2 size={14} /> Delete chat
+              <Trash2 size={18} /> Delete chat
             </button>
           </div>
         </div>
@@ -2163,7 +1874,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                   onClick={() => setRenamingChat(null)}
                   aria-label="Close rename chat dialog"
                 >
-                  <X size={16} />
+                  <X size={20} />
                 </button>
               </div>
               <label htmlFor="rename-chat-input">Chat name</label>
@@ -2233,7 +1944,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                   onClick={() => setNewFileOpen(false)}
                   aria-label="Close new file dialog"
                 >
-                  <X size={16} />
+                  <X size={20} />
                 </button>
               </div>
               <label htmlFor="new-project-file">
@@ -2282,81 +1993,6 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
           </section>
         </div>
       )}
-      {usageOpen && (
-        <div
-          className="workspace-dialog-backdrop"
-          onMouseDown={() => setUsageOpen(false)}
-        >
-          <section
-            className="workspace-file-dialog workspace-usage-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="workspace-usage-title"
-            onMouseDown={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") setUsageOpen(false);
-            }}
-          >
-            <div className="workspace-dialog-heading">
-              <h2 id="workspace-usage-title">AI usage</h2>
-              <button
-                type="button"
-                autoFocus
-                onClick={() => setUsageOpen(false)}
-                aria-label="Close usage"
-              >
-                <X size={17} />
-              </button>
-            </div>
-            {usageError && <p role="alert">{usageError}</p>}
-            {!usage && !usageError && <p>Loading usage…</p>}
-            {usage && !usage.active && (
-              <p>An active plan is required to use the coding agent.</p>
-            )}
-            {usage?.active && (
-              <>
-                <p>{usage.plan} plan · rolling token allowances</p>
-                {(
-                  [
-                    ["Last 3 hours", usage.threeHour],
-                    ["Last 7 days", usage.sevenDay],
-                  ] as const
-                ).map(
-                  ([label, window]) =>
-                    window && (
-                      <div className="workspace-usage-window" key={label}>
-                        <div>
-                          <strong>{label}</strong>
-                          <span>
-                            {(window.used + window.reserved).toLocaleString()} /{" "}
-                            {window.limit.toLocaleString()} tokens
-                          </span>
-                        </div>
-                        <progress
-                          max={window.limit}
-                          value={Math.min(
-                            window.limit,
-                            window.used + window.reserved,
-                          )}
-                          aria-label={`${label} usage`}
-                        />
-                        <small>
-                          {window.used.toLocaleString()} used ·{" "}
-                          {window.reserved.toLocaleString()} reserved by pending
-                          or uncertain tasks
-                        </small>
-                      </div>
-                    ),
-                )}
-                <p className="muted">
-                  Reservations are estimates. Final usage is recorded when the
-                  provider reports token counts.
-                </p>
-              </>
-            )}
-          </section>
-        </div>
-      )}
       {settingsOpen && (
         <div
           className="workspace-dialog-backdrop"
@@ -2374,7 +2010,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
           >
             <header className="editor-settings-header">
               <div>
-                <Settings size={16} />
+                <Settings size={20} />
                 <h2 id="editor-settings-title">Settings</h2>
               </div>
               <button
@@ -2382,7 +2018,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                 onClick={() => setSettingsOpen(false)}
                 aria-label="Close settings"
               >
-                <X size={16} />
+                <X size={20} />
               </button>
             </header>
             <div className="editor-settings-layout">
@@ -2392,7 +2028,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               >
                 <p>PERSONALIZATION</p>
                 <button type="button" className="active">
-                  <Sun size={15} /> Appearances
+                  <Sun size={19} /> Appearances
                 </button>
               </aside>
               <section

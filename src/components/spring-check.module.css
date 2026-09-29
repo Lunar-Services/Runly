@@ -1,0 +1,61 @@
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+}
+
+.boxBtn {
+  flex: 0 0 25px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  margin-top: 1px;
+}
+
+.boxBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.box {
+  position: relative;
+  display: grid;
+  width: 25px;
+  height: 25px;
+  overflow: hidden;
+  border: 1.5px solid color-mix(in srgb, var(--ink) 38%, transparent);
+  border-radius: 8px;
+  place-items: center;
+}
+
+.fill {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+}
+
+.icon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  color: var(--paper);
+  place-items: center;
+}
+
+.label {
+  padding-top: 2px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.boxBtn:focus-visible .box {
+  outline: 2px solid color-mix(in srgb, var(--ink) 55%, transparent);
+  outline-offset: 3px;
+}

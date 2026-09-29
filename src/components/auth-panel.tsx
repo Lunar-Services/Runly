@@ -1,20 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { CatAnimation } from "./cat-animation";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { Brand } from "./brand";
+import { CodeSlots, type CodeSlotStatus } from "./code-slots";
+import { SpringCheck } from "./spring-check";
 import { ThemeToggle } from "./theme-provider";
 
 export function AuthPanel({
   mode,
   initialEmail = "",
   initialTokenHash = "",
+  initialNext = "",
 }: {
   mode: "login" | "signup" | "verify" | "forgot" | "reset";
   initialEmail?: string;
   initialTokenHash?: string;
+  initialNext?: string;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -32,8 +36,9 @@ export function AuthPanel({
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const sending = useRef(false);
-  const codeInputs = useRef<Array<HTMLInputElement | null>>([]);
   const [verificationCode, setVerificationCode] = useState("");
+  const [verificationStatus, setVerificationStatus] =
+    useState<CodeSlotStatus>("idle");
   const title = {
     login: "Welcome back.",
     signup: "Make room for your next idea.",
@@ -44,19 +49,22 @@ export function AuthPanel({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const fields = new FormData(event.currentTarget);
-    const email =
-      mode === "verify" ? verificationEmail : String(fields.get("email") || "");
-    const code =
-      mode === "verify" ? verificationCode : String(fields.get("code") || "");
     const invalid: Record<string, string> = {};
-    if (mode !== "reset" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    if (
+      mode !== "reset" &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(fields.get("email") || ""))
+    )
       invalid.email = "Enter a valid email address.";
     if (
       ["login", "signup", "reset"].includes(mode) &&
       String(fields.get("password") || "").length < 8
     )
       invalid.password = "Use at least 8 characters.";
-    if (mode === "verify" && !initialTokenHash && !/^\d{6}$/.test(code))
+    if (
+      mode === "verify" &&
+      !initialTokenHash &&
+      !/^\d{6}$/.test(String(fields.get("code") || ""))
+    )
       invalid.code = "Enter the six-digit code from your email.";
     if (mode === "signup" && !accepted)
       invalid.accepted =
@@ -71,15 +79,15 @@ export function AuthPanel({
       return;
     }
     await run(mode, {
-      email,
+      email: fields.get("email"),
       token_hash: initialTokenHash,
       password: fields.get("password"),
-      code,
+      code: fields.get("code"),
       accepted,
     });
   }
   async function run(action: string, payload: Record<string, unknown>) {
-    if (sending.current) return;
+    if (sending.current) return false;
     sending.current = true;
     setPending(true);
     setMessage("");
@@ -94,6 +102,7 @@ export function AuthPanel({
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || "Please try again.");
       setMessage(result.message || "Redirecting…");
+      if (action === "verify") setVerificationStatus("success");
       if (result.url) window.location.assign(result.url);
       else if (result.redirect) {
         if (mode === "signup") {
@@ -102,16 +111,25 @@ export function AuthPanel({
             String(payload.email || ""),
           );
         }
-        router.replace(result.redirect);
-        router.refresh();
+        const destination =
+          mode === "login" && initialNext ? initialNext : result.redirect;
+        const navigate = () => {
+          router.replace(destination);
+          router.refresh();
+        };
+        if (action === "verify") setTimeout(navigate, 650);
+        else navigate();
       }
+      return true;
     } catch (error) {
+      if (action === "verify") setVerificationStatus("error");
       setFailed(true);
       setMessage(
         error instanceof Error
           ? error.message
           : "Connection interrupted. Please try again.",
       );
+      return false;
     } finally {
       sending.current = false;
       setPending(false);
@@ -166,71 +184,33 @@ export function AuthPanel({
               </label>
             ))}
           {mode === "verify" && (
-            <label>
-              Six-digit code
+            <div className="auth-verification-code">
+              <span className="auth-code-label">Six-digit code</span>
               <input type="hidden" name="code" value={verificationCode} />
-              <div
-                className="auth-code-slots"
-                role="group"
-                aria-label="Six-digit verification code"
-              >
-                {Array.from({ length: 6 }, (_, index) => (
-                  <input
-                    key={index}
-                    ref={(element) => {
-                      codeInputs.current[index] = element;
-                    }}
-                    className="auth-code-slot"
-                    inputMode="numeric"
-                    autoComplete={index === 0 ? "one-time-code" : "off"}
-                    maxLength={1}
-                    value={verificationCode[index] || ""}
-                    disabled={pending}
-                    aria-label={`Digit ${index + 1}`}
-                    onChange={(event) => {
-                      const digit = event.target.value
-                        .replace(/\D/g, "")
-                        .slice(-1);
-                      if (!digit) return;
-                      const next =
-                        `${verificationCode.slice(0, index)}${digit}${verificationCode.slice(index + 1)}`.slice(
-                          0,
-                          6,
-                        );
-                      setVerificationCode(next);
-                      setErrors((old) => ({ ...old, code: "" }));
-                      codeInputs.current[Math.min(index + 1, 5)]?.focus();
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Backspace" || event.key === "Delete") {
-                        event.preventDefault();
-                        if (verificationCode[index]) {
-                          setVerificationCode(
-                            `${verificationCode.slice(0, index)}${verificationCode.slice(index + 1)}`,
-                          );
-                        } else if (event.key === "Backspace" && index > 0) {
-                          codeInputs.current[index - 1]?.focus();
-                        }
-                      }
-                    }}
-                    onPaste={(event) => {
-                      event.preventDefault();
-                      const pasted = event.clipboardData
-                        .getData("text")
-                        .replace(/\D/g, "")
-                        .slice(0, 6);
-                      setVerificationCode(pasted);
-                      codeInputs.current[Math.min(pasted.length, 5)]?.focus();
-                    }}
-                  />
-                ))}
-              </div>
+              <CodeSlots
+                value={verificationCode}
+                status={verificationStatus}
+                disabled={pending}
+                autoFocus={!initialTokenHash}
+                onChange={(code) => {
+                  setVerificationCode(code);
+                  setErrors((old) => ({ ...old, code: "" }));
+                  if (verificationStatus === "error" && !code)
+                    setVerificationStatus("idle");
+                }}
+                onComplete={(code) => {
+                  void run("verify", {
+                    email: verificationEmail,
+                    code,
+                  });
+                }}
+              />
               {errors.code && (
                 <span className="field-error" id="code-error">
                   {errors.code}
                 </span>
               )}
-            </label>
+            </div>
           )}
           {["login", "signup", "reset"].includes(mode) && (
             <div className="auth-password">
@@ -273,27 +253,19 @@ export function AuthPanel({
           )}
           {mode === "signup" && (
             <>
-              <label className="consent">
-                <input
-                  name="accepted"
-                  type="checkbox"
-                  checked={accepted}
-                  onChange={(e) => {
-                    setAccepted(e.target.checked);
-                    setErrors((old) => ({ ...old, accepted: "" }));
-                  }}
-                  required
-                  disabled={pending}
-                  aria-invalid={!!errors.accepted}
-                  aria-describedby={
-                    errors.accepted ? "consent-error" : undefined
-                  }
-                />
-                <span>
-                  I accept the <Link href="/terms">Terms</Link> and acknowledge
-                  the <Link href="/privacy">Privacy Policy</Link>.
-                </span>
-              </label>
+              <SpringCheck
+                checked={accepted}
+                disabled={pending}
+                onChange={(checked) => {
+                  setAccepted(checked);
+                  setErrors((old) => ({ ...old, accepted: "" }));
+                }}
+                label="I accept the Terms and acknowledge the Privacy Policy."
+              />
+              <p className="auth-legal-links">
+                Read the <Link href="/terms">Terms</Link> and the{" "}
+                <Link href="/privacy">Privacy Policy</Link>.
+              </p>
               {errors.accepted && (
                 <span className="field-error" id="consent-error">
                   {errors.accepted}
@@ -301,26 +273,27 @@ export function AuthPanel({
               )}
             </>
           )}
-          <button
-            className="button button-dark busy-button"
-            disabled={pending}
-            aria-busy={pending}
-          >
-            <span className={pending ? "busy-label" : ""}>
-              {
+          {mode !== "verify" && (
+            <button
+              className="button button-dark busy-button"
+              disabled={pending}
+              aria-busy={pending}
+            >
+              <span className={pending ? "busy-label" : ""}>
                 {
-                  login: "Sign in",
-                  signup: "Create account",
-                  verify: "Verify email",
-                  forgot: "Send reset link",
-                  reset: "Update password",
-                }[mode]
-              }
-            </span>
-            {pending && (
-              <span className="button-spinner" aria-label="Processing" />
-            )}
-          </button>
+                  {
+                    login: "Sign in",
+                    signup: "Create account",
+                    forgot: "Send reset link",
+                    reset: "Update password",
+                  }[mode]
+                }
+              </span>
+              {pending && (
+                <span className="button-spinner" aria-label="Processing" />
+              )}
+            </button>
+          )}
         </form>
         {mode === "verify" && (
           <button
@@ -331,20 +304,6 @@ export function AuthPanel({
           >
             Send a new code
           </button>
-        )}
-        {(mode === "login" || mode === "signup") && (
-          <>
-            <button
-              type="button"
-              className="button button-outline"
-              disabled={pending}
-              onClick={() =>
-                void run("github", { signup: mode === "signup", accepted })
-              }
-            >
-              Continue with GitHub
-            </button>
-          </>
         )}
         <div className="auth-feedback" aria-live="polite">
           {message && (
@@ -366,13 +325,11 @@ export function AuthPanel({
       </section>
       <aside className="auth-aside auth-illustrated">
         <div className="auth-cat">
-          <Image
-            src="/cats/sitting.png"
-            alt="A grainy black kitten with golden eyes"
-            width={1254}
-            height={1254}
-            sizes="(max-width: 900px) 0px, 45vw"
-            priority
+          <CatAnimation
+            name="hero-loop"
+            label="A curious black cat welcoming you to Runly"
+            width={1250}
+            height={1250}
           />
         </div>
         <blockquote>

@@ -17,6 +17,7 @@ const supported = [
   "cowork",
   "settings",
   "admin",
+  "affiliate",
   "terms",
   "privacy",
 ];
@@ -29,32 +30,59 @@ export default async function CatchAllPage({
   searchParams: Promise<{
     email?: string | string[];
     token_hash?: string | string[];
+    next?: string | string[];
   }>;
 }) {
   const { slug } = await params;
   if (!supported.includes(slug[0])) notFound();
-  if (slug[0] === "login" || slug[0] === "signup")
-    return <AuthPanel mode={slug[0]} />;
+  if (slug[0] === "login" || slug[0] === "signup") {
+    const query = await searchParams;
+    const requestedNext = typeof query.next === "string" ? query.next : "";
+    const safeNext =
+      requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+        ? requestedNext
+        : "";
+    const db = await createServerSupabaseClient();
+    const { data } = db ? await db.auth.getUser() : { data: { user: null } };
+    if (data.user?.email_confirmed_at) redirect(safeNext || "/dashboard");
+    return <AuthPanel mode={slug[0]} initialNext={safeNext} />;
+  }
   if (slug[0] === "verify-email") {
     const query = await searchParams;
+    const tokenHash =
+      typeof query.token_hash === "string"
+        ? query.token_hash.slice(0, 512)
+        : "";
+    if (tokenHash) {
+      const email =
+        typeof query.email === "string" ? query.email.slice(0, 254) : "";
+      redirect(
+        `/auth/verify-email?token_hash=${encodeURIComponent(tokenHash)}${
+          email ? `&email=${encodeURIComponent(email)}` : ""
+        }`,
+      );
+    }
     return (
       <AuthPanel
         mode="verify"
         initialEmail={
           typeof query.email === "string" ? query.email.slice(0, 254) : ""
         }
-        initialTokenHash={
-          typeof query.token_hash === "string"
-            ? query.token_hash.slice(0, 512)
-            : ""
-        }
+        initialTokenHash=""
       />
     );
   }
   if (slug[0] === "forgot-password") return <AuthPanel mode="forgot" />;
   if (slug[0] === "reset-password") return <AuthPanel mode="reset" />;
   if (
-    ["dashboard", "project", "cowork", "settings", "admin"].includes(slug[0])
+    [
+      "dashboard",
+      "project",
+      "cowork",
+      "settings",
+      "admin",
+      "affiliate",
+    ].includes(slug[0])
   ) {
     const db = await createServerSupabaseClient();
     if (!db) redirect("/login");

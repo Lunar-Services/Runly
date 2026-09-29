@@ -1,0 +1,125 @@
+.root {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: clamp(7px, 1.5vw, 11px);
+  width: 100%;
+  cursor: text;
+  isolation: isolate;
+}
+
+.input {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  opacity: 0;
+}
+
+.slot {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  height: clamp(56px, 8vw, 66px);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--white) 78%, var(--paper));
+  place-items: center;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.row[data-focused="true"] .slot[data-active="true"] {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 10%, transparent);
+}
+
+.digit {
+  position: relative;
+  z-index: 1;
+  color: var(--ink);
+  font-size: clamp(24px, 3.2vw, 30px);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.caret {
+  width: 2px;
+  height: 27px;
+  border-radius: 2px;
+  background: var(--ink);
+  animation: code-caret 1s steps(2, end) infinite;
+}
+
+.row[data-status="error"] {
+  animation: code-reject 380ms ease;
+}
+
+.row[data-status="error"] .slot {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 9%, var(--white));
+}
+
+.success {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--paper);
+  place-items: center;
+  pointer-events: none;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes code-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes code-reject {
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caret,
+  .row[data-status="error"] {
+    animation: none;
+  }
+}

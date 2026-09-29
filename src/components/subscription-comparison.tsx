@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { Pause, Play } from "lucide-react";
+
 import { TerminalDemo } from "./terminal-demo";
 import styles from "./subscription-comparison.module.css";
 
@@ -26,7 +25,6 @@ const subscriptions = [
 ];
 
 export function SubscriptionComparison() {
-  const [paused, setPaused] = useState(false);
   return (
     <section
       className={styles.section}
@@ -37,15 +35,13 @@ export function SubscriptionComparison() {
         <h3 id="subscription-comparison-title">Make room for the idea.</h3>
         <p>
           Runly is focused on websites, tools, and the projects you want to
-          build. Here is how its planned Pro price compares with popular premium
-          AI subscriptions.
+          build. Here is how its Pro price compares with popular premium AI
+          subscriptions.
         </p>
       </div>
 
       <div className={styles.layout}>
-        <div
-          className={`${styles.runlyCard}${paused ? ` ${styles.paused}` : ""}`}
-        >
+        <div className={styles.runlyCard}>
           <div className={styles.visual}>
             <div className={styles.sequence} aria-hidden="true">
               <div className={`${styles.scene} ${styles.promptScene}`}>
@@ -81,18 +77,6 @@ export function SubscriptionComparison() {
                 </div>
               </div>
             </div>
-            <button
-              type="button"
-              className={styles.motionToggle}
-              onClick={() => setPaused((value) => !value)}
-              aria-label={
-                paused ? "Play comparison motion" : "Pause comparison motion"
-              }
-              aria-pressed={paused}
-            >
-              {paused ? <Play size={13} /> : <Pause size={13} />}
-              <span>{paused ? "Play" : "Pause"}</span>
-            </button>
           </div>
           <div className={styles.runlyDetails}>
             <div>
@@ -100,10 +84,10 @@ export function SubscriptionComparison() {
               <strong>
                 $9<span>/ month</span>
               </strong>
-              <p>Planned price · 350k tokens per 3-hour window</p>
+              <p>350k tokens per 3-hour window</p>
             </div>
-            <Link className={styles.action} href="/signup">
-              <span>Get started</span>
+            <Link className={styles.action} href="/?plan=pro#pricing">
+              <span>Choose a plan</span>
               <span aria-hidden="true">↗</span>
             </Link>
           </div>
@@ -126,16 +110,16 @@ export function SubscriptionComparison() {
             </div>
           ))}
           <p className={styles.comparisonLine}>
-            Runly Pro&apos;s planned monthly price is less than half of each
-            listed price above.
+            Runly Pro&apos;s monthly price is less than half of each listed
+            price above.
           </p>
         </div>
       </div>
 
       <p className={styles.disclosure}>
         US monthly list prices checked September 24, 2026. Products, features,
-        and usage limits differ. Runly pricing is a preview; checkout is not
-        available yet. Sources:{" "}
+        and usage limits differ. Plans are billed monthly for the term selected
+        in the calculator. Sources:{" "}
         {subscriptions.map((subscription, index) => (
           <span key={subscription.name}>
             {index > 0 ? ", " : ""}

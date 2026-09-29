@@ -1,4 +1,4 @@
-import { appOrigin, failure, rateLimit, sameOrigin, session } from "@/lib/api";
+import { appOrigin, failure, sameOrigin, session } from "@/lib/api";
 import { body } from "@/lib/api";
 import { z } from "zod";
 import {
@@ -12,7 +12,6 @@ export async function POST(request: Request) {
   try {
     sameOrigin(request);
     const { user } = await session();
-    await rateLimit(request, "billing-portal", user.id, 10);
     const parsed = z
       .object({
         plan: z

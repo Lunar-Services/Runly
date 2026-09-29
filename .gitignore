@@ -2,6 +2,12 @@
 
 # dependencies
 /node_modules
+/.pnpm-store-repair/
+/.animation-preview/
+/.tools-python/
+/.alpha-frames/
+/.alpha-processing.log
+/.tmp-*.png
 package-lock.json
 /.pnp
 .pnp.*
