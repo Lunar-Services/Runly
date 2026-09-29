@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AppShell } from "./app-shell";
 
 const invoiceMonths = [
@@ -168,6 +169,7 @@ export function PricingPlans() {
 }
 
 export function BillingSettings() {
+  const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
   const [state, setState] = useState<BillingState | null>(null);
   const [message, setMessage] = useState("");
@@ -268,9 +270,7 @@ export function BillingSettings() {
                 {!subscription.cancelAtPeriodEnd && (
                   <button
                     className="button button-outline"
-                    onClick={() =>
-                      window.location.assign("/settings/billing/upgrade")
-                    }
+                    onClick={() => router.push("/settings/billing/upgrade")}
                     disabled={pending}
                   >
                     Upgrade plan

@@ -1116,7 +1116,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               <div className="editor-dropdown project-dropdown">
                 <button
                   type="button"
-                  onClick={() => window.location.assign("/dashboard/projects")}
+                  onClick={() => router.push("/dashboard/projects")}
                 >
                   <PlusCircle size={19} /> New Project…
                 </button>

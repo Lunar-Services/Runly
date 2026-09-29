@@ -62,7 +62,10 @@ export function AffiliateDashboard() {
       setError(result.message || "Couldn't load the affiliate program.");
     }
   }, []);
-  useEffect(() => void load(), [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   async function apply(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -324,7 +327,10 @@ export function AdminAffiliates() {
     if (response.ok) setApplications(result.applications || []);
     else setError(result.message || "Couldn't load affiliate operations.");
   }, []);
-  useEffect(() => void load(), [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
   const visible = useMemo(
     () =>
       filter === "all"
