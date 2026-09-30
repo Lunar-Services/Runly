@@ -1,4 +1,6 @@
 .pricing {
+  --pricing-size: clamp(100px, 19vw, 224px);
+  --pricing-overlap: 88px;
   position: relative;
   max-width: 1120px;
   margin: 0 auto;
@@ -16,7 +18,7 @@
 }
 .heading h2 {
   color: var(--text-main);
-  font: 700 clamp(100px, 19vw, 224px) / 0.95 var(--sans);
+  font: 700 var(--pricing-size) / 0.95 var(--sans);
   letter-spacing: -0.075em;
   margin: 0;
 }
@@ -25,7 +27,24 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   position: relative;
-  margin-top: -88px;
+  margin-top: calc(-1 * var(--pricing-overlap));
+}
+.grid::before {
+  content: "Pricing" / "";
+  position: absolute;
+  top: calc(var(--pricing-overlap) - var(--pricing-size) * 0.95);
+  left: 0;
+  width: 100%;
+  color: var(--text-main);
+  font: 700 var(--pricing-size) / 0.95 var(--sans);
+  letter-spacing: -0.075em;
+  text-align: center;
+  filter: blur(16px);
+  opacity: 0.8;
+  clip-path: inset(
+    calc(var(--pricing-size) * 0.95 - var(--pricing-overlap)) 0 -40px
+  );
+  pointer-events: none;
 }
 .card {
   position: relative;
@@ -76,13 +95,9 @@
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background:
-    radial-gradient(ellipse at 18% 0%, rgb(255 255 255 / 12%), transparent 32%),
-    radial-gradient(ellipse at 82% 100%, rgb(255 255 255 / 9%), transparent 28%);
   box-shadow:
-    inset 0 1px 18px rgb(255 255 255 / 12%),
-    inset 0 -2px 24px rgb(255 255 255 / 9%),
-    inset 0 0 18px rgb(255 255 255 / 4%);
+    inset 0 1px 8px rgb(255 255 255 / 8%),
+    inset 0 -1px 8px rgb(255 255 255 / 5%);
 }
 .card:hover {
   border-color: #777;
@@ -221,6 +236,10 @@
   line-height: 1.6;
 }
 @media (max-width: 760px) {
+  .pricing {
+    --pricing-size: clamp(74px, 18vw, 130px);
+    --pricing-overlap: 10px;
+  }
   .grid {
     grid-template-columns: 1fr;
     max-width: 440px;
@@ -231,7 +250,7 @@
     min-height: 480px;
   }
   .heading h2 {
-    font-size: clamp(74px, 18vw, 130px);
+    font-size: var(--pricing-size);
   }
   .top {
     padding: 28px;
