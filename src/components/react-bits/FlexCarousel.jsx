@@ -486,6 +486,7 @@ const FlexCarousel = ({
     let pos = 0;
     let vel = 0;
     let goal = 0;
+    let lastScrollProgress = null;
     let mode = "spring";
     let wheelAt = 0;
     let raf = 0;
@@ -815,7 +816,12 @@ const FlexCarousel = ({
         animating = true;
       }
       layout = m;
-      if (s.scrollDriven && introState.done) {
+      if (
+        s.scrollDriven &&
+        introState.done &&
+        scrollRef.current !== lastScrollProgress
+      ) {
+        lastScrollProgress = scrollRef.current;
         goal =
           m.centers[0] +
           (m.centers[m.centers.length - 1] - m.centers[0]) *

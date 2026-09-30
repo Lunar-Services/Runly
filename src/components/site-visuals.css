@@ -32,18 +32,14 @@ html[data-theme="dark"] .runly-silk canvas {
   opacity: 0.2;
 }
 .runly-stories {
-  height: 300dvh;
   overflow: clip;
   color: var(--text-main);
   background: var(--surface-page);
 }
-.runly-stories-sticky {
-  position: sticky;
-  top: 95px;
-  height: calc(100dvh - 95px);
+.runly-stories-content {
   display: flex;
   flex-direction: column;
-  padding: 28px 0 20px;
+  padding: clamp(40px, 6vw, 80px) 0 30px;
 }
 .cat-hero .runly-silk {
   left: 50%;
@@ -83,10 +79,12 @@ html[data-theme="dark"] .runly-silk canvas {
   color: var(--text-secondary);
 }
 .runly-stories-carousel {
-  flex: 1;
-  min-height: 220px;
+  height: clamp(350px, 42vw, 560px);
   margin-top: 12px;
   overflow: hidden;
+}
+.runly-stories .flex-carousel__count {
+  display: none;
 }
 .runly-stories .flex-carousel__caption {
   color: var(--text-main);

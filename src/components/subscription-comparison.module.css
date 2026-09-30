@@ -64,7 +64,7 @@
 }
 
 :global(html[data-theme="dark"]) .runlyCard {
-  background: #20231f;
+  background: #000;
   box-shadow: inset 0 1px rgb(255 255 255 / 10%);
 }
 

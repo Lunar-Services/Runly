@@ -62,15 +62,15 @@ html[data-theme="dark"] {
   --surface-page: #000000;
   --surface-card: #000000;
   --surface-raised: #000000;
-  --text-main: #f1f2ed;
-  --text-secondary: #b1b5ab;
+  --text-main: #f2f2f2;
+  --text-secondary: #b3b3b3;
   --border-ui: #303030;
-  --action: #eeefe9;
-  --action-text: #171916;
-  --action-hover: #d4d8cc;
+  --action: #eeeeee;
+  --action-text: #171717;
+  --action-hover: #d7d7d7;
   --header-glass: #000000;
   --marketing-header-frost: #000000;
-  --focus-ui: #c4ceba;
+  --focus-ui: #cccccc;
   --danger-text: #ffb3ad;
   --danger-surface: #3c2121;
   --ink: var(--text-main);
@@ -79,7 +79,7 @@ html[data-theme="dark"] {
   --muted: var(--text-secondary);
   --line: var(--border-ui);
   --soft: var(--surface-raised);
-  --signal: #f1f2ed;
+  --signal: #f2f2f2;
 }
 body::before,
 html[data-theme="dark"] body::before {
@@ -412,7 +412,7 @@ html body .button-light:not(:disabled):hover {
   gap: 30px;
 }
 html[data-theme="dark"] input[type="checkbox"] {
-  accent-color: #dce3d2;
+  accent-color: #dddddd;
 }
 html[data-theme="dark"] body .cat-composer:focus-within {
   border-color: var(--focus-ui);
@@ -576,7 +576,7 @@ html[data-theme="dark"]
     .app-sidebar nav a.active,
     [role="tab"][aria-selected="true"]
   ) {
-  background: #3e4339;
+  background: #202020;
   color: #fff;
 }
 html[data-theme="dark"]
@@ -652,9 +652,9 @@ html[data-theme="dark"]
   color: var(--text-secondary);
 }
 html[data-theme="dark"] body :is(.notice, .draft-banner) {
-  background: #302c1e;
-  color: #eee0ae;
-  border-color: #6b6040;
+  background: #000000;
+  color: #dddddd;
+  border-color: #333333;
 }
 html[data-theme="dark"]
   body
@@ -678,8 +678,8 @@ html[data-theme="dark"] body .danger-badge {
   background: var(--danger-surface);
 }
 html[data-theme="dark"] body .setup-badge {
-  background: #30362a;
-  color: #d9e3ca;
+  background: #000000;
+  color: #dddddd;
 }
 html[data-theme="dark"] body .brand-mark img {
   filter: brightness(0) invert(1);
@@ -703,13 +703,13 @@ html body .app-sidebar .brand-gradient {
   );
 }
 html body .app-sidebar .sign-out-button {
-  background: #eaece5;
-  color: #171916;
-  border-color: #eaece5;
+  background: #eeeeee;
+  color: #171717;
+  border-color: #eeeeee;
 }
 html body .app-sidebar .sign-out-button:hover {
-  background: #d3d8ca;
-  color: #171916;
+  background: #d7d7d7;
+  color: #171717;
 }
 .profile-settings {
   width: min(100%, 950px);
@@ -1015,23 +1015,23 @@ html[data-theme="dark"] .stripe-payment-logo {
   background-image: url("/brand/stripe-wordmark-white.png");
 }
 html[data-theme="dark"] body .button-spinner {
-  border-color: #17191640;
-  border-top-color: #171916;
+  border-color: #17171740;
+  border-top-color: #171717;
 }
 html[data-theme="dark"] body .project-skeleton {
   background: var(--surface-raised);
   border-color: var(--border-ui);
 }
 html[data-theme="dark"] * {
-  scrollbar-color: #686f60 #1b1c1a;
+  scrollbar-color: #666666 #000000;
   scrollbar-width: thin;
 }
 html[data-theme="dark"] *::-webkit-scrollbar-track {
-  background: #1b1c1a;
+  background: #000000;
 }
 html[data-theme="dark"] *::-webkit-scrollbar-thumb {
-  background: #686f60;
-  border-color: #1b1c1a;
+  background: #666666;
+  border-color: #000000;
 }
 html[data-theme="dark"] dialog::backdrop {
   background: #0009;
@@ -1254,4 +1254,34 @@ html[data-theme="dark"] body .admin-shell .app-sidebar {
 }
 html[data-theme="dark"] *::-webkit-scrollbar-track {
   background: #000;
+}
+
+html[data-theme="dark"]
+  body
+  .cat-site
+  :is(
+    .plan-comparison,
+    .plan-switch,
+    .month-stepper,
+    .estimate-checkout,
+    .nav-links.is-open
+  ) {
+  background: #000;
+  color: var(--text-main);
+}
+html[data-theme="dark"]
+  body
+  .cat-site
+  :is(
+    .cat-meet,
+    .cat-pricing,
+    .cat-team,
+    .cat-close,
+    .business-motion,
+    .business-group article,
+    .cat-composer,
+    footer
+  ) {
+  background: #000;
+  border-color: #303030;
 }

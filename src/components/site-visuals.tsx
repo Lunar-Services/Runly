@@ -138,9 +138,12 @@ export function ProductStories() {
       const element = section.current;
       if (!element) return;
       const rect = element.getBoundingClientRect();
-      const distance = rect.height - window.innerHeight;
+      const distance = rect.height + window.innerHeight;
       setProgress(
-        Math.max(0, Math.min(1, (90 - rect.top) / Math.max(1, distance))),
+        Math.max(
+          0,
+          Math.min(1, (window.innerHeight - rect.top) / Math.max(1, distance)),
+        ),
       );
     };
     const schedule = () => {
@@ -161,7 +164,7 @@ export function ProductStories() {
       className="runly-stories"
       aria-labelledby="runly-stories-heading"
     >
-      <div className="runly-stories-sticky">
+      <div className="runly-stories-content">
         <div className="runly-stories-heading">
           <p className="runly-story-eyebrow">FROM THOUGHT TO POSSIBILITY</p>
           <h2 id="runly-stories-heading">Big ideas. A little collaborator.</h2>
@@ -171,7 +174,7 @@ export function ProductStories() {
           <VisualFallback fallback={<StoryFallback progress={progress} />}>
             <FlexCarousel
               items={stories}
-              interactive={false}
+              interactive
               scrollDriven
               scrollProgress={progress}
               preset="ribbon"
@@ -190,7 +193,7 @@ export function ProductStories() {
           </VisualFallback>
         </div>
         <p className="runly-stories-hint">
-          Keep scrolling. See what’s possible.
+          Scroll to explore, or drag the pictures.
         </p>
       </div>
     </section>
