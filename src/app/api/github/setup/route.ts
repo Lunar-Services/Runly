@@ -50,12 +50,10 @@ export async function GET(request: Request) {
       { onConflict: "user_id,installation_id" },
     );
     if (error) throw new ApiError(502, "Couldn't save GitHub installation.");
-    return NextResponse.redirect(
-      new URL("/settings/account?github=connected", origin),
-    );
+    return NextResponse.redirect(new URL("/settings?github=connected", origin));
   } catch {
     return NextResponse.redirect(
-      new URL("/settings/account?github=setup-failed", origin),
+      new URL("/settings?github=setup-failed", origin),
     );
   }
 }

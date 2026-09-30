@@ -23,13 +23,31 @@ export async function POST(request: Request) {
     const { data, error } = await db.auth.linkIdentity({
       provider: "github",
       options: {
-        redirectTo: `${appOrigin(request)}/auth/callback?next=/settings/account`,
+        redirectTo: `${appOrigin(request)}/auth/callback?next=/settings`,
       },
     });
-    if (error || !data?.url)
+    if (error) {
+      const message = error.message.toLowerCase();
+      if (message.includes("manual") && message.includes("link"))
+        throw new ApiError(
+          503,
+          "Enable manual identity linking in Supabase Auth settings, then try again.",
+        );
+      if (message.includes("provider") || message.includes("github"))
+        throw new ApiError(
+          503,
+          "Enable the GitHub OAuth provider in Supabase Auth and verify its OAuth credentials.",
+        );
+      console.error("Supabase GitHub identity linking failed:", error.message);
       throw new ApiError(
         503,
-        "GitHub linking is unavailable. Enable manual identity linking and GitHub OAuth in Supabase.",
+        "Supabase couldn't start GitHub linking. Check the GitHub provider and manual-linking settings in Supabase Auth.",
+      );
+    }
+    if (!data?.url)
+      throw new ApiError(
+        503,
+        "Supabase did not return a GitHub authorization URL.",
       );
     return Response.json({ url: data.url });
   } catch (error) {

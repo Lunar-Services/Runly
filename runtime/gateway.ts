@@ -43,7 +43,14 @@ const db = createClient(
 const openai = new OpenAI({ maxRetries: 0, timeout: 60_000 });
 const workerId = randomUUID();
 const MAX_ACTIVE = Number(process.env.RUNLY_RUNTIME_MAX_ACTIVE || 10);
+const CONTAINER_SIZE = process.env.RUNLY_RUNTIME_CONTAINER_SIZE || "small";
+if (!["small", "medium", "large"].some((size) => size === CONTAINER_SIZE))
+  throw new Error(
+    "RUNLY_RUNTIME_CONTAINER_SIZE must be small, medium, or large",
+  );
 const IDLE_MS = Number(process.env.RUNLY_RUNTIME_IDLE_MINUTES || 5) * 60_000;
+const DISCONNECT_GRACE_MS =
+  Number(process.env.RUNLY_RUNTIME_DISCONNECT_GRACE_MINUTES || 5) * 60_000;
 const TURN_MS = Number(process.env.RUNLY_AGENT_TIMEOUT_MINUTES || 10) * 60_000;
 type Frame = Record<string, unknown> & { type: string };
 type Job = {
@@ -67,6 +74,7 @@ type Room = {
   history: string[];
   historySize: number;
   lastActive: number;
+  bridgeDisconnectedAt?: number;
   busy: boolean;
   appRunning: boolean;
   previewUrl: string | null;
@@ -437,6 +445,7 @@ async function startWorkspace(project: string) {
     metadata: { runly_project: project, runly_generation: generation },
     environment: {
       type: "openai_hosted",
+      ...({ container_size: CONTAINER_SIZE } as Record<string, string>),
       network:
         process.env.RUNLY_RUNTIME_MODE === "mock"
           ? { access: "enabled" }
@@ -475,6 +484,7 @@ async function startWorkspace(project: string) {
     },
   });
   await updateRuntime(project, { session_id: session.id });
+  if (!value.bridge) value.bridgeDisconnectedAt = Date.now();
   // Fail visibly if this hosted environment does not preserve the connector.
   for (let i = 0; i < 120 && !value.bridge; i++) {
     await delay(1000);
@@ -494,7 +504,7 @@ async function startWorkspace(project: string) {
     );
   await updateRuntime(project, { state: "ready", error: null });
 }
-async function stopWorkspace(project: string) {
+async function stopWorkspace(project: string, allowDisconnected = false) {
   const value = room(project);
   const unresolved = await check(
     db
@@ -512,6 +522,9 @@ async function stopWorkspace(project: string) {
   if (value.bridge) {
     await callBridge(project, { op: "snapshot" });
     await value.persistence; // Do not destroy the only copy of pending file edits.
+  } else if (allowDisconnected) {
+    // Drain already received file changes before deleting an unreachable session.
+    await value.persistence;
   }
   const current = await check(
     db
@@ -521,7 +534,7 @@ async function stopWorkspace(project: string) {
       .single(),
   );
   if (current?.session_id) {
-    if (!value.bridge)
+    if (!value.bridge && !allowDisconnected)
       throw new Error(
         "Reconnect the sandbox before stopping it so its files can be backed up.",
       );
@@ -534,6 +547,7 @@ async function stopWorkspace(project: string) {
   }
   value.bridge?.close();
   value.bridge = undefined;
+  value.bridgeDisconnectedAt = undefined;
   value.appRunning = false;
   value.previewUrl = null;
   publish(project, { type: "app.status", running: false, previewUrl: null });
@@ -1518,6 +1532,7 @@ sockets.on("connection", (socket, request) => {
           const value = room(project);
           value.bridge?.close(1000, "Reconnected");
           value.bridge = socket;
+          value.bridgeDisconnectedAt = undefined;
           value.generation = runtime.generation;
           await updateRuntime(project, { state: "ready", error: null });
         } else throw new Error("Invalid connection role");
@@ -1673,6 +1688,7 @@ sockets.on("connection", (socket, request) => {
     value.browsers.delete(socket);
     if (value.bridge === socket) {
       value.bridge = undefined;
+      value.bridgeDisconnectedAt = Date.now();
       failPreviewRequests(project, "Preview workspace disconnected.");
       for (const [id, item] of previewSockets)
         if (item.project === project) {
@@ -1820,7 +1836,10 @@ async function work() {
       .eq("gateway_id", gatewayId)
       .not("session_id", "is", null),
   );
-  for (const row of existing || []) room(row.project_id);
+  for (const row of existing || []) {
+    const value = room(row.project_id);
+    if (!value.bridge) value.bridgeDisconnectedAt = Date.now();
+  }
   let checkedPolicy = 0;
   while (!closing) {
     try {
@@ -1847,11 +1866,31 @@ async function work() {
           value.abort?.abort();
           if (!value.busy) await stopWorkspace(project);
         }
-        if (!value.busy && Date.now() - value.lastActive > IDLE_MS) {
+        const disconnectedTooLong =
+          !value.bridge &&
+          !!value.bridgeDisconnectedAt &&
+          Date.now() - value.bridgeDisconnectedAt > DISCONNECT_GRACE_MS;
+        const idleTooLong = Date.now() - value.lastActive > IDLE_MS;
+        if (!value.busy && (idleTooLong || disconnectedTooLong)) {
           value.busy = true;
           try {
+            const runtime = await check(
+              db
+                .from("project_runtimes")
+                .select("session_id")
+                .eq("project_id", project)
+                .maybeSingle(),
+            );
             if (value.bridge) await stopWorkspace(project);
+            else if (runtime?.session_id && disconnectedTooLong)
+              await stopWorkspace(project, true);
             if (!value.browsers.size) rooms.delete(project);
+          } catch (error) {
+            console.error(
+              `Idle sandbox cleanup deferred for ${project}:`,
+              error instanceof Error ? error.message : error,
+            );
+            if (!value.bridge) value.bridgeDisconnectedAt = Date.now();
           } finally {
             value.busy = false;
             value.lastActive = Date.now();
@@ -1859,9 +1898,10 @@ async function work() {
         }
       }
       if (Date.now() - checkedPolicy > 60_000) checkedPolicy = Date.now();
-    } catch {
+    } catch (error) {
       console.error(
-        "Runtime worker could not reach its control plane; retrying",
+        "Runtime worker could not reach its control plane; retrying:",
+        error instanceof Error ? error.message : error,
       );
     }
     await delay(1000);

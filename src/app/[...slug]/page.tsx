@@ -32,6 +32,8 @@ export default async function CatchAllPage({
   }>;
 }) {
   const { slug } = await params;
+  if (slug.length === 2 && slug[0] === "settings" && slug[1] === "account")
+    redirect("/settings");
   if (!supported.includes(slug[0])) notFound();
   if (slug[0] === "login" || slug[0] === "signup")
     return <AuthPanel mode={slug[0]} />;

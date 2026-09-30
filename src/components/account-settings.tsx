@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, X } from "lucide-react";
 import { AppShell } from "./app-shell";
+import { SettingsTabs } from "./settings-tabs";
 
 export function AccountSettings() {
   const [name, setName] = useState("");
@@ -219,7 +220,8 @@ export function AccountSettings() {
     }
   }
   return (
-    <AppShell title="Account settings">
+    <AppShell title="Account">
+      <SettingsTabs active="account" />
       <section className="panel form-panel profile-settings">
         <form
           className="profile-form"

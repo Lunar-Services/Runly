@@ -8,7 +8,9 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
   const requested = url.searchParams.get("next");
   const next =
-    requested === "/reset-password" || requested === "/settings/account"
+    requested === "/reset-password" ||
+    requested === "/settings" ||
+    requested === "/settings/account"
       ? requested
       : "/dashboard";
   const supabase = await createServerSupabaseClient();

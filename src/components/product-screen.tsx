@@ -13,11 +13,13 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
+import { ThemeToggle } from "./theme-provider";
 import { AppShell } from "./app-shell";
 import { Brand } from "./brand";
 import { BillingSettings, PricingPlans, UpgradePlans } from "./billing";
 import { AdminBillingPlans } from "./admin-billing-plans";
 import { ProjectWorkspace as InteractiveProjectWorkspace } from "./project-workspace";
+import { SettingsTabs } from "./settings-tabs";
 
 export function ProductScreen({ slug }: { slug: string[] }) {
   const route = `/${slug.join("/")}`;
@@ -193,42 +195,23 @@ function SettingsScreen({ route }: { route: string }) {
   if (route.includes("billing")) return <BillingSettings />;
   return (
     <AppShell title="Settings">
-      <div className="settings-grid">
-        <section className="panel form-panel">
-          <h2>Account</h2>
-          <p className="muted">Manage your profile from account settings.</p>
-          <Link className="button button-dark" href="/settings">
-            Open account settings
-          </Link>
-        </section>
-        <section className="panel">
-          <h2>Connected services</h2>
-          <Service name="Supabase" status="Setup required" />
-          <Service name="GitHub App" status="Not connected" />
-          <Service name="OpenAI" status="Not configured" />
-        </section>
-      </div>
+      <SettingsTabs active="settings" />
+      <section className="panel form-panel preferences-panel">
+        <div>
+          <h2>Appearance</h2>
+          <p className="muted">Choose how Runly looks on this device.</p>
+        </div>
+        <label className="preference-row">
+          <span>
+            <strong>Dark theme</strong>
+            <small>Use the dark color theme across Runly.</small>
+          </span>
+          <ThemeToggle />
+        </label>
+      </section>
     </AppShell>
   );
 }
-function Service({ name, status }: { name: string; status: string }) {
-  return (
-    <div className="service-row">
-      <div>
-        <strong>{name}</strong>
-        <small>{status}</small>
-      </div>
-      <button
-        className="button button-outline"
-        disabled
-        title={`${name} configuration is not available until the backend is connected`}
-      >
-        Configure
-      </button>
-    </div>
-  );
-}
-
 function AdminScreen({ route }: { route: string }) {
   const providers = route.includes("ai-providers"),
     legal = route.includes("legal"),

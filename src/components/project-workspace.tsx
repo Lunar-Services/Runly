@@ -1347,15 +1347,13 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                 {!githubLinked && !gitBusy && !gitError && (
                   <>
                     <p>GitHub account not yet linked.</p>
-                    <Link href="/settings/account">
+                    <Link href="/settings">
                       Connect GitHub in Account settings
                     </Link>
                   </>
                 )}
                 {githubLinked && !githubRepos.length && !gitBusy && (
-                  <Link href="/settings/account">
-                    Install the Runly GitHub App
-                  </Link>
+                  <Link href="/settings">Install the Runly GitHub App</Link>
                 )}
                 {githubLinked &&
                   !project.github_repo_id &&
@@ -1494,7 +1492,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                 : runtimeStatus === "Starting"
                   ? "The server is starting or connecting to your workspace."
                   : runtimeStatus === "Idle"
-                    ? "Your workspace is ready. It stops automatically after five minutes without activity."
+                    ? "Your workspace stops automatically after five minutes without activity."
                     : "The workspace is stopped or disconnected. Opening Files, Terminal, or Preview starts it when needed."}
               {runtime.mode === "mock" && " Local mock environment."}
             </span>
@@ -2331,29 +2329,27 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                         <div>
                           <strong>{label}</strong>
                           <span>
-                            {(window.used + window.reserved).toLocaleString()} /{" "}
+                            {window.used.toLocaleString()} /{" "}
                             {window.limit.toLocaleString()} tokens
                           </span>
                         </div>
                         <progress
                           max={window.limit}
-                          value={Math.min(
-                            window.limit,
-                            window.used + window.reserved,
-                          )}
+                          value={Math.min(window.limit, window.used)}
                           aria-label={`${label} usage`}
                         />
                         <small>
-                          {window.used.toLocaleString()} used ·{" "}
-                          {window.reserved.toLocaleString()} reserved by pending
-                          or uncertain tasks
+                          {window.used.toLocaleString()} provider-reported
+                          tokens used · {window.reserved.toLocaleString()} held
+                          for pending or uncertain tasks (not counted as usage)
                         </small>
                       </div>
                     ),
                 )}
                 <p className="muted">
-                  Reservations are estimates. Final usage is recorded when the
-                  provider reports token counts.
+                  Usage counts only tokens reported by OpenAI after a task
+                  finishes. Held tokens temporarily reduce available quota but
+                  are not charged as usage.
                 </p>
               </>
             )}

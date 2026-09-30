@@ -40,8 +40,10 @@ Current deliberate limits:
 - Hosted expiry is provider-controlled. A live terminal WebSocket is not a
   documented provider keepalive. File snapshots are continuously backed up;
   a confirmed expired or failed environment is automatically replaced from the
-  saved snapshot when no provider job has unsettled usage. A merely disconnected
-  environment is held for recovery to avoid discarding unsaved work.
+  saved snapshot when no provider job has unsettled usage. A disconnected
+  environment is held for a five-minute reconnect window; after that, received
+  file changes are drained to Postgres and the provider session is deleted. A
+  persistence error or unsettled provider job defers cleanup and is logged.
 
 ## Processes and scaling
 
@@ -83,7 +85,9 @@ RUNLY_RUNTIME_GATEWAY_ID=primary
 RUNLY_RUNTIME_PORT=4001
 RUNLY_RUNTIME_INTERNAL_URL=http://127.0.0.1:4001
 RUNLY_RUNTIME_MAX_ACTIVE=10
+RUNLY_RUNTIME_CONTAINER_SIZE=small
 RUNLY_RUNTIME_IDLE_MINUTES=5
+RUNLY_RUNTIME_DISCONNECT_GRACE_MINUTES=5
 RUNLY_AGENT_TIMEOUT_MINUTES=10
 RUNLY_SITE_URL=https://your-app.example
 NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
@@ -100,6 +104,9 @@ Configure provider project spending controls and alerts separately: token
 reservations/timeouts are **not a hard monetary cap**, and sandbox runtime has
 separate costs. The existing `daily_spend_limit_cents` is not used to price sandbox
 compute. `runtime_policy` provides global daily task/start admission limits.
+Runly selects OpenAI's `small` container by default (1 vCPU, 1 GB memory); set
+`RUNLY_RUNTIME_CONTAINER_SIZE=medium` or `large` only when a project outgrows it.
+The small tier is the lowest-cost option in the current provider pricing.
 
 ### Local development
 
@@ -124,7 +131,13 @@ compute. `runtime_policy` provides global daily task/start admission limits.
    does not create a subscription or grant free usage.
 
 4. Open a project and switch to Files or Terminal; the server starts its
-   workspace on demand and stops it after five minutes without user activity.
+   workspace on demand and stops it after the configured idle period (five
+   minutes by default). This favors releasing compute promptly during long
+   idle periods. A later restart can incur a new five-minute minimum charge.
+   If the hosted connector disconnects, the gateway allows five minutes for it
+   to reconnect, then saves all received file changes and deletes the provider
+   session. Sessions with unfinished provider usage are retained for operator
+   reconciliation so the task's output and billable usage can still be recovered.
    Use the **Import browser files** button in Files mode to bring over old
    localStorage files; conflicting files are not overwritten and the browser
    backup remains.
