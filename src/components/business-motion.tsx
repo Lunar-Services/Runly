@@ -205,33 +205,29 @@ export function BusinessMotion() {
           </p>
         </div>
       </div>
-      <div className="business-marquee">
-        <div className="business-track">
-          {[0, 1].map((copy) => (
-            <div className="business-group" key={copy} aria-hidden={copy === 1}>
-              {examples.map((example) => (
-                <article key={example.category}>
-                  <span>{example.category}</span>
-                  <h3>{example.title}</h3>
-                  <p>{example.body}</p>
-                </article>
-              ))}
+      <div className="business-grid">
+        {examples.map((example, index) => (
+          <article key={example.category}>
+            <div className="business-card-label">
+              <span>{example.category}</span>
+              <span aria-hidden="true">0{index + 1}</span>
             </div>
-          ))}
-        </div>
+            <h3>{example.title}</h3>
+            <p>{example.body}</p>
+            <ArrowUpRight
+              aria-hidden="true"
+              className="business-card-arrow"
+              size={20}
+            />
+          </article>
+        ))}
       </div>
       <div
         className="business-type"
         aria-label="Turn an idea into your next chapter"
       >
-        <div aria-hidden="true">
-          <span>Turn an idea into your next chapter.  </span>
-          <span>Turn an idea into your next chapter.  </span>
-        </div>
-        <div aria-hidden="true">
-          <span>Make something worth sharing.  </span>
-          <span>Make something worth sharing.  </span>
-        </div>
+        <p>Turn an idea into your next chapter.</p>
+        <span>Make something worth sharing.</span>
       </div>
     </section>
   );

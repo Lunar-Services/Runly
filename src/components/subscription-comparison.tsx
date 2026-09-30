@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
+import { useTheme } from "./theme-provider";
 
-import { TerminalDemo } from "./terminal-demo";
 import styles from "./subscription-comparison.module.css";
 
 const subscriptions = [
@@ -25,6 +26,24 @@ const subscriptions = [
 ];
 
 export function SubscriptionComparison() {
+  const { darkTheme } = useTheme();
+  const film = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const video = film.current;
+    if (!video) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        void video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+    });
+    observer.observe(video);
+    return () => {
+      observer.disconnect();
+      video.pause();
+    };
+  }, [darkTheme]);
   return (
     <section
       className={styles.section}
@@ -43,44 +62,27 @@ export function SubscriptionComparison() {
       <div className={styles.layout}>
         <div className={styles.runlyCard}>
           <div className={styles.visual}>
-            <div className={styles.sequence} aria-hidden="true">
-              <div className={`${styles.scene} ${styles.promptScene}`}>
-                <div className={styles.ideaCard}>
-                  <span className={styles.ideaLabel}>
-                    An idea, in your words
-                  </span>
-                  <p>
-                    <span className={styles.ideaLineOne}>
-                      A small online shop
-                    </span>
-                    <span className={styles.ideaLineTwo}>
-                      for handmade ceramics
-                    </span>
-                  </p>
-                  <span className={styles.ideaArrow}>↗</span>
-                </div>
-              </div>
-              <div className={`${styles.scene} ${styles.terminalScene}`}>
-                <TerminalDemo />
-              </div>
-              <div className={`${styles.scene} ${styles.previewScene}`}>
-                <div className={styles.previewPage}>
-                  <span className={styles.previewTop}>
-                    CLAY & CO. <span>SHOP&nbsp;&nbsp; ABOUT</span>
-                  </span>
-                  <span className={styles.previewKicker}>MADE BY HAND</span>
-                  <strong>Objects for everyday living.</strong>
-                  <span className={styles.previewLine} />
-                  <span className={styles.previewFoot}>
-                    CERAMICS · SMALL BATCH · MADE WITH CARE
-                  </span>
-                </div>
-              </div>
-            </div>
+            <video
+              ref={film}
+              key={darkTheme ? "dark" : "light"}
+              className={styles.productFilm}
+              src={`/videos/idea-to-store-${darkTheme ? "dark" : "light"}.mp4?v=2`}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              poster={
+                darkTheme ? undefined : "/videos/idea-to-store-poster.jpg"
+              }
+              aria-label="An illustrative website taking shape with Runly"
+            />
           </div>
           <div className={styles.runlyDetails}>
             <div>
-              <span className={styles.cardLabel}>Runly Pro</span>
+              <span className={styles.cardLabel}>
+                Runly Pro · Build your next idea
+              </span>
               <strong>
                 $9<span>/ month</span>
               </strong>

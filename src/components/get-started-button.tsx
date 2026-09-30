@@ -15,7 +15,7 @@ function Arrow({ className }: { className: string }) {
 
 export function GetStartedButton() {
   return (
-    <Link className={styles.button} href="/signup">
+    <Link className={`${styles.button} get-started-cta`} href="/signup">
       <Arrow className={styles.arrowStart} />
       <span className={styles.text}>Get started</span>
       <span className={styles.circle} aria-hidden="true" />

@@ -53,7 +53,7 @@ export function CatAnimation({
     >
       <video
         ref={video}
-        poster={`/cats/${name}-alpha.png?v=2`}
+        poster={`/cats/${name}-alpha.png?v=3`}
         width={width}
         height={height}
         autoPlay
@@ -63,7 +63,7 @@ export function CatAnimation({
         preload={hero ? "auto" : "none"}
         aria-label={label}
       >
-        <source src={`/cats/${name}-alpha.webm?v=2`} type="video/webm" />
+        <source src={`/cats/${name}-alpha.webm?v=3`} type="video/webm" />
         {label}
       </video>
     </div>
