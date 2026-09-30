@@ -1,9 +1,10 @@
 import { z } from "zod";
 import {
-  ApiError,
   adminClient,
+  ApiError,
   body,
   failure,
+  rateLimit,
   sameOrigin,
   session,
 } from "@/lib/api";
@@ -19,7 +20,9 @@ export async function GET(
     const { db, user } = await session();
     const { data: project, error } = await db
       .from("projects")
-      .select("id,name,status,created_at,updated_at,owner_id")
+      .select(
+        "id,name,status,github_repo_id,github_branch,created_at,updated_at",
+      )
       .eq("id", projectId)
       .maybeSingle();
     if (error) throw new ApiError(502, "Couldn't load this project.");
@@ -77,14 +80,7 @@ export async function GET(
       throw new ApiError(502, "Couldn't load the project conversation.");
     return Response.json(
       {
-        project: {
-          id: project.id,
-          name: project.name,
-          status: project.status,
-          created_at: project.created_at,
-          updated_at: project.updated_at,
-          canManage: project.owner_id === user.id,
-        },
+        project,
         userName:
           profile?.display_name?.trim() || user.email?.split("@")[0] || "there",
         conversationId: conversation?.id || null,
@@ -107,100 +103,25 @@ export async function PATCH(
 ) {
   try {
     sameOrigin(request);
-    const { db, user } = await session();
     const { projectId } = await params;
     if (!z.string().uuid().safeParse(projectId).success)
       throw new ApiError(400, "Invalid project.");
+    const { user } = await session();
+    await rateLimit(request, "project-rename", user.id, 10);
     const input = z
       .object({ name: z.string().trim().min(1).max(160) })
-      .strict()
-      .safeParse(await body(request, 2048));
-    if (!input.success)
-      throw new ApiError(
-        400,
-        "Enter a project name between 1 and 160 characters.",
-      );
-    const { data: project, error } = await db
+      .safeParse(await body(request, 4096));
+    if (!input.success) throw new ApiError(400, "Enter a project name.");
+    const { data: project, error } = await adminClient()
       .from("projects")
       .update({ name: input.data.name, updated_at: new Date().toISOString() })
       .eq("id", projectId)
       .eq("owner_id", user.id)
-      .select("id,name,status,updated_at")
+      .select("id,name")
       .maybeSingle();
-    if (error)
-      throw new ApiError(502, "Couldn't rename the project. Please retry.");
-    if (!project)
-      throw new ApiError(404, "Project not found or you aren't its owner.");
-    return Response.json(
-      { project },
-      { headers: { "Cache-Control": "no-store" } },
-    );
-  } catch (error) {
-    return failure(error);
-  }
-}
-
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ projectId: string }> },
-) {
-  try {
-    sameOrigin(request);
-    const { db, user } = await session();
-    const { projectId } = await params;
-    if (!z.string().uuid().safeParse(projectId).success)
-      throw new ApiError(400, "Invalid project.");
-    const { data: project, error: lookupError } = await db
-      .from("projects")
-      .select("id")
-      .eq("id", projectId)
-      .eq("owner_id", user.id)
-      .maybeSingle();
-    if (lookupError)
-      throw new ApiError(502, "Couldn't check this project. Please retry.");
-    if (!project)
-      throw new ApiError(404, "Project not found or you aren't its owner.");
-    // Don't discard an active sandbox or in-flight usage accounting.
-    const admin = adminClient();
-    const [runtime, jobs] = await Promise.all([
-      admin
-        .from("project_runtimes")
-        .select("state,session_id")
-        .eq("project_id", projectId)
-        .maybeSingle(),
-      admin
-        .from("runtime_jobs")
-        .select("id")
-        .eq("project_id", projectId)
-        .in("state", ["queued", "running"])
-        .limit(1),
-    ]);
-    if (runtime.error || jobs.error)
-      throw new ApiError(
-        503,
-        "Couldn't verify project activity. Please retry.",
-      );
-    if (
-      runtime.data?.session_id ||
-      ["starting", "ready"].includes(runtime.data?.state || "") ||
-      jobs.data?.length
-    )
-      throw new ApiError(
-        409,
-        "Stop this project's workspace and wait for its tasks to finish before deleting it.",
-      );
-    const { data, error } = await db
-      .from("projects")
-      .delete()
-      .eq("id", projectId)
-      .eq("owner_id", user.id)
-      .select("id")
-      .maybeSingle();
-    if (error)
-      throw new ApiError(502, "Couldn't delete the project. Please retry.");
-    if (!data)
-      throw new ApiError(404, "Project not found or you aren't its owner.");
-    return new Response(null, { status: 204 });
+    if (error) throw new ApiError(502, "Couldn't rename this project.");
+    if (!project) throw new ApiError(404, "Project not found.");
+    return Response.json({ project });
   } catch (error) {
     return failure(error);
   }

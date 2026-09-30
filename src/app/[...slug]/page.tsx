@@ -34,12 +34,17 @@ export default async function CatchAllPage({
   }>;
 }) {
   const { slug } = await params;
+  if (slug.length === 2 && slug[0] === "settings" && slug[1] === "account")
+    redirect("/settings");
   if (!supported.includes(slug[0])) notFound();
   if (slug[0] === "login" || slug[0] === "signup") {
     const query = await searchParams;
     const requestedNext = typeof query.next === "string" ? query.next : "";
     const safeNext =
-      requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+      requestedNext.startsWith("/") &&
+      !requestedNext.startsWith("//") &&
+      !requestedNext.includes("\\") &&
+      !/[\u0000-\u001f\u007f]/.test(requestedNext)
         ? requestedNext
         : "";
     const db = await createServerSupabaseClient();

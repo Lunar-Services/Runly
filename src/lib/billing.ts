@@ -89,11 +89,74 @@ export async function getOrCreateStripeCustomer(userId: string, email: string) {
   throw new Error("Couldn't create billing account.");
 }
 
+async function activeSubscriptionForUser(userId: string) {
+  const { data, error } = await adminClient()
+    .from("plan_entitlements")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("active", true)
+    .limit(1);
+  if (error) throw new Error("Couldn't load your subscription.");
+  return data.length > 0;
+}
+
+async function resumePendingCheckout(userId: string, planId: string) {
+  const db = adminClient();
+  const { data: attempt, error } = await db
+    .from("billing_attempts")
+    .select(
+      "id,plan_id,stripe_checkout_session_id,stripe_customer_id,created_at",
+    )
+    .eq("user_id", userId)
+    .eq("status", "PENDING")
+    .maybeSingle();
+  if (error) throw new Error("Couldn't load checkout state.");
+  if (!attempt) return null;
+
+  const stripe = getStripe();
+  let checkout: Stripe.Checkout.Session | undefined;
+  if (attempt.stripe_checkout_session_id) {
+    checkout = await stripe.checkout.sessions.retrieve(
+      attempt.stripe_checkout_session_id,
+    );
+  } else if (attempt.stripe_customer_id) {
+    const sessions = await stripe.checkout.sessions.list({
+      customer: attempt.stripe_customer_id,
+      limit: 100,
+    });
+    checkout = sessions.data.find(
+      (session) => session.metadata?.runly_billing_attempt_id === attempt.id,
+    );
+  }
+
+  if (!checkout) {
+    // The first request may still be creating its Stripe session. Only retire
+    // an orphan after that request has had ample time to finish.
+    if (Date.now() - Date.parse(attempt.created_at) < 5 * 60_000)
+      throw new CheckoutPendingError(
+        "Checkout is opening. Please try again shortly.",
+      );
+    const { error: retireError } = await db
+      .from("billing_attempts")
+      .update({ status: "FAILED", next_reconcile_at: null })
+      .eq("id", attempt.id)
+      .eq("status", "PENDING");
+    if (retireError) throw new Error("Couldn't reset checkout state.");
+    return null;
+  }
+
+  if (checkout.status === "open" && checkout.url && attempt.plan_id === planId)
+    return checkout.url;
+  if (checkout.status === "open")
+    checkout = await stripe.checkout.sessions.expire(checkout.id);
+  await syncCheckoutAttempt(checkout, Math.floor(Date.now() / 1000));
+  return null;
+}
+
 export async function createCheckout(
   userId: string,
   email: string,
   planId: string,
-  months: number,
   origin: string,
 ) {
   const db = adminClient();
@@ -107,14 +170,13 @@ export async function createCheckout(
     throw new BillingReconciliationUnavailableError(
       "Stripe could not confirm your existing subscription.",
     );
-  const { data: activeEntitlements, error } = await db
-    .from("plan_entitlements")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("active", true)
-    .limit(1);
-  if (error) throw new Error("Couldn't load your subscription.");
-  if (activeEntitlements.length)
+  if (await activeSubscriptionForUser(userId))
+    throw new Error(
+      "You already have an active subscription. Use the billing portal to change your plan.",
+    );
+  const resumedUrl = await resumePendingCheckout(userId, planId);
+  if (resumedUrl) return resumedUrl;
+  if (await activeSubscriptionForUser(userId))
     throw new Error(
       "You already have an active subscription. Use the billing portal to change your plan.",
     );
@@ -137,8 +199,11 @@ export async function createCheckout(
     .select("id")
     .single();
   if (attemptError) {
-    if (attemptError.code === "23505")
-      throw new CheckoutPendingError("A checkout is already in progress.");
+    if (attemptError.code === "23505") {
+      const concurrentUrl = await resumePendingCheckout(userId, planId);
+      if (concurrentUrl) return concurrentUrl;
+      throw new CheckoutPendingError("Checkout is updating. Please try again.");
+    }
     throw new Error("Couldn't start checkout.");
   }
   let customerId: string;
@@ -180,13 +245,9 @@ export async function createCheckout(
             runly_user_id: userId,
             runly_plan: planId,
             runly_billing_attempt_id: attempt.id,
-            runly_months: String(months),
           },
         },
-        metadata: {
-          runly_billing_attempt_id: attempt.id,
-          runly_months: String(months),
-        },
+        metadata: { runly_billing_attempt_id: attempt.id },
       },
       { idempotencyKey: `runly-checkout-${attempt.id}` },
     );
@@ -417,32 +478,11 @@ export async function syncCheckoutAttempt(
     typeof checkout.subscription === "string"
       ? checkout.subscription
       : checkout.subscription?.id;
-  if (subscriptionId) {
-    const months = Number(checkout.metadata?.runly_months);
-    if (Number.isInteger(months) && months >= 1 && months <= 12) {
-      const stripe = getStripe();
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-      const end = new Date(subscription.start_date * 1000);
-      end.setUTCMonth(end.getUTCMonth() + months);
-      const cancelAt = Math.floor(end.getTime() / 1000);
-      const updated =
-        subscription.cancel_at === cancelAt
-          ? subscription
-          : await stripe.subscriptions.update(subscriptionId, {
-              cancel_at: cancelAt,
-              metadata: {
-                ...subscription.metadata,
-                runly_months: String(months),
-              },
-            });
-      await syncStripeSubscription(updated, eventCreated);
-    } else {
-      await syncStripeSubscriptionById(subscriptionId, eventCreated);
-    }
-  }
+  if (subscriptionId)
+    await syncStripeSubscriptionById(subscriptionId, eventCreated);
   const completed = checkout.status === "complete";
   const expired = checkout.status === "expired";
-  await db
+  const { error: updateError } = await db
     .from("billing_attempts")
     .update({
       stripe_checkout_session_id: checkout.id,
@@ -459,6 +499,7 @@ export async function syncCheckoutAttempt(
     })
     .eq("id", attempt.id)
     .eq("user_id", attempt.user_id);
+  if (updateError) throw new Error("Couldn't save checkout state.");
 }
 
 export async function syncStripeInvoice(

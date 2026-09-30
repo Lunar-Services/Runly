@@ -4,7 +4,12 @@ import {
   type ServerResponse,
 } from "node:http";
 import { readFile } from "node:fs/promises";
-import { randomBytes, randomUUID } from "node:crypto";
+import {
+  createHmac,
+  randomBytes,
+  randomUUID,
+  timingSafeEqual,
+} from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { WebSocket, WebSocketServer } from "ws";
 import { createClient } from "@supabase/supabase-js";
@@ -20,6 +25,11 @@ import {
 // A stable gateway ID is a shard. Existing projects keep their assignment when
 // gateways are added. Run one active process per ID; use the proxy for TLS.
 const gatewayId = process.env.RUNLY_RUNTIME_GATEWAY_ID || "primary";
+if (
+  process.env.NODE_ENV === "production" &&
+  process.env.RUNLY_RUNTIME_MODE === "mock"
+)
+  throw new Error("Mock runtime is not allowed in production");
 const gateway = gateways().find((entry) => entry.id === gatewayId);
 const secret = process.env.RUNLY_RUNTIME_SECRET || "";
 if (!gateway || secret.length < 32)
@@ -33,7 +43,14 @@ const db = createClient(
 const openai = new OpenAI({ maxRetries: 0, timeout: 60_000 });
 const workerId = randomUUID();
 const MAX_ACTIVE = Number(process.env.RUNLY_RUNTIME_MAX_ACTIVE || 10);
+const CONTAINER_SIZE = process.env.RUNLY_RUNTIME_CONTAINER_SIZE || "small";
+if (!["small", "medium", "large"].some((size) => size === CONTAINER_SIZE))
+  throw new Error(
+    "RUNLY_RUNTIME_CONTAINER_SIZE must be small, medium, or large",
+  );
 const IDLE_MS = Number(process.env.RUNLY_RUNTIME_IDLE_MINUTES || 5) * 60_000;
+const DISCONNECT_GRACE_MS =
+  Number(process.env.RUNLY_RUNTIME_DISCONNECT_GRACE_MINUTES || 5) * 60_000;
 const TURN_MS = Number(process.env.RUNLY_AGENT_TIMEOUT_MINUTES || 10) * 60_000;
 type Frame = Record<string, unknown> & { type: string };
 type Job = {
@@ -43,11 +60,6 @@ type Job = {
   conversation_id: string | null;
   input: string;
   kind: "start" | "stop" | "agent";
-};
-type AgentTelemetry = {
-  toolsUsed: string[];
-  toolCalls: number;
-  commandsRun: number;
 };
 type File = {
   path: string;
@@ -62,6 +74,7 @@ type Room = {
   history: string[];
   historySize: number;
   lastActive: number;
+  bridgeDisconnectedAt?: number;
   busy: boolean;
   appRunning: boolean;
   previewUrl: string | null;
@@ -83,7 +96,36 @@ type PreviewRequest = {
 };
 const rooms = new Map<string, Room>();
 const previewRequests = new Map<string, PreviewRequest>();
+const previewSockets = new Map<
+  string,
+  {
+    project: string;
+    socket: WebSocket;
+    ready: boolean;
+    queued: { data: string; binary: boolean }[];
+  }
+>();
 const previewDomain = process.env.RUNLY_PREVIEW_DOMAIN?.toLowerCase() || "";
+const sandboxDomains = [
+  new URL(gateway!.url).hostname.toLowerCase(),
+  "registry.npmjs.org",
+  "api.openai.com",
+  "codex-cloud-environments.chatgpt.com",
+  ...(process.env.RUNLY_SANDBOX_ALLOWED_DOMAINS || "")
+    .split(",")
+    .map((name) => name.trim().toLowerCase())
+    .filter(Boolean),
+];
+const allowedSandboxDomains = [...new Set(sandboxDomains)];
+if (
+  allowedSandboxDomains.length > 100 ||
+  (allowedSandboxDomains.some(
+    (name) =>
+      !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(name),
+  ) &&
+    process.env.RUNLY_RUNTIME_MODE !== "mock")
+)
+  throw new Error("Configure valid sandbox network allowlist domains");
 if (
   !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(
     previewDomain,
@@ -214,6 +256,7 @@ async function updateRuntime(project: string, values: Record<string, unknown>) {
 function callBridge(
   project: string,
   command: Record<string, unknown>,
+  timeoutMs = 30_000,
 ): Promise<unknown> {
   const value = room(project);
   if (!value.bridge || value.bridge.readyState !== WebSocket.OPEN)
@@ -229,7 +272,7 @@ function callBridge(
       reject(
         new Error("Workspace operation timed out; reload before retrying."),
       );
-    }, 30_000);
+    }, timeoutMs);
     value.pending.set(id, { resolve, reject, timer });
     send(value.bridge!, { ...command, type: "command", id });
   });
@@ -291,12 +334,52 @@ async function startWorkspace(project: string) {
   if (!current) throw new Error("Workspace record missing");
   if (current.session_id) {
     // A gateway restart may simply have interrupted the connector. Give it time
-    // to reconnect before replacing compute. Never overwrite a live workspace.
-    for (let i = 0; i < 10 && !value.bridge; i++) await delay(1000);
+    // to reconnect before inspecting the hosted environment.
+    for (let i = 0; i < 30 && !value.bridge; i++) await delay(1000);
     if (value.bridge) return;
-    throw new Error(
-      "The existing sandbox is disconnected. Restore gateway connectivity before restarting; it may contain unsaved files.",
+    const unresolved = await check(
+      db
+        .from("runtime_jobs")
+        .select("id")
+        .eq("project_id", project)
+        .eq("provider_submitted", true)
+        .is("usage", null)
+        .limit(1),
     );
+    if (unresolved?.length)
+      throw new Error(
+        "A prior agent task needs usage reconciliation before this workspace can be recovered.",
+      );
+    let replaceable = false;
+    try {
+      const oldSession = await openai.beta.agents.sessions.retrieve(
+        current.session_id,
+      );
+      const environmentId =
+        oldSession.environment && "id" in oldSession.environment
+          ? oldSession.environment.id
+          : null;
+      if (environmentId) {
+        const environment =
+          await openai.beta.agents.environments.retrieve(environmentId);
+        replaceable = ["expired", "failed"].includes(environment.status);
+      }
+      if (oldSession.status === "failed") replaceable = true;
+    } catch (error) {
+      if (error instanceof OpenAI.APIError && error.status === 404)
+        replaceable = true;
+      else throw error;
+    }
+    if (!replaceable)
+      throw new Error(
+        "The hosted sandbox may still contain unsaved work. Restore its connector before replacing it.",
+      );
+    // Only a confirmed terminal environment can be replaced from the durable
+    // source snapshot. Generation and bridge credentials rotate below.
+    await updateRuntime(project, { session_id: null, state: "stopped" });
+    value.generation = undefined;
+    value.appRunning = false;
+    value.previewUrl = null;
   }
   const active = await check(
     db
@@ -312,16 +395,19 @@ async function startWorkspace(project: string) {
     throw new Error(
       "Runtime capacity reached. Stop another workspace or retry later.",
     );
+  const savedFiles = await check(
+    db
+      .from("runtime_files")
+      .select("path,kind,content,hash")
+      .eq("project_id", project)
+      .limit(1000),
+  );
+  // Historical snapshots may contain names that are now excluded. Keep those
+  // records in storage for operator review, but never restore them into code.
   const files = z
     .array(fileSchema)
     .parse(
-      await check(
-        db
-          .from("runtime_files")
-          .select("path,kind,content,hash")
-          .eq("project_id", project)
-          .limit(1000),
-      ),
+      (savedFiles || []).filter((file) => validWorkspacePath(file.path)),
     ) as File[];
   if (
     files.reduce((size, file) => size + Buffer.byteLength(file.content), 0) >
@@ -336,7 +422,6 @@ async function startWorkspace(project: string) {
   await updateRuntime(project, {
     state: "starting",
     error: null,
-    sandbox_started_at: new Date().toISOString(),
     generation,
     session_id: null,
     bridge_token_hash: digest(token),
@@ -360,7 +445,11 @@ async function startWorkspace(project: string) {
     metadata: { runly_project: project, runly_generation: generation },
     environment: {
       type: "openai_hosted",
-      network: { access: "enabled" },
+      ...({ container_size: CONTAINER_SIZE } as Record<string, string>),
+      network:
+        process.env.RUNLY_RUNTIME_MODE === "mock"
+          ? { access: "enabled" }
+          : { access: "restricted", allowed_domains: allowedSandboxDomains },
       packages: { python: ["websocket-client==1.8.0"] },
       env: {
         RUNLY_GATEWAY_URL: gateway!.url,
@@ -395,6 +484,7 @@ async function startWorkspace(project: string) {
     },
   });
   await updateRuntime(project, { session_id: session.id });
+  if (!value.bridge) value.bridgeDisconnectedAt = Date.now();
   // Fail visibly if this hosted environment does not preserve the connector.
   for (let i = 0; i < 120 && !value.bridge; i++) {
     await delay(1000);
@@ -414,7 +504,7 @@ async function startWorkspace(project: string) {
     );
   await updateRuntime(project, { state: "ready", error: null });
 }
-async function stopWorkspace(project: string) {
+async function stopWorkspace(project: string, allowDisconnected = false) {
   const value = room(project);
   const unresolved = await check(
     db
@@ -432,6 +522,9 @@ async function stopWorkspace(project: string) {
   if (value.bridge) {
     await callBridge(project, { op: "snapshot" });
     await value.persistence; // Do not destroy the only copy of pending file edits.
+  } else if (allowDisconnected) {
+    // Drain already received file changes before deleting an unreachable session.
+    await value.persistence;
   }
   const current = await check(
     db
@@ -441,7 +534,7 @@ async function stopWorkspace(project: string) {
       .single(),
   );
   if (current?.session_id) {
-    if (!value.bridge)
+    if (!value.bridge && !allowDisconnected)
       throw new Error(
         "Reconnect the sandbox before stopping it so its files can be backed up.",
       );
@@ -454,19 +547,19 @@ async function stopWorkspace(project: string) {
   }
   value.bridge?.close();
   value.bridge = undefined;
+  value.bridgeDisconnectedAt = undefined;
   value.appRunning = false;
   value.previewUrl = null;
   publish(project, { type: "app.status", running: false, previewUrl: null });
   await updateRuntime(project, {
     state: "stopped",
     session_id: null,
-    sandbox_started_at: null,
     bridge_token_hash: null,
     preview_token_hash: null,
     error: null,
   });
 }
-async function runAgent(job: Job): Promise<AgentTelemetry> {
+async function runAgent(job: Job) {
   const value = room(job.project_id);
   await startWorkspace(job.project_id);
   const runtime = await check(
@@ -508,9 +601,6 @@ async function runAgent(job: Job): Promise<AgentTelemetry> {
   let turnId = "",
     completed = false;
   const parts = new Map<string, string>();
-  const toolsUsed = new Set<string>();
-  let toolCalls = 0;
-  let commandsRun = 0;
   let publishedAt = 0;
   try {
     // Connect before submitting input; the provider stream does not replay events.
@@ -628,16 +718,6 @@ async function runAgent(job: Job): Promise<AgentTelemetry> {
     const answers: string[] = [];
     for await (const item of items) {
       if (item.turn_id !== turnId) break;
-      if (item.type.endsWith("_call")) {
-        toolCalls += 1;
-        const toolName =
-          "name" in item && typeof item.name === "string"
-            ? item.name
-            : item.type;
-        toolsUsed.add(toolName);
-        if (/command|shell|terminal|exec_command/i.test(toolName))
-          commandsRun += 1;
-      }
       if (
         item.type === "message" &&
         item.role === "assistant" &&
@@ -689,7 +769,6 @@ async function runAgent(job: Job): Promise<AgentTelemetry> {
     );
     await callBridge(job.project_id, { op: "snapshot" });
     await value.persistence;
-    return { toolsUsed: [...toolsUsed], toolCalls, commandsRun };
   } catch (error) {
     // A disconnected client/stream is not cancellation. Explicitly stop the turn.
     await openai.beta.agents.sessions.events
@@ -734,103 +813,6 @@ async function runAgent(job: Job): Promise<AgentTelemetry> {
   } finally {
     clearTimeout(deadline);
     value.abort = undefined;
-  }
-}
-
-async function logAiRequest(
-  job: Job,
-  success: boolean,
-  error: string | null,
-  startedAt: number,
-  beforeFiles: Map<string, string>,
-  telemetry: AgentTelemetry,
-) {
-  if (job.kind !== "agent") return;
-  try {
-    const [{ data: record }, { data: runtime }, { data: files }] =
-      await Promise.all([
-        db
-          .from("runtime_jobs")
-          .select("usage,provider_turn_id")
-          .eq("id", job.id)
-          .single(),
-        db
-          .from("project_runtimes")
-          .select("session_id,sandbox_started_at,cpu_percent,ram_mb")
-          .eq("project_id", job.project_id)
-          .maybeSingle(),
-        db
-          .from("runtime_files")
-          .select("path,hash")
-          .eq("project_id", job.project_id),
-      ]);
-    const usage = (record?.usage || {}) as {
-      input_tokens?: number;
-      output_tokens?: number;
-    };
-    const inputTokens = Number(usage.input_tokens || 0);
-    const outputTokens = Number(usage.output_tokens || 0);
-    const inputRate = Number(
-      process.env.OPENAI_INPUT_COST_MICROS_PER_MILLION || 0,
-    );
-    const outputRate = Number(
-      process.env.OPENAI_OUTPUT_COST_MICROS_PER_MILLION || 0,
-    );
-    const aiCost = Math.round(
-      (inputTokens * inputRate + outputTokens * outputRate) / 1_000_000,
-    );
-    const elapsed = Math.max(0, Date.now() - startedAt);
-    const sandboxRate = Number(
-      process.env.RUNLY_SANDBOX_COST_MICROS_PER_MINUTE || 0,
-    );
-    const sandboxCost = Math.round((elapsed / 60_000) * sandboxRate);
-    const afterFiles = new Map(
-      (files || []).map((file) => [file.path as string, file.hash as string]),
-    );
-    let filesEdited = 0;
-    for (const [path, hash] of afterFiles)
-      if (beforeFiles.get(path) !== hash) filesEdited += 1;
-    for (const path of beforeFiles.keys())
-      if (!afterFiles.has(path)) filesEdited += 1;
-    await db.from("ai_request_logs").upsert(
-      {
-        request_id: job.id,
-        user_id: job.actor_id,
-        project_id: job.project_id,
-        provider_request_id: record?.provider_turn_id || null,
-        input_tokens: inputTokens,
-        output_tokens: outputTokens,
-        total_tokens: inputTokens + outputTokens,
-        ai_cost_micros: aiCost,
-        sandbox_cost_micros: sandboxCost,
-        latency_ms: elapsed,
-        tools_used: telemetry.toolsUsed,
-        tool_calls: telemetry.toolCalls,
-        files_edited: filesEdited,
-        commands_run: telemetry.commandsRun,
-        agent_retries: 0,
-        success,
-        rate_limited: !!error && /429|rate.?limit/i.test(error),
-        error,
-        sandbox_session_id: runtime?.session_id || null,
-        sandbox_runtime_ms: runtime?.sandbox_started_at
-          ? Math.max(0, Date.now() - Date.parse(runtime.sandbox_started_at))
-          : elapsed,
-        cpu_percent: runtime?.cpu_percent ?? null,
-        ram_mb: runtime?.ram_mb ?? null,
-      },
-      { onConflict: "request_id" },
-    );
-    if (record?.provider_turn_id)
-      await db.from("provider_cost_events").upsert(
-        {
-          provider_request_id: record.provider_turn_id,
-          estimated_cost_micros: aiCost,
-        },
-        { onConflict: "provider_request_id" },
-      );
-  } catch (telemetryError) {
-    console.error("Failed to persist AI request telemetry", telemetryError);
   }
 }
 
@@ -881,6 +863,8 @@ const requestHopHeaders = new Set([
   "upgrade",
   "host",
   "content-length",
+  "forwarded",
+  "x-real-ip",
 ]);
 const responseHopHeaders = new Set([
   ...requestHopHeaders,
@@ -1034,7 +1018,12 @@ async function proxyPreview(
   }
   const headers: [string, string][] = [];
   for (const [name, value] of Object.entries(request.headers)) {
-    if (!value || requestHopHeaders.has(name.toLowerCase())) continue;
+    if (
+      !value ||
+      requestHopHeaders.has(name.toLowerCase()) ||
+      name.toLowerCase().startsWith("x-forwarded-")
+    )
+      continue;
     for (const item of Array.isArray(value) ? value : [value])
       headers.push([name, item]);
   }
@@ -1070,7 +1059,332 @@ async function proxyPreview(
     plainResponse(response, 503, "Could not reach the preview workspace.");
   }
 }
+async function attachPreviewSocket(
+  socket: WebSocket,
+  request: IncomingMessage,
+) {
+  socket.pause();
+  const host = (request.headers.host || "").split(":")[0].toLowerCase();
+  const suffix = `.${previewDomain}`;
+  const token = host.slice(0, -suffix.length);
+  if (
+    !hasLease ||
+    closing ||
+    !host.endsWith(suffix) ||
+    !/^[a-f0-9]{48}$/.test(token) ||
+    !request.url?.startsWith("/") ||
+    request.url.startsWith("//") ||
+    request.url.length > 4096 ||
+    request.headers.origin !== `https://${host}` ||
+    previewSockets.size >= 64
+  ) {
+    socket.close(1008, "Invalid preview connection");
+    return;
+  }
+  try {
+    const runtime = await check(
+      db
+        .from("project_runtimes")
+        .select("project_id,generation,state")
+        .eq("preview_token_hash", digest(token))
+        .eq("gateway_id", gatewayId)
+        .maybeSingle(),
+    );
+    const value = runtime ? rooms.get(runtime.project_id) : undefined;
+    if (
+      !runtime ||
+      runtime.state !== "ready" ||
+      !value?.appRunning ||
+      value.generation !== runtime.generation ||
+      value.bridge?.readyState !== WebSocket.OPEN
+    ) {
+      socket.close(1013, "Preview is unavailable");
+      return;
+    }
+    const id = randomUUID();
+    previewSockets.set(id, {
+      project: runtime.project_id,
+      socket,
+      ready: false,
+      queued: [],
+    });
+    const headers: [string, string][] = [];
+    for (const name of ["cookie", "user-agent", "sec-websocket-protocol"])
+      if (typeof request.headers[name] === "string")
+        headers.push([name, request.headers[name]]);
+    send(value.bridge, {
+      type: "preview.ws.open",
+      id,
+      path: request.url,
+      host,
+      origin: request.headers.origin,
+      headers,
+    });
+    socket.on("message", (data, binary) => {
+      const bytes = Buffer.isBuffer(data)
+        ? data
+        : data instanceof ArrayBuffer
+          ? Buffer.from(data)
+          : Array.isArray(data)
+            ? Buffer.concat(data)
+            : Buffer.from(data);
+      if (
+        bytes.length > 1024 * 1024 ||
+        socket.bufferedAmount > 2 * 1024 * 1024
+      ) {
+        socket.close(1009, "Preview message too large");
+        return;
+      }
+      const item = previewSockets.get(id);
+      if (item?.socket !== socket) return;
+      const payload = { data: bytes.toString("base64"), binary };
+      if (!item.ready) {
+        if (item.queued.length >= 32) socket.close(1013, "Preview is busy");
+        else item.queued.push(payload);
+      } else send(value.bridge!, { type: "preview.ws.data", id, ...payload });
+    });
+    socket.on("close", () => {
+      previewSockets.delete(id);
+      send(value.bridge!, { type: "preview.ws.close", id });
+    });
+    socket.on("error", () => socket.close());
+    socket.resume();
+  } catch {
+    socket.close(1013, "Preview authorization unavailable");
+  }
+}
+const internalNonces = new Map<string, number>();
+const internalGitSchema = z.object({
+  project: z.string().uuid(),
+  user: z.string().uuid(),
+  action: z.enum([
+    "status",
+    "link",
+    "restore",
+    "checkout",
+    "branch",
+    "pull",
+    "push",
+  ]),
+  branch: z.string().max(100).optional(),
+  url: z.string().url().max(300).optional(),
+  token: z.string().max(4096).optional(),
+  author: z.string().max(120).optional(),
+  email: z.email().max(254).optional(),
+  message: z.string().max(120).optional(),
+});
+const internalFilesSchema = z.discriminatedUnion("action", [
+  z.object({
+    project: z.string().uuid(),
+    user: z.string().uuid(),
+    action: z.literal("snapshot"),
+  }),
+  z.object({
+    project: z.string().uuid(),
+    user: z.string().uuid(),
+    action: z.literal("replace"),
+    expected: z
+      .array(
+        z.object({
+          path: pathSchema,
+          kind: z.enum(["file", "folder"]),
+          hash: z.string().max(64),
+        }),
+      )
+      .max(1000),
+    files: z.array(fileSchema).max(1000),
+  }),
+]);
+async function handleInternalFiles(
+  request: IncomingMessage,
+  response: ServerResponse,
+) {
+  try {
+    if (
+      !hasLease ||
+      closing ||
+      !["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(
+        request.socket.remoteAddress || "",
+      )
+    )
+      throw new Error("Private workspace endpoint unavailable");
+    const stamp = Number(request.headers["x-runly-timestamp"]);
+    const nonce = String(request.headers["x-runly-nonce"] || "");
+    const signature = Buffer.from(
+      String(request.headers["x-runly-signature"] || ""),
+      "hex",
+    );
+    if (
+      !Number.isFinite(stamp) ||
+      Math.abs(Date.now() - stamp) > 30_000 ||
+      !/^[a-f0-9-]{36}$/.test(nonce) ||
+      internalNonces.has(nonce)
+    )
+      throw new Error("Invalid private request");
+    const chunks: Buffer[] = [];
+    let length = 0;
+    for await (const part of request) {
+      const chunk = Buffer.from(part);
+      length += chunk.length;
+      if (length > 10 * 1024 * 1024)
+        throw new Error("Workspace request too large");
+      chunks.push(chunk);
+    }
+    const raw = Buffer.concat(chunks);
+    const expectedSignature = createHmac("sha256", secret)
+      .update(`${stamp}.${nonce}.`)
+      .update(raw)
+      .digest();
+    if (
+      signature.length !== expectedSignature.length ||
+      !timingSafeEqual(signature, expectedSignature)
+    )
+      throw new Error("Invalid private signature");
+    for (const [key, until] of internalNonces)
+      if (until < Date.now()) internalNonces.delete(key);
+    internalNonces.set(nonce, Date.now() + 60_000);
+    const input = internalFilesSchema.parse(JSON.parse(raw.toString("utf8")));
+    if (!(await access(input.project, input.user)))
+      throw new Error("Project access denied");
+    const value = room(input.project);
+    if (value.busy || value.bridge?.readyState !== WebSocket.OPEN)
+      throw new Error("The workspace is busy or disconnected");
+    value.busy = true;
+    try {
+      const result = await callBridge(
+        input.project,
+        input.action === "snapshot"
+          ? { op: "snapshot" }
+          : { op: "replace", expected: input.expected, files: input.files },
+        240_000,
+      );
+      await value.persistence;
+      response.writeHead(200, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      });
+      response.end(JSON.stringify(result || {}));
+    } finally {
+      value.busy = false;
+    }
+  } catch (error) {
+    response.writeHead(409, {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    });
+    response.end(
+      JSON.stringify({
+        message:
+          error instanceof Error ? error.message : "Workspace operation failed",
+      }),
+    );
+  }
+}
+async function handleInternalGit(
+  request: IncomingMessage,
+  response: ServerResponse,
+) {
+  try {
+    if (!hasLease || closing) throw new Error("Gateway is unavailable");
+    if (
+      !["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(
+        request.socket.remoteAddress || "",
+      )
+    )
+      throw new Error("Internal endpoint requires loopback access");
+    const stamp = Number(request.headers["x-runly-timestamp"]);
+    const nonce = String(request.headers["x-runly-nonce"] || "");
+    const signature = Buffer.from(
+      String(request.headers["x-runly-signature"] || ""),
+      "hex",
+    );
+    if (
+      !Number.isFinite(stamp) ||
+      Math.abs(Date.now() - stamp) > 30_000 ||
+      !/^[a-f0-9-]{36}$/.test(nonce) ||
+      internalNonces.has(nonce)
+    )
+      throw new Error("Invalid internal request");
+    const chunks: Buffer[] = [];
+    let length = 0;
+    for await (const part of request) {
+      const chunk = Buffer.from(part);
+      length += chunk.length;
+      if (length > 12_000) throw new Error("Request too large");
+      chunks.push(chunk);
+    }
+    const raw = Buffer.concat(chunks);
+    const expected = createHmac("sha256", secret)
+      .update(`${stamp}.${nonce}.`)
+      .update(raw)
+      .digest();
+    if (
+      signature.length !== expected.length ||
+      !timingSafeEqual(signature, expected)
+    )
+      throw new Error("Invalid internal signature");
+    for (const [key, until] of internalNonces)
+      if (until < Date.now()) internalNonces.delete(key);
+    internalNonces.set(nonce, Date.now() + 60_000);
+    const input = internalGitSchema.parse(JSON.parse(raw.toString("utf8")));
+    // The hosted sandbox runs arbitrary project code under the same OS user as
+    // the connector. Until Git runs in an isolated trusted worker, forwarding
+    // an installation token would expose it to that code.
+    if (
+      (process.env.NODE_ENV === "production" ||
+        !/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/.test(
+          process.env.RUNLY_SITE_URL || "",
+        )) &&
+      (input.action !== "status" || input.token)
+    )
+      throw new Error(
+        "Hosted Git writes require an isolated credential broker",
+      );
+    if (!(await access(input.project, input.user)))
+      throw new Error("Project access denied");
+    const value = room(input.project);
+    if (value.busy)
+      throw new Error(
+        "Wait for the agent to finish before managing Git branches",
+      );
+    value.lastActive = Date.now();
+    const result = await callBridge(
+      input.project,
+      { op: "git", ...input },
+      240_000,
+    );
+    await value.persistence;
+    response.writeHead(200, {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    });
+    response.end(JSON.stringify(result));
+  } catch (error) {
+    response.writeHead(409, {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    });
+    response.end(
+      JSON.stringify({
+        message:
+          error instanceof Error ? error.message : "Git operation failed",
+      }),
+    );
+  }
+}
 const http = createServer((request, response) => {
+  if (request.url === "/internal/files") {
+    if (request.method !== "POST")
+      return plainResponse(response, 405, "Method not allowed");
+    void handleInternalFiles(request, response);
+    return;
+  }
+  if (request.url === "/internal/git") {
+    if (request.method !== "POST")
+      return plainResponse(response, 405, "Method not allowed");
+    void handleInternalGit(request, response);
+    return;
+  }
   const host = (request.headers.host || "").split(":")[0].toLowerCase();
   const suffix = `.${previewDomain}`;
   if (host.endsWith(suffix)) {
@@ -1095,6 +1409,15 @@ const sockets = new WebSocketServer({
   perMessageDeflate: false,
 });
 sockets.on("connection", (socket, request) => {
+  if (
+    (request.headers.host || "")
+      .toLowerCase()
+      .split(":")[0]
+      .endsWith(`.${previewDomain}`)
+  ) {
+    void attachPreviewSocket(socket, request);
+    return;
+  }
   if (closing || !hasLease) {
     socket.close(1013, "Gateway is not ready");
     return;
@@ -1209,6 +1532,7 @@ sockets.on("connection", (socket, request) => {
           const value = room(project);
           value.bridge?.close(1000, "Reconnected");
           value.bridge = socket;
+          value.bridgeDisconnectedAt = undefined;
           value.generation = runtime.generation;
           await updateRuntime(project, { state: "ready", error: null });
         } else throw new Error("Invalid connection role");
@@ -1255,6 +1579,37 @@ sockets.on("connection", (socket, request) => {
           );
         } else if (frame.type === "preview.response") {
           finishPreview(String(frame.id || ""), frame);
+        } else if (
+          [
+            "preview.ws.ready",
+            "preview.ws.data",
+            "preview.ws.close",
+            "preview.ws.error",
+          ].includes(frame.type)
+        ) {
+          const item = previewSockets.get(String(frame.id || ""));
+          if (!item || item.project !== project) return;
+          if (frame.type === "preview.ws.ready") {
+            item.ready = true;
+            for (const payload of item.queued)
+              send(socket, {
+                type: "preview.ws.data",
+                id: frame.id,
+                ...payload,
+              });
+            item.queued = [];
+          } else if (frame.type === "preview.ws.data") {
+            const data = Buffer.from(String(frame.data || ""), "base64");
+            if (
+              data.length > 1024 * 1024 ||
+              item.socket.bufferedAmount > 2 * 1024 * 1024
+            )
+              item.socket.close(1009, "Preview message too large");
+            else item.socket.send(frame.binary ? data : data.toString("utf8"));
+          } else {
+            previewSockets.delete(String(frame.id));
+            item.socket.close(frame.type === "preview.ws.error" ? 1011 : 1000);
+          }
         } else if (
           [
             "terminal.output",
@@ -1333,7 +1688,13 @@ sockets.on("connection", (socket, request) => {
     value.browsers.delete(socket);
     if (value.bridge === socket) {
       value.bridge = undefined;
+      value.bridgeDisconnectedAt = Date.now();
       failPreviewRequests(project, "Preview workspace disconnected.");
+      for (const [id, item] of previewSockets)
+        if (item.project === project) {
+          previewSockets.delete(id);
+          item.socket.close(1013, "Preview workspace disconnected");
+        }
       for (const pending of value.pending.values()) {
         clearTimeout(pending.timer);
         pending.reject(
@@ -1348,20 +1709,6 @@ sockets.on("connection", (socket, request) => {
 
 async function execute(job: Job) {
   const value = room(job.project_id);
-  const startedAt = Date.now();
-  const beforeFiles = new Map<string, string>();
-  let telemetry: AgentTelemetry = {
-    toolsUsed: [],
-    toolCalls: 0,
-    commandsRun: 0,
-  };
-  if (job.kind === "agent") {
-    const { data: files } = await db
-      .from("runtime_files")
-      .select("path,hash")
-      .eq("project_id", job.project_id);
-    for (const file of files || []) beforeFiles.set(file.path, file.hash);
-  }
   value.busy = true;
   value.lastActive = Date.now();
   publish(job.project_id, {
@@ -1388,22 +1735,11 @@ async function execute(job: Job) {
   try {
     if (!(await access(job.project_id, job.actor_id)))
       throw new Error("Project access revoked");
-    if (job.kind !== "stop") {
-      const controls = await check(
-        db
-          .from("ai_user_controls")
-          .select("suspended")
-          .eq("user_id", job.actor_id)
-          .maybeSingle(),
-      );
-      if (controls?.suspended)
-        throw new Error("AI access suspended by an administrator");
-    }
     if (job.kind !== "stop" && !(await computeAllowed(job.project_id)))
       throw new Error("Runtime disabled or project subscription inactive");
     if (job.kind === "start") await startWorkspace(job.project_id);
     else if (job.kind === "stop") await stopWorkspace(job.project_id);
-    else telemetry = await runAgent(job);
+    else await runAgent(job);
     await check(
       db
         .from("runtime_jobs")
@@ -1417,7 +1753,6 @@ async function execute(job: Job) {
       state: "completed",
       chatId: job.conversation_id,
     });
-    await logAiRequest(job, true, null, startedAt, beforeFiles, telemetry);
   } catch (error) {
     const message = (
       error instanceof OpenAI.APIError
@@ -1461,7 +1796,6 @@ async function execute(job: Job) {
       chatId: job.conversation_id,
       error: message,
     });
-    await logAiRequest(job, false, message, startedAt, beforeFiles, telemetry);
   } finally {
     value.busy = false;
     value.lastActive = Date.now();
@@ -1502,7 +1836,10 @@ async function work() {
       .eq("gateway_id", gatewayId)
       .not("session_id", "is", null),
   );
-  for (const row of existing || []) room(row.project_id);
+  for (const row of existing || []) {
+    const value = room(row.project_id);
+    if (!value.bridge) value.bridgeDisconnectedAt = Date.now();
+  }
   let checkedPolicy = 0;
   while (!closing) {
     try {
@@ -1529,11 +1866,31 @@ async function work() {
           value.abort?.abort();
           if (!value.busy) await stopWorkspace(project);
         }
-        if (!value.busy && Date.now() - value.lastActive > IDLE_MS) {
+        const disconnectedTooLong =
+          !value.bridge &&
+          !!value.bridgeDisconnectedAt &&
+          Date.now() - value.bridgeDisconnectedAt > DISCONNECT_GRACE_MS;
+        const idleTooLong = Date.now() - value.lastActive > IDLE_MS;
+        if (!value.busy && (idleTooLong || disconnectedTooLong)) {
           value.busy = true;
           try {
+            const runtime = await check(
+              db
+                .from("project_runtimes")
+                .select("session_id")
+                .eq("project_id", project)
+                .maybeSingle(),
+            );
             if (value.bridge) await stopWorkspace(project);
+            else if (runtime?.session_id && disconnectedTooLong)
+              await stopWorkspace(project, true);
             if (!value.browsers.size) rooms.delete(project);
+          } catch (error) {
+            console.error(
+              `Idle sandbox cleanup deferred for ${project}:`,
+              error instanceof Error ? error.message : error,
+            );
+            if (!value.bridge) value.bridgeDisconnectedAt = Date.now();
           } finally {
             value.busy = false;
             value.lastActive = Date.now();
@@ -1541,9 +1898,10 @@ async function work() {
         }
       }
       if (Date.now() - checkedPolicy > 60_000) checkedPolicy = Date.now();
-    } catch {
+    } catch (error) {
       console.error(
-        "Runtime worker could not reach its control plane; retrying",
+        "Runtime worker could not reach its control plane; retrying:",
+        error instanceof Error ? error.message : error,
       );
     }
     await delay(1000);
@@ -1558,7 +1916,7 @@ for (const name of ["SIGTERM", "SIGINT"] as const)
     http.close();
     setTimeout(() => process.exit(0), 10_000).unref();
   });
-http.listen(Number(process.env.RUNLY_RUNTIME_PORT || 4001), "0.0.0.0", () => {
+http.listen(Number(process.env.RUNLY_RUNTIME_PORT || 4001), "127.0.0.1", () => {
   console.log(`Runly runtime gateway ${gatewayId} listening`);
   void work().catch((error) => {
     console.error("Runtime startup failed:", error.message);

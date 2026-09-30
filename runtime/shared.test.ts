@@ -32,12 +32,7 @@ test("connection tickets bind project, user and gateway and expire", () => {
 });
 
 test("workspace paths cannot escape or restore excluded runtime files", () => {
-  for (const path of [
-    "README.md",
-    "src/app/page.tsx",
-    ".env.example",
-    "my folder/file.txt",
-  ])
+  for (const path of ["README.md", "src/app/page.tsx", "my folder/file.txt"])
     assert.equal(validWorkspacePath(path), true, path);
   for (const path of [
     "../secret",
@@ -51,6 +46,12 @@ test("workspace paths cannot escape or restore excluded runtime files", () => {
     "node_modules/x",
     ".runly/bridge.py",
     "a/.git/config",
+    ".env",
+    ".env.local",
+    "src/.env.production",
+    "config/.npmrc",
+    "secrets/private.pem",
+    "credentials.json",
   ])
     assert.equal(validWorkspacePath(path), false, path);
 });
@@ -69,6 +70,12 @@ test("gateway sharding is stable and duplicate gateway identities are rejected",
     assert.throws(gateways);
     process.env.RUNLY_RUNTIME_GATEWAYS = "{}";
     assert.throws(gateways);
+    process.env.RUNLY_RUNTIME_GATEWAYS =
+      '[{"id":"a","url":"ws://public.example.com"}]';
+    assert.throws(gateways, "public runtime connections must use WSS");
+    process.env.RUNLY_RUNTIME_GATEWAYS =
+      '[{"id":"a","url":"wss://user:password@public.example.com"}]';
+    assert.throws(gateways, "gateway URLs cannot carry credentials");
   } finally {
     if (previous === undefined) delete process.env.RUNLY_RUNTIME_GATEWAYS;
     else process.env.RUNLY_RUNTIME_GATEWAYS = previous;

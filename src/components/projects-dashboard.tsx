@@ -191,11 +191,6 @@ export function ProjectsDashboard() {
                       ),
                     )
                   }
-                  onDelete={() =>
-                    setProjects((current) =>
-                      current.filter((item) => item.id !== project.id),
-                    )
-                  }
                 />
               </article>
             ))}

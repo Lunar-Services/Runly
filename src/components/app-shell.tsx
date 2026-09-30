@@ -16,6 +16,7 @@ import {
   Scale,
   Settings,
   Users,
+  UserRound,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -31,7 +32,8 @@ const items: readonly NavigationItem[] = [
   ["/cowork", "Cowork", Users],
   ["/settings/billing", "Billing", CreditCard],
   ["/affiliate", "Affiliates", Handshake],
-  ["/settings", "Settings", Settings],
+  ["/settings", "Account", UserRound],
+  ["/settings/preferences", "Settings", Settings],
 ];
 const adminItems: readonly NavigationItem[] = [
   ["/admin", "Admin", Blocks],

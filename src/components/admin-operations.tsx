@@ -280,14 +280,16 @@ export function AdminMonitoring() {
     ...(data?.costAbuse.map((row) => row.limitUsagePercent) || [0]),
   );
   return (
-    <AppShell title="AI Monitoring" eyebrow="Live operations">
+    <AppShell title="AI Monitoring" eyebrow="Admin preview">
+      <div className="notice" role="status">
+        <AlertTriangle />
+        The current runtime does not write detailed request or cost telemetry.
+        Figures here cover existing logs only and omit newer tasks.
+      </div>
       <div className={styles.toolbar}>
         <div>
           <h2>Cost, reliability, and abuse signals</h2>
-          <p>
-            Every completed or failed agent request is measured by the runtime
-            gateway.
-          </p>
+          <p>Historical request logs and workspace state where available.</p>
         </div>
         <button
           className="button button-outline"
@@ -696,7 +698,6 @@ type AdminPlan = {
 export function AdminUsers() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [plans, setPlans] = useState<AdminPlan[]>([]);
-  const [planDrafts, setPlanDrafts] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [workingUser, setWorkingUser] = useState("");
@@ -708,12 +709,6 @@ export function AdminUsers() {
     if (response.ok) {
       setUsers(result.users);
       setPlans(result.plans || []);
-      setPlanDrafts((current) => {
-        const next = { ...current };
-        for (const user of result.users as AdminUser[])
-          if (!(user.id in next)) next[user.id] = user.plan || "";
-        return next;
-      });
     } else setError(result.message);
     setLoading(false);
   }, []);
@@ -734,11 +729,7 @@ export function AdminUsers() {
       const result = await response.json();
       if (!response.ok) setError(result.message);
       else {
-        setMessage(
-          payload.action === "assign-plan"
-            ? "Plan granted. The user can use its AI allowance immediately."
-            : "User access updated.",
-        );
+        setMessage("Administrator role updated.");
         await load();
       }
     } finally {
@@ -751,8 +742,8 @@ export function AdminUsers() {
         <div>
           <h2>Accounts and AI access</h2>
           <p>
-            Suspend AI, reset limits, grant extra tokens, and manage
-            administrators.
+            View account plans and manage administrator roles. AI access
+            controls await runtime enforcement.
           </p>
         </div>
         <Users />
@@ -790,52 +781,15 @@ export function AdminUsers() {
               </thead>
               <tbody>
                 {users.map((user) => (
-                  <tr key={user.id}>
+                  <tr key={user.id} aria-busy={workingUser === user.id}>
                     <td>
                       <strong>{user.displayName || user.email}</strong>
                       <small>{user.email}</small>
                     </td>
                     <td>
-                      <div className={styles.planGrant}>
-                        <select
-                          aria-label={`Plan for ${user.email}`}
-                          value={planDrafts[user.id] ?? user.plan ?? ""}
-                          disabled={workingUser === user.id}
-                          onChange={(event) =>
-                            setPlanDrafts((current) => ({
-                              ...current,
-                              [user.id]: event.target.value,
-                            }))
-                          }
-                        >
-                          <option value="" disabled>
-                            Choose a plan
-                          </option>
-                          {plans.map((plan) => (
-                            <option value={plan.id} key={plan.id}>
-                              {plan.name}
-                              {plan.active ? "" : " — inactive at checkout"}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          disabled={
-                            workingUser === user.id ||
-                            !planDrafts[user.id] ||
-                            planDrafts[user.id] === user.plan
-                          }
-                          onClick={() =>
-                            void action({
-                              action: "assign-plan",
-                              userId: user.id,
-                              planId: planDrafts[user.id],
-                            })
-                          }
-                        >
-                          {workingUser === user.id ? "Applying…" : "Grant"}
-                        </button>
-                      </div>
+                      {plans.find((plan) => plan.id === user.plan)?.name ||
+                        user.plan ||
+                        "No plan"}
                     </td>
                     <td>
                       <span
@@ -847,12 +801,9 @@ export function AdminUsers() {
                       </span>
                     </td>
                     <td>
-                      <CallChip
-                        label={user.suspended ? "Suspended" : "Enabled"}
-                        tone={user.suspended ? "bad" : "good"}
-                      />
+                      <CallChip label="Not enforced" tone="bad" />
                     </td>
-                    <td>{compact(user.extra_tokens || 0)}</td>
+                    <td>—</td>
                     <td>
                       {user.lastSignInAt
                         ? new Date(user.lastSignInAt).toLocaleString()
@@ -862,44 +813,6 @@ export function AdminUsers() {
                       <BranchedMenu
                         label={`Manage ${user.email}`}
                         actions={[
-                          {
-                            label: user.suspended
-                              ? "Restore AI access"
-                              : "Suspend AI access",
-                            danger: !user.suspended,
-                            onSelect: () =>
-                              void action({
-                                action: "suspend",
-                                userId: user.id,
-                                suspended: !user.suspended,
-                              }),
-                          },
-                          {
-                            label: "Reset usage limits",
-                            onSelect: () =>
-                              void action({
-                                action: "reset-limits",
-                                userId: user.id,
-                              }),
-                          },
-                          {
-                            label: "Set extra tokens",
-                            onSelect: () => {
-                              const value = window.prompt(
-                                "Extra token allowance",
-                                String(user.extra_tokens || 0),
-                              );
-                              if (
-                                value !== null &&
-                                Number.isFinite(Number(value))
-                              )
-                                void action({
-                                  action: "extra-tokens",
-                                  userId: user.id,
-                                  extraTokens: Number(value),
-                                });
-                            },
-                          },
                           {
                             label:
                               user.role === "admin"
