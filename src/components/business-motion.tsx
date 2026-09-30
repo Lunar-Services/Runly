@@ -5,6 +5,9 @@ import NumberFlow from "@number-flow/react";
 import { ArrowUpRight, Minus, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import "./pricing-calculator.css";
+import ParticleText from "./react-bits/ParticleText";
+import { useTheme } from "./theme-provider";
+import "./business-stories.css";
 
 const plans = [
   { id: "standard", name: "Standard", price: 3, tokens: 100000 },
@@ -187,6 +190,7 @@ const examples = [
 ];
 
 export function BusinessMotion() {
+  const { darkTheme } = useTheme();
   return (
     <section
       className="business-motion"
@@ -205,28 +209,37 @@ export function BusinessMotion() {
           </p>
         </div>
       </div>
-      <div className="business-grid">
-        {examples.map((example, index) => (
-          <article key={example.category}>
-            <div className="business-card-label">
-              <span>{example.category}</span>
-              <span aria-hidden="true">0{index + 1}</span>
+      <div className="business-ribbon">
+        <div className="business-ribbon-track">
+          {[0, 1].map((copy) => (
+            <div
+              className="business-ribbon-group"
+              key={copy}
+              aria-hidden={copy === 1}
+            >
+              {examples.map((example, index) => (
+                <article key={example.category}>
+                  <div className="business-card-label">
+                    <span>{example.category}</span>
+                    <span aria-hidden="true">0{index + 1}</span>
+                  </div>
+                  <h3>{example.title}</h3>
+                  <p>{example.body}</p>
+                </article>
+              ))}
             </div>
-            <h3>{example.title}</h3>
-            <p>{example.body}</p>
-            <ArrowUpRight
-              aria-hidden="true"
-              className="business-card-arrow"
-              size={20}
-            />
-          </article>
-        ))}
+          ))}
+        </div>
       </div>
       <div
         className="business-type"
         aria-label="Turn an idea into your next chapter"
       >
-        <p>Turn an idea into your next chapter.</p>
+        <ParticleText
+          text="Your next chapter."
+          color={darkTheme ? "#f2f2f2" : "#191919"}
+          highlightColor={darkTheme ? "#bcbcbc" : "#656565"}
+        />
         <span>Make something worth sharing.</span>
       </div>
     </section>

@@ -21,6 +21,7 @@ import { CatAnimation } from "./cat-animation";
 import { TextRotation } from "./text-rotation";
 import { SilkBackground, ProductStories } from "./site-visuals";
 import { GetStartedButton } from "./get-started-button";
+import { ProjectJourney } from "./project-journey";
 
 const suggestions = [
   "A personal website",
@@ -337,6 +338,8 @@ export function LandingPage({
           </div>
         </section>
 
+        <ProjectJourney onTryPrompt={setPrompt} />
+
         <section id="cowork" className="cat-team">
           <div>
             <span className="cat-label">Runly Cowork</span>
@@ -346,8 +349,8 @@ export function LandingPage({
               for your next idea.
             </h2>
             <p>Bring the people you build with into one shared workspace.</p>
-            <Link className="cat-text-link" href="/cowork">
-              Explore Cowork <span aria-hidden="true">↗</span>
+            <Link className="cowork-explore" href="/cowork">
+              Explore Cowork
             </Link>
           </div>
           <div className="cat-team-animation">

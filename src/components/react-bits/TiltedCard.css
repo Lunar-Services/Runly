@@ -1,0 +1,24 @@
+.tilted-card-figure {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  perspective: 1000px;
+  touch-action: pan-y;
+}
+.tilted-card-inner {
+  position: relative;
+  transform-style: preserve-3d;
+}
+.tilted-card-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 22px;
+  border: 1px solid #e6e6e6;
+}
+.tilted-card-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform: translateZ(20px);
+}
