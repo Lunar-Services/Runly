@@ -305,6 +305,18 @@ export function AuthPanel({
             Send a new code
           </button>
         )}
+        {(mode === "login" || mode === "signup") && (
+          <button
+            type="button"
+            className="button button-outline"
+            disabled={pending}
+            onClick={() =>
+              void run("github", { signup: mode === "signup", accepted })
+            }
+          >
+            Continue with GitHub
+          </button>
+        )}
         <div className="auth-feedback" aria-live="polite">
           {message && (
             <p className="inline-notice" role={failed ? "alert" : "status"}>

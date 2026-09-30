@@ -1,5 +1,5 @@
 import "server-only";
-import { createSign } from "node:crypto";
+import { createPrivateKey, createSign } from "node:crypto";
 import { ApiError } from "@/lib/api";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -28,8 +28,26 @@ export async function linkedGithubUserId(
 
 function configuration() {
   const id = process.env.GITHUB_APP_ID;
-  const key = process.env.GITHUB_APP_PRIVATE_KEY?.replaceAll("\\n", "\n");
-  if (!id || !key) throw new ApiError(503, "GitHub App is not configured.");
+  const raw = process.env.GITHUB_APP_PRIVATE_KEY?.replaceAll(
+    "\\n",
+    "\n",
+  ).trim();
+  if (!id || !raw) throw new ApiError(503, "GitHub App is not configured.");
+  // Accept a normal multiline PEM or a copied one-line PEM from .env.prod.
+  const pem = raw.match(
+    /^(-----BEGIN (RSA )?PRIVATE KEY-----)([\s\S]*)(-----END (RSA )?PRIVATE KEY-----)$/,
+  );
+  if (!pem || pem[2] !== pem[5])
+    throw new ApiError(503, "GitHub App private key is not a valid PEM.");
+  const body = pem[3].replaceAll(/\s/g, "");
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(body))
+    throw new ApiError(503, "GitHub App private key is not a valid PEM.");
+  const key = `${pem[1]}\n${body.match(/.{1,64}/g)?.join("\n")}\n${pem[4]}\n`;
+  try {
+    createPrivateKey(key);
+  } catch {
+    throw new ApiError(503, "GitHub App private key is not a valid PEM.");
+  }
   return { id, key };
 }
 

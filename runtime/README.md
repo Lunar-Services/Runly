@@ -97,6 +97,13 @@ GITHUB_APP_SLUG=<github-app-slug>
 GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\\n...\\n-----END RSA PRIVATE KEY-----"
 ```
 
+The web process is the GitHub credential broker. It mints installation tokens
+for one repository, reads and writes workspace snapshots through the private
+loopback file endpoint, and performs GitHub API calls itself. A separate Git
+worker is unnecessary on a single VPS. The gateway production launcher removes
+GitHub and Stripe variables from its child environment. A complete one-line PEM
+key is accepted as well as a PEM with escaped newlines.
+
 Generate the shared secret locally with
 `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
 Do not paste it into chat or commit it. Gateway and Next.js must agree on it.
@@ -230,6 +237,12 @@ GitHub sign-in and repository operations are separate grants:
    endpoint rejects non-loopback callers and requires a short-lived HMAC request.
    Keep port 4001 private behind the reverse proxy. Multi-VPS gateway routing
    needs a private authenticated per-shard route before adding more shards.
+
+Run `pnpm check:github` on the VPS after setting the App credentials. It
+verifies the App ID, slug, Contents write permission, and a personal account
+installation without printing the key or installation token. For customer
+GitHub accounts, make the GitHub App installable by **any account**; the current
+broker intentionally accepts personal installations only.
 
 The project Git menu can import a repository into a blank project, attach an
 existing project to an empty repository, create/checkout branches, fast-forward

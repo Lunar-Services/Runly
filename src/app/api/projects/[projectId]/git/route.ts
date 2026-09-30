@@ -147,12 +147,35 @@ export async function POST(request: Request, context: Context) {
       throw new ApiError(400, "Invalid repository branch.");
     if (input.action === "push" && !input.message)
       throw new ApiError(400, "Enter a commit message.");
-    await readyWorkspace(projectId, user.id);
+    const needsLiveWorkspace = ["link", "checkout", "pull"].includes(
+      input.action,
+    );
+    if (needsLiveWorkspace) await readyWorkspace(projectId, user.id);
+    const { data: runtime, error: runtimeError } = await adminClient()
+      .from("project_runtimes")
+      .select("state,session_id")
+      .eq("project_id", projectId)
+      .maybeSingle();
+    if (runtimeError)
+      throw new ApiError(503, "Couldn't check workspace state.");
+    const liveWorkspace = runtime?.state === "ready";
+    if (
+      !liveWorkspace &&
+      runtime &&
+      (runtime.state !== "stopped" || runtime.session_id)
+    )
+      throw new ApiError(
+        409,
+        "Reconnect or stop the workspace before managing GitHub.",
+      );
+    if (needsLiveWorkspace && !liveWorkspace)
+      throw new ApiError(503, "Workspace is still starting. Retry shortly.");
     const result = await brokerGit({
       project,
       user: user.id,
       repository,
       installationId,
+      liveWorkspace,
       action: input.action,
       branch,
       author:

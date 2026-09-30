@@ -89,7 +89,6 @@ type GitStatus = {
   commit?: string | null;
   repository?: string;
 };
-const hostedGitWritesDisabled = process.env.NODE_ENV === "production";
 
 function folderPathsFor(files: ProjectFile[], folders: string[]) {
   const paths = new Set<string>();
@@ -1361,12 +1360,6 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
             {branchMenuOpen && (
               <div className="editor-dropdown branch-dropdown">
                 <p>GitHub repository</p>
-                {hostedGitWritesDisabled && (
-                  <p className="workspace-git-error" role="status">
-                    Repository changes are unavailable on hosted workspaces
-                    until the credential broker is deployed.
-                  </p>
-                )}
                 {gitBusy && <p role="status">Connecting to workspace…</p>}
                 {gitError && (
                   <p role="alert" className="workspace-git-error">
@@ -1390,9 +1383,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                     <button
                       type="button"
                       key={repo.id}
-                      disabled={
-                        gitBusy || repo.archived || hostedGitWritesDisabled
-                      }
+                      disabled={gitBusy || repo.archived}
                       onClick={() =>
                         void gitAction("link", {
                           repositoryId: repo.id,
@@ -1420,7 +1411,6 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                         type="button"
                         disabled={
                           gitBusy ||
-                          hostedGitWritesDisabled ||
                           branch ===
                             (gitStatus?.branch || project.github_branch)
                         }
@@ -1447,11 +1437,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                     </label>
                     <button
                       type="button"
-                      disabled={
-                        gitBusy ||
-                        hostedGitWritesDisabled ||
-                        !gitBranchInput.trim()
-                      }
+                      disabled={gitBusy || !gitBranchInput.trim()}
                       onClick={() =>
                         void gitAction("branch", {
                           branch: gitBranchInput.trim(),
@@ -1462,11 +1448,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                     </button>
                     <button
                       type="button"
-                      disabled={
-                        gitBusy ||
-                        hostedGitWritesDisabled ||
-                        !gitBranchInput.trim()
-                      }
+                      disabled={gitBusy || !gitBranchInput.trim()}
                       onClick={() =>
                         void gitAction("checkout", {
                           branch: gitBranchInput.trim(),
@@ -1478,7 +1460,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                     <div className="editor-dropdown-divider" />
                     <button
                       type="button"
-                      disabled={gitBusy || hostedGitWritesDisabled}
+                      disabled={gitBusy}
                       onClick={() => void gitAction("pull")}
                     >
                       <RotateCw size={15} /> Pull (fast-forward)
@@ -1495,11 +1477,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                     </label>
                     <button
                       type="button"
-                      disabled={
-                        gitBusy ||
-                        hostedGitWritesDisabled ||
-                        !gitCommitMessage.trim()
-                      }
+                      disabled={gitBusy || !gitCommitMessage.trim()}
                       onClick={() =>
                         void gitAction("push", {
                           message: gitCommitMessage.trim(),

@@ -283,8 +283,9 @@ export function AdminMonitoring() {
     <AppShell title="AI Monitoring" eyebrow="Admin preview">
       <div className="notice" role="status">
         <AlertTriangle />
-        The current runtime does not write detailed request or cost telemetry.
-        Figures here cover existing logs only and omit newer tasks.
+        Requests created after this deployment include provider token usage and
+        outcome. Provider billing and sandbox costs are not available in this
+        view yet; cost and profit figures are hidden.
       </div>
       <div className={styles.toolbar}>
         <div>
@@ -364,15 +365,6 @@ export function AdminMonitoring() {
                     label: "Total tokens",
                     value: compact(data.summary.totalTokens),
                   },
-                  { label: "AI cost", value: money(data.summary.aiCostMicros) },
-                  {
-                    label: "Sandbox cost",
-                    value: money(data.summary.sandboxCostMicros),
-                  },
-                  {
-                    label: "Cost / user",
-                    value: money(data.summary.costPerUserMicros),
-                  },
                   {
                     label: "Response",
                     value: `${data.summary.averageLatencyMs || 0}ms`,
@@ -393,12 +385,6 @@ export function AdminMonitoring() {
                 format={compact}
               />
               <Chart
-                title="Total cost"
-                data={data.series.map((point) => point.cost)}
-                labels={data.series.map((point) => point.date)}
-                format={money}
-              />
-              <Chart
                 title="Requests"
                 data={data.series.map((point) => point.requests)}
                 labels={data.series.map((point) => point.date)}
@@ -410,20 +396,14 @@ export function AdminMonitoring() {
                 labels={data.series.map((point) => point.date)}
                 format={compact}
               />
-              <Chart
-                title="Estimated profit"
-                data={data.series.map((point) => point.profitMicros)}
-                labels={data.series.map((point) => point.date)}
-                format={money}
-              />
             </section>
             <section className="panel">
               <div className="panel-head">
                 <div>
                   <h2>Sandboxes</h2>
                   <p>
-                    Active, sleeping, crashed, resource samples, and running
-                    cost.
+                    Active, sleeping, and crashed sessions with available
+                    resource samples.
                   </p>
                 </div>
               </div>
@@ -473,11 +453,8 @@ export function AdminMonitoring() {
             <section className="panel">
               <div className="panel-head">
                 <div>
-                  <h2>Cost & Abuse</h2>
-                  <p>
-                    {data.summary.overSubscriptionUsers || 0} users cost more
-                    than their current subscription.
-                  </p>
+                  <h2>AI allowance and access</h2>
+                  <p>Provider tokens and administrator access controls.</p>
                 </div>
                 <CallChip
                   label="Peak limit use"
@@ -490,11 +467,6 @@ export function AdminMonitoring() {
                   <thead>
                     <tr>
                       <th>User</th>
-                      <th>Plan price</th>
-                      <th>AI cost</th>
-                      <th>Sandbox</th>
-                      <th>Total</th>
-                      <th>Profit / loss</th>
                       <th>Tokens</th>
                       <th>Limit use</th>
                       <th>Status</th>
@@ -502,35 +474,17 @@ export function AdminMonitoring() {
                   </thead>
                   <tbody>
                     {data.costAbuse.map((row) => (
-                      <tr
-                        className={row.overSubscriptionCost ? styles.loss : ""}
-                        key={row.userId}
-                      >
+                      <tr key={row.userId}>
                         <td>
                           <strong>{row.email}</strong>
                           <small>{row.plan}</small>
                         </td>
-                        <td>{money(row.planPriceMicros)}</td>
-                        <td>{money(row.aiCostMicros)}</td>
-                        <td>{money(row.sandboxCostMicros)}</td>
-                        <td>{money(row.totalCostMicros)}</td>
-                        <td>{money(row.profitMicros)}</td>
                         <td>{compact(row.totalTokens)}</td>
                         <td>{Math.round(row.limitUsagePercent)}%</td>
                         <td>
                           <CallChip
-                            label={
-                              row.suspended
-                                ? "Suspended"
-                                : row.overSubscriptionCost
-                                  ? "Review"
-                                  : "Healthy"
-                            }
-                            tone={
-                              row.suspended || row.overSubscriptionCost
-                                ? "bad"
-                                : "good"
-                            }
+                            label={row.suspended ? "Suspended" : "Enabled"}
+                            tone={row.suspended ? "bad" : "good"}
                           />
                         </td>
                       </tr>
@@ -543,10 +497,7 @@ export function AdminMonitoring() {
               <div className="panel-head">
                 <div>
                   <h2>Request log</h2>
-                  <p>
-                    Tokens, cost, latency, tools, file edits, commands,
-                    outcomes, and timestamps.
-                  </p>
+                  <p>Provider tokens, latency, outcomes, and timestamps.</p>
                 </div>
               </div>
               <div className={styles.tableWrap}>
@@ -556,9 +507,7 @@ export function AdminMonitoring() {
                       <th>Time</th>
                       <th>User / project</th>
                       <th>Tokens</th>
-                      <th>Cost</th>
                       <th>Latency</th>
-                      <th>Activity</th>
                       <th>Result</th>
                     </tr>
                   </thead>
@@ -577,29 +526,7 @@ export function AdminMonitoring() {
                             {compact(request.output_tokens)} out
                           </small>
                         </td>
-                        <td>
-                          {money(
-                            request.ai_cost_micros +
-                              request.sandbox_cost_micros,
-                          )}
-                        </td>
                         <td>{request.latency_ms}ms</td>
-                        <td>
-                          <div className={styles.chips}>
-                            <CallChip
-                              label="tools"
-                              value={request.tool_calls}
-                            />
-                            <CallChip
-                              label="files"
-                              value={request.files_edited}
-                            />
-                            <CallChip
-                              label="commands"
-                              value={request.commands_run}
-                            />
-                          </div>
-                        </td>
                         <td>
                           {request.success ? (
                             <CallChip label="Success" tone="good" />
@@ -729,9 +656,13 @@ export function AdminUsers() {
       const result = await response.json();
       if (!response.ok) setError(result.message);
       else {
-        setMessage("Administrator role updated.");
+        setMessage("User settings updated.");
         await load();
       }
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Couldn't update this user.",
+      );
     } finally {
       setWorkingUser("");
     }
@@ -742,8 +673,7 @@ export function AdminUsers() {
         <div>
           <h2>Accounts and AI access</h2>
           <p>
-            View account plans and manage administrator roles. AI access
-            controls await runtime enforcement.
+            View account plans and manage administrator roles and AI access.
           </p>
         </div>
         <Users />
@@ -801,9 +731,12 @@ export function AdminUsers() {
                       </span>
                     </td>
                     <td>
-                      <CallChip label="Not enforced" tone="bad" />
+                      <CallChip
+                        label={user.suspended ? "Suspended" : "Enabled"}
+                        tone={user.suspended ? "bad" : "good"}
+                      />
                     </td>
-                    <td>—</td>
+                    <td>{(user.extra_tokens || 0).toLocaleString()}</td>
                     <td>
                       {user.lastSignInAt
                         ? new Date(user.lastSignInAt).toLocaleString()
@@ -825,6 +758,67 @@ export function AdminUsers() {
                                 userId: user.id,
                                 admin: user.role !== "admin",
                               }),
+                          },
+                          {
+                            label: user.suspended
+                              ? "Restore AI access"
+                              : "Suspend AI access",
+                            danger: !user.suspended,
+                            onSelect: () => {
+                              const reason = user.suspended
+                                ? undefined
+                                : (window.prompt(
+                                    "Reason for suspension (optional):",
+                                  ) ?? undefined);
+                              if (!user.suspended && reason === undefined)
+                                return;
+                              void action({
+                                action: "suspension",
+                                userId: user.id,
+                                suspended: !user.suspended,
+                                reason,
+                              });
+                            },
+                          },
+                          {
+                            label: "Set extra tokens",
+                            onSelect: () => {
+                              const answer = window.prompt(
+                                "Additional tokens in each AI usage window:",
+                                String(user.extra_tokens || 0),
+                              );
+                              if (answer === null) return;
+                              const extraTokens = Number(answer);
+                              if (
+                                !Number.isSafeInteger(extraTokens) ||
+                                extraTokens < 0 ||
+                                extraTokens > 1_000_000_000
+                              ) {
+                                setError(
+                                  "Enter a whole number from 0 to 1,000,000,000.",
+                                );
+                                return;
+                              }
+                              void action({
+                                action: "tokens",
+                                userId: user.id,
+                                extraTokens,
+                              });
+                            },
+                          },
+                          {
+                            label: "Reset AI usage windows",
+                            onSelect: () => {
+                              if (
+                                window.confirm(
+                                  `Reset AI usage windows for ${user.email || user.displayName}? Historical charges remain recorded.`,
+                                )
+                              )
+                                void action({
+                                  action: "reset",
+                                  userId: user.id,
+                                });
+                            },
                           },
                         ]}
                       />

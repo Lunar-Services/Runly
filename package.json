@@ -26,6 +26,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "security:secrets": "node scripts/check-staged-secrets.mjs",
+    "check:github": "node scripts/check-github-app.mjs",
     "check": "pnpm exec lint-staged && pnpm run lint && pnpm run security:secrets",
     "pretypecheck": "next typegen",
     "typecheck": "tsc --noEmit",

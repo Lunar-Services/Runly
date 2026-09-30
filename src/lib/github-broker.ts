@@ -150,8 +150,12 @@ async function remoteFiles(token: string, repo: string, tree: Tree) {
   return files;
 }
 
-async function sourceFiles(project: string, user: string) {
-  await internalFiles({ project, user, action: "snapshot" });
+async function sourceFiles(
+  project: string,
+  user: string,
+  liveWorkspace: boolean,
+) {
+  if (liveWorkspace) await internalFiles({ project, user, action: "snapshot" });
   const { data, error } = await adminClient()
     .from("runtime_files")
     .select("path,kind,content,hash")
@@ -266,11 +270,12 @@ export async function brokerGit(input: {
   message?: string;
   author?: string;
   email?: string;
+  liveWorkspace: boolean;
 }) {
   const { project, user, repository, action, branch } = input;
   const repo = repositoryPath(repository);
   const token = await installationToken(input.installationId, repository.id);
-  const source = await sourceFiles(project.id, user);
+  const source = await sourceFiles(project.id, user, input.liveWorkspace);
   const currentBranch = project.github_branch || branch;
   const baselineSha = project.github_commit_sha;
   let initializedHere = false;
@@ -371,6 +376,21 @@ export async function brokerGit(input: {
       );
     selectedBranch = action === "checkout" ? branch : currentBranch;
     currentRef = await ref(token, repo, selectedBranch);
+    if (
+      action === "pull" &&
+      baselineSha &&
+      currentRef.object.sha !== baselineSha
+    ) {
+      const comparison = await githubApi<{ status: string }>(
+        token,
+        `${repo}/compare/${baselineSha}...${currentRef.object.sha}`,
+      );
+      if (comparison.status !== "ahead" && comparison.status !== "identical")
+        throw new ApiError(
+          409,
+          "The remote branch was rewritten or diverged. Choose another branch before pulling.",
+        );
+    }
     currentTree = await treeForCommit(token, repo, currentRef.object.sha);
     const files = await remoteFiles(token, repo, currentTree);
     await internalFiles({

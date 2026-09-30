@@ -8,11 +8,25 @@ import {
   sameOrigin,
 } from "@/lib/api";
 
-const actionSchema = z.object({
-  action: z.literal("role"),
-  userId: z.string().uuid(),
-  admin: z.boolean(),
-});
+const actionSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("role"),
+    userId: z.string().uuid(),
+    admin: z.boolean(),
+  }),
+  z.object({
+    action: z.literal("suspension"),
+    userId: z.string().uuid(),
+    suspended: z.boolean(),
+    reason: z.string().trim().max(500).optional(),
+  }),
+  z.object({
+    action: z.literal("tokens"),
+    userId: z.string().uuid(),
+    extraTokens: z.number().int().min(0).max(1_000_000_000),
+  }),
+  z.object({ action: z.literal("reset"), userId: z.string().uuid() }),
+]);
 
 export async function GET() {
   try {
@@ -85,33 +99,67 @@ export async function PATCH(request: Request) {
     sameOrigin(request);
     const { user: actor } = await adminSession();
     const parsed = actionSchema.safeParse(await body(request, 4096));
-    if (!parsed.success)
-      throw new ApiError(503, "Only administrator role changes are available.");
+    if (!parsed.success) throw new ApiError(400, "Choose a valid user action.");
     const db = adminClient();
     const input = parsed.data;
-    if (input.userId === actor.id && !input.admin)
+    const target = await db.auth.admin.getUserById(input.userId);
+    if (target.error || !target.data.user)
+      throw new ApiError(404, "User not found.");
+    if (input.action === "role" && input.userId === actor.id && !input.admin)
       throw new ApiError(409, "You can't remove your own admin access.");
-    const result = input.admin
-      ? await db
-          .from("account_roles")
-          .upsert(
-            { user_id: input.userId, role: "admin" },
-            { onConflict: "user_id" },
-          )
-      : await db
-          .from("account_roles")
-          .update({ role: "user" })
-          .eq("user_id", input.userId)
-          .eq("role", "admin");
-    if (result.error)
-      throw new ApiError(502, "Couldn't update this user's role.");
-    await db.from("audit_logs").insert({
+    if (
+      input.action === "suspension" &&
+      input.userId === actor.id &&
+      input.suspended
+    )
+      throw new ApiError(409, "You can't suspend your own AI access.");
+    let result;
+    if (input.action === "role") {
+      result = input.admin
+        ? await db
+            .from("account_roles")
+            .upsert(
+              { user_id: input.userId, role: "admin" },
+              { onConflict: "user_id" },
+            )
+        : await db
+            .from("account_roles")
+            .update({ role: "user" })
+            .eq("user_id", input.userId)
+            .eq("role", "admin");
+    } else {
+      const values =
+        input.action === "suspension"
+          ? {
+              suspended: input.suspended,
+              suspension_reason: input.suspended ? input.reason || null : null,
+            }
+          : input.action === "tokens"
+            ? { extra_tokens: input.extraTokens }
+            : { limit_reset_at: new Date().toISOString() };
+      result = await db.from("ai_user_controls").upsert(
+        {
+          user_id: input.userId,
+          ...values,
+          updated_by: actor.id,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" },
+      );
+    }
+    if (result.error) throw new ApiError(502, "Couldn't update this user.");
+    const audit = await db.from("audit_logs").insert({
       actor_id: actor.id,
       action: `admin.user.${input.action}`,
       target_type: "user",
       target_id: input.userId,
       metadata: input,
     });
+    if (audit.error)
+      throw new ApiError(
+        502,
+        "User updated, but the audit record failed. Contact an operator.",
+      );
     return Response.json({ ok: true });
   } catch (error) {
     return failure(error);

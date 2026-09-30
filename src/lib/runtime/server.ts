@@ -10,11 +10,13 @@ export async function runtimeAccess(projectId: string) {
   const { db, user } = await session();
   const { data, error } = await db
     .from("projects")
-    .select("id")
+    .select("id,status")
     .eq("id", projectId)
     .maybeSingle();
   if (error) throw new ApiError(502, "Couldn't load this project.");
   if (!data) throw new ApiError(404, "Project not found.");
+  if (data.status === "archived")
+    throw new ApiError(409, "This project is being deleted.");
   return { db, user };
 }
 export function runtimeConfigured() {
@@ -63,12 +65,22 @@ export async function enqueueRuntime(
         "This project's AI allowance is used up or reserved by pending tasks.",
       daily_limit:
         "The runtime's daily safety limit has been reached. Try again later.",
+      ai_suspended:
+        "An administrator has suspended AI access for this account.",
+      project_archived:
+        "This project is being deleted and cannot start new tasks.",
     };
     const code = Object.keys(messages).find((key) =>
       error.message.includes(key),
     );
     throw new ApiError(
-      code ? 429 : 409,
+      code === "ai_suspended"
+        ? 403
+        : code === "project_archived"
+          ? 409
+          : code
+            ? 429
+            : 409,
       code
         ? messages[code]
         : "Couldn't queue this task. Check the workspace and retry.",

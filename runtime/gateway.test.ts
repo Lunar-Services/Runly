@@ -220,62 +220,50 @@ test(
         "files must be backed up before acknowledgement",
       );
       assert.ok(browser.frames.some((f) => f.type === "files.changed"));
-      const gitBody = JSON.stringify({ project, user, action: "status" });
+      const filesBody = JSON.stringify({ project, user, action: "snapshot" });
       const stamp = Date.now();
       const nonce = randomUUID();
       const signature = createHmac("sha256", secret)
-        .update(`${stamp}.${nonce}.${gitBody}`)
+        .update(`${stamp}.${nonce}.${filesBody}`)
         .digest("hex");
-      const gitRequest = () =>
-        fetch(`http://127.0.0.1:${port}/internal/git`, {
+      const filesRequest = () =>
+        fetch(`http://127.0.0.1:${port}/internal/files`, {
           method: "POST",
           headers: {
             "X-Runly-Timestamp": String(stamp),
             "X-Runly-Nonce": nonce,
             "X-Runly-Signature": signature,
           },
-          body: gitBody,
+          body: filesBody,
         });
-      const gitResponse = await gitRequest();
-      const gitResult = await gitResponse.json();
-      assert.equal(gitResponse.status, 200, JSON.stringify(gitResult));
-      assert.equal(gitResult.hash, digest("hello"));
-      const unsafeBody = JSON.stringify({
-        project,
-        user,
-        action: "push",
-        token: "test-installation-token-must-not-leave-server",
-      });
-      const unsafeNonce = randomUUID();
-      const unsafeResponse = await fetch(
-        `http://127.0.0.1:${port}/internal/git`,
-        {
-          method: "POST",
-          headers: {
-            "X-Runly-Timestamp": String(stamp),
-            "X-Runly-Nonce": unsafeNonce,
-            "X-Runly-Signature": createHmac("sha256", secret)
-              .update(`${stamp}.${unsafeNonce}.${unsafeBody}`)
-              .digest("hex"),
-          },
-          body: unsafeBody,
-        },
-      );
-      assert.equal(unsafeResponse.status, 409, "hosted Git must fail closed");
+      const filesResponse = await filesRequest();
+      const filesResult = await filesResponse.json();
+      assert.equal(filesResponse.status, 200, JSON.stringify(filesResult));
+      assert.equal(filesResult.hash, digest("hello"));
       assert.equal(
-        (await gitRequest()).status,
+        (await filesRequest()).status,
         409,
         "signed requests are single-use",
       );
       assert.equal(
         (
-          await fetch(`http://127.0.0.1:${port}/internal/git`, {
+          await fetch(`http://127.0.0.1:${port}/internal/files`, {
             method: "POST",
-            body: gitBody,
+            body: filesBody,
           })
         ).status,
         409,
-        "unsigned Git calls are rejected",
+        "unsigned file calls are rejected",
+      );
+      assert.equal(
+        (
+          await fetch(`http://127.0.0.1:${port}/internal/git`, {
+            method: "POST",
+            body: JSON.stringify({ token: "installation-token" }),
+          })
+        ).status,
+        410,
+        "the legacy credential-forwarding route is retired",
       );
       bridge.ws.send(
         JSON.stringify({

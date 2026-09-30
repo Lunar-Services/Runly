@@ -22,8 +22,17 @@ if (!commands[command]) {
   process.exit(2);
 }
 
+const childEnv = { ...process.env };
+if (command === "runtime") {
+  // GitHub credentials belong to the trusted web broker. The gateway relays
+  // untrusted sandbox traffic and has no reason to hold them in its process.
+  for (const name of Object.keys(childEnv))
+    if (name.startsWith("GITHUB_") || name.startsWith("STRIPE_"))
+      delete childEnv[name];
+}
+
 const child = spawn(process.execPath, [...commands[command], ...extraArgs], {
-  env: process.env,
+  env: childEnv,
   stdio: "inherit",
   windowsHide: true,
 });

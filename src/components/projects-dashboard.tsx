@@ -6,7 +6,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProjectActions } from "./project-actions";
 
-type Project = { id: string; name: string; status: string; updated_at: string };
+type Project = {
+  id: string;
+  name: string;
+  status: string;
+  updated_at: string;
+  deletion_requested_at?: string | null;
+};
 export function ProjectsDashboard() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -166,20 +172,29 @@ export function ProjectsDashboard() {
           <div className="saved-projects">
             {visible.map((project) => (
               <article className="saved-project-card" key={project.id}>
-                <Link
-                  className="saved-project-link"
-                  href={`/project/${project.id}`}
-                >
-                  <h3>{project.name}</h3>
-                  <p>
-                    Saved · {new Date(project.updated_at).toLocaleDateString()}
-                  </p>
-                  <small>
-                    {project.status === "draft"
-                      ? "Draft project"
-                      : "Active project"}
-                  </small>
-                </Link>
+                {project.deletion_requested_at ? (
+                  <div className="saved-project-link">
+                    <h3>{project.name}</h3>
+                    <p>Deletion pending</p>
+                    <small>Use the delete button to finish cleanup.</small>
+                  </div>
+                ) : (
+                  <Link
+                    className="saved-project-link"
+                    href={`/project/${project.id}`}
+                  >
+                    <h3>{project.name}</h3>
+                    <p>
+                      Saved ·{" "}
+                      {new Date(project.updated_at).toLocaleDateString()}
+                    </p>
+                    <small>
+                      {project.status === "draft"
+                        ? "Draft project"
+                        : "Active project"}
+                    </small>
+                  </Link>
+                )}
                 <ProjectActions
                   project={project}
                   onRename={(nextName) =>
@@ -189,6 +204,11 @@ export function ProjectsDashboard() {
                           ? { ...item, name: nextName }
                           : item,
                       ),
+                    )
+                  }
+                  onDelete={() =>
+                    setProjects((current) =>
+                      current.filter((item) => item.id !== project.id),
                     )
                   }
                 />

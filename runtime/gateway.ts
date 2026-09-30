@@ -180,7 +180,7 @@ async function check<T>(
   if (result.error) throw new Error(result.error.message);
   return result.data;
 }
-async function access(project: string, user: string) {
+async function access(project: string, user: string, allowArchived = false) {
   const identity = await db.auth.admin.getUserById(user);
   if (
     identity.error ||
@@ -192,11 +192,12 @@ async function access(project: string, user: string) {
   const value = await check(
     db
       .from("projects")
-      .select("owner_id,workspace_id")
+      .select("owner_id,workspace_id,status")
       .eq("id", project)
       .maybeSingle(),
   );
   if (!value) return false;
+  if (!allowArchived && value.status === "archived") return false;
   if (value.owner_id === user) return true;
   if (!value.workspace_id) return false;
   return !!(await check(
@@ -1154,25 +1155,6 @@ async function attachPreviewSocket(
   }
 }
 const internalNonces = new Map<string, number>();
-const internalGitSchema = z.object({
-  project: z.string().uuid(),
-  user: z.string().uuid(),
-  action: z.enum([
-    "status",
-    "link",
-    "restore",
-    "checkout",
-    "branch",
-    "pull",
-    "push",
-  ]),
-  branch: z.string().max(100).optional(),
-  url: z.string().url().max(300).optional(),
-  token: z.string().max(4096).optional(),
-  author: z.string().max(120).optional(),
-  email: z.email().max(254).optional(),
-  message: z.string().max(120).optional(),
-});
 const internalFilesSchema = z.discriminatedUnion("action", [
   z.object({
     project: z.string().uuid(),
@@ -1280,98 +1262,6 @@ async function handleInternalFiles(
     );
   }
 }
-async function handleInternalGit(
-  request: IncomingMessage,
-  response: ServerResponse,
-) {
-  try {
-    if (!hasLease || closing) throw new Error("Gateway is unavailable");
-    if (
-      !["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(
-        request.socket.remoteAddress || "",
-      )
-    )
-      throw new Error("Internal endpoint requires loopback access");
-    const stamp = Number(request.headers["x-runly-timestamp"]);
-    const nonce = String(request.headers["x-runly-nonce"] || "");
-    const signature = Buffer.from(
-      String(request.headers["x-runly-signature"] || ""),
-      "hex",
-    );
-    if (
-      !Number.isFinite(stamp) ||
-      Math.abs(Date.now() - stamp) > 30_000 ||
-      !/^[a-f0-9-]{36}$/.test(nonce) ||
-      internalNonces.has(nonce)
-    )
-      throw new Error("Invalid internal request");
-    const chunks: Buffer[] = [];
-    let length = 0;
-    for await (const part of request) {
-      const chunk = Buffer.from(part);
-      length += chunk.length;
-      if (length > 12_000) throw new Error("Request too large");
-      chunks.push(chunk);
-    }
-    const raw = Buffer.concat(chunks);
-    const expected = createHmac("sha256", secret)
-      .update(`${stamp}.${nonce}.`)
-      .update(raw)
-      .digest();
-    if (
-      signature.length !== expected.length ||
-      !timingSafeEqual(signature, expected)
-    )
-      throw new Error("Invalid internal signature");
-    for (const [key, until] of internalNonces)
-      if (until < Date.now()) internalNonces.delete(key);
-    internalNonces.set(nonce, Date.now() + 60_000);
-    const input = internalGitSchema.parse(JSON.parse(raw.toString("utf8")));
-    // The hosted sandbox runs arbitrary project code under the same OS user as
-    // the connector. Until Git runs in an isolated trusted worker, forwarding
-    // an installation token would expose it to that code.
-    if (
-      (process.env.NODE_ENV === "production" ||
-        !/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/.test(
-          process.env.RUNLY_SITE_URL || "",
-        )) &&
-      (input.action !== "status" || input.token)
-    )
-      throw new Error(
-        "Hosted Git writes require an isolated credential broker",
-      );
-    if (!(await access(input.project, input.user)))
-      throw new Error("Project access denied");
-    const value = room(input.project);
-    if (value.busy)
-      throw new Error(
-        "Wait for the agent to finish before managing Git branches",
-      );
-    value.lastActive = Date.now();
-    const result = await callBridge(
-      input.project,
-      { op: "git", ...input },
-      240_000,
-    );
-    await value.persistence;
-    response.writeHead(200, {
-      "Content-Type": "application/json",
-      "Cache-Control": "no-store",
-    });
-    response.end(JSON.stringify(result));
-  } catch (error) {
-    response.writeHead(409, {
-      "Content-Type": "application/json",
-      "Cache-Control": "no-store",
-    });
-    response.end(
-      JSON.stringify({
-        message:
-          error instanceof Error ? error.message : "Git operation failed",
-      }),
-    );
-  }
-}
 const http = createServer((request, response) => {
   if (request.url === "/internal/files") {
     if (request.method !== "POST")
@@ -1379,12 +1269,8 @@ const http = createServer((request, response) => {
     void handleInternalFiles(request, response);
     return;
   }
-  if (request.url === "/internal/git") {
-    if (request.method !== "POST")
-      return plainResponse(response, 405, "Method not allowed");
-    void handleInternalGit(request, response);
-    return;
-  }
+  if (request.url === "/internal/git")
+    return plainResponse(response, 410, "Use the trusted GitHub broker");
   const host = (request.headers.host || "").split(":")[0].toLowerCase();
   const suffix = `.${previewDomain}`;
   if (host.endsWith(suffix)) {
@@ -1709,6 +1595,7 @@ sockets.on("connection", (socket, request) => {
 
 async function execute(job: Job) {
   const value = room(job.project_id);
+  const startedAt = Date.now();
   value.busy = true;
   value.lastActive = Date.now();
   publish(job.project_id, {
@@ -1733,8 +1620,19 @@ async function execute(job: Job) {
       .catch(() => value.abort?.abort());
   }, 30_000);
   try {
-    if (!(await access(job.project_id, job.actor_id)))
+    if (!(await access(job.project_id, job.actor_id, job.kind === "stop")))
       throw new Error("Project access revoked");
+    if (job.kind !== "stop") {
+      const controls = await check(
+        db
+          .from("ai_user_controls")
+          .select("suspended")
+          .eq("user_id", job.actor_id)
+          .maybeSingle(),
+      );
+      if (controls?.suspended)
+        throw new Error("AI access was suspended before this task could start");
+    }
     if (job.kind !== "stop" && !(await computeAllowed(job.project_id)))
       throw new Error("Runtime disabled or project subscription inactive");
     if (job.kind === "start") await startWorkspace(job.project_id);
@@ -1797,6 +1695,47 @@ async function execute(job: Job) {
       error: message,
     });
   } finally {
+    if (job.kind === "agent") {
+      try {
+        const record = await check(
+          db
+            .from("runtime_jobs")
+            .select("state,error,usage,provider_turn_id")
+            .eq("id", job.id)
+            .single(),
+        );
+        const usage = record?.usage as {
+          input_tokens?: number;
+          output_tokens?: number;
+        } | null;
+        const inputTokens = Math.max(0, Number(usage?.input_tokens || 0));
+        const outputTokens = Math.max(0, Number(usage?.output_tokens || 0));
+        await check(
+          db.from("ai_request_logs").upsert(
+            {
+              request_id: job.id,
+              user_id: job.actor_id,
+              project_id: job.project_id,
+              provider_request_id: record?.provider_turn_id || null,
+              input_tokens: inputTokens,
+              output_tokens: outputTokens,
+              total_tokens: inputTokens + outputTokens,
+              latency_ms: Math.min(Date.now() - startedAt, 2_147_483_647),
+              success: record?.state === "completed",
+              error: record?.error || null,
+              rate_limited: /\b429\b|rate.?limit/i.test(record?.error || ""),
+              // Provider usage reports tokens, not a final invoice. Cost stays
+              // unpriced until an authoritative billing feed is integrated.
+              ai_cost_micros: null,
+              sandbox_cost_micros: null,
+            },
+            { onConflict: "request_id" },
+          ),
+        );
+      } catch (error) {
+        console.error("AI request telemetry failed", error);
+      }
+    }
     value.busy = false;
     value.lastActive = Date.now();
     clearInterval(lease);
