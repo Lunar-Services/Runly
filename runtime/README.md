@@ -33,15 +33,15 @@ Current deliberate limits:
   is a single shell, not one shell per collaborator.
 - Local mock mode publishes an app port on the host loopback and renders it in a
   sandboxed, cross-origin iframe. Hosted provider previews require an isolated
-  preview origin and bounded authenticated HTTP forwarding; WebSocket/HMR
-  forwarding is not implemented yet.
+  preview origin and bounded authenticated HTTP and WebSocket forwarding.
   Never serve untrusted app HTML from the Runly application origin.
 - Logs are bounded in-memory tails, not durable audit logs. Saved files,
   messages, jobs and reported token usage are durable in Postgres.
 - Hosted expiry is provider-controlled. A live terminal WebSocket is not a
   documented provider keepalive. File snapshots are continuously backed up;
-  restoring an expired/disconnected environment currently requires operator
-  recovery, not automatic replacement of potentially unsaved work.
+  a confirmed expired or failed environment is automatically replaced from the
+  saved snapshot when no provider job has unsettled usage. A merely disconnected
+  environment is held for recovery to avoid discarding unsaved work.
 
 ## Processes and scaling
 
@@ -149,15 +149,15 @@ runly-ai.xyz {
 runtime.runly-ai.xyz {
     reverse_proxy 127.0.0.1:4001
 }
-*.preview.runly-ai.xyz {
-    # Install a wildcard certificate for *.preview.runly-ai.xyz, issued with DNS-01.
+*.preview-runly-ai.site {
+    # Install a wildcard certificate for *.preview-runly-ai.site, issued with DNS-01.
     tls /etc/caddy/certs/runly-preview.crt /etc/caddy/certs/runly-preview.key
     reverse_proxy 127.0.0.1:4001
 }
 ```
 
 Create DNS A/AAAA records for `runly-ai.xyz`, `runtime.runly-ai.xyz`, and the
-wildcard `*.preview.runly-ai.xyz` to the VPS; optionally point `www` to the apex.
+wildcard `*.preview-runly-ai.site` to the VPS; optionally point `www` to the apex.
 The preview wildcard certificate must be issued using DNS-01 (a regular HTTP
 challenge cannot issue a wildcard certificate). Restrict ports 3000/4001 to
 loopback and expose only 80/443 through the firewall. Add edge connection/rate limits.
@@ -169,29 +169,22 @@ Before enabling the runtime for users, apply all Supabase migrations, configure
 the Supabase Auth site URL and redirect allowlist for `https://runly-ai.xyz`,
 provision active plan entitlements, and explicitly enable `runtime_policy` only
 after reviewing quotas and provider spending limits. Start Next.js and the
-gateway as separate supervised services. Set `RUNLY_PREVIEW_DOMAIN=preview.runly-ai.xyz`
+gateway as separate supervised services. Set `RUNLY_PREVIEW_DOMAIN=preview-runly-ai.site`
 in `.env.prod`, apply the runtime migrations (including the preview-token column),
 and configure DNS plus a valid wildcard TLS certificate before enabling Preview.
 The final auth migration removes automatic administrator grants based on an
 email address. Review existing `account_roles` and `platform_owners` rows,
 because previously granted roles are not silently revoked by that migration.
 The gateway relays bounded HTTP/1.1 request/response bodies (1 MiB request,
-8 MiB response) over the sandbox's existing WSS connection; it does not expose
-the sandbox port directly. WebSocket upgrades (including development HMR) are
-not yet tunneled, so use a production-style app server or refresh manually while
-developing. The `preview.runly-ai.xyz` subdomain is cross-origin but same-site
-with `runly-ai.xyz`; it is not a separate registrable-site security boundary.
+8 MiB response) and WebSocket upgrades (including development HMR) over the
+sandbox's existing WSS connection; it does not expose the sandbox port directly.
+`preview-runly-ai.site` is a separate registrable site from `runly-ai.xyz`.
 
-Security gate: hosted Git writes (link, branch, checkout, pull, and push) are
-disabled in production until Git commands run in a trusted isolated worker or
-through a credential broker. The hosted sandbox shares its environment with
-user code, so passing a GitHub installation token into the connector would
-expose it. Git status remains available. Do not bypass this gate by changing
-`NODE_ENV` or the site URL. The gateway listens on loopback only; keep the TLS
-reverse proxy on the same VPS. Project `.env*`, key, and credential files are
-excluded from Explorer snapshots, but never place platform secrets in a project
-sandbox. Use a different registrable domain for untrusted Preview before
-serving sensitive production accounts.
+Hosted Git writes run through the trusted Next.js broker. Installation tokens
+remain server-side and are never passed into the hosted sandbox. The gateway
+listens on loopback only; keep the TLS reverse proxy on the same VPS. Project
+`.env*`, key, and credential files are excluded from Explorer snapshots, but
+never place platform secrets in a project sandbox.
 Sandbox outbound networking is restricted to the runtime gateway, npm registry,
 and required OpenAI hosts by default. Add only reviewed exact hostnames through
 `RUNLY_SANDBOX_ALLOWED_DOMAINS` when a project's server-side app genuinely needs
@@ -220,7 +213,7 @@ GitHub sign-in and repository operations are separate grants:
    installer membership. A GitHub App installation token is minted on the server
    for one repository per operation and never returned to the browser.
 4. `RUNLY_RUNTIME_INTERNAL_URL` must point to the gateway's loopback listener
-   (for the single-VPS deployment, `http://127.0.0.1:4001`). The internal Git
+   (for the single-VPS deployment, `http://127.0.0.1:4001`). The internal file
    endpoint rejects non-loopback callers and requires a short-lived HMAC request.
    Keep port 4001 private behind the reverse proxy. Multi-VPS gateway routing
    needs a private authenticated per-shard route before adding more shards.
@@ -228,9 +221,8 @@ GitHub sign-in and repository operations are separate grants:
 The project Git menu can import a repository into a blank project, attach an
 existing project to an empty repository, create/checkout branches, fast-forward
 pull, and commit/push. It refuses to merge a non-empty repository into a
-non-empty project, or to switch/pull over local edits. Git history is ephemeral
-in the hosted sandbox and is reconstructed without overwriting saved files on
-the next Git action after restart. Source files remain backed up in Postgres.
+non-empty project, or to switch/pull over local edits. Git history is managed
+through GitHub's API. Source files remain backed up in Postgres.
 Do not assume this replaces a full Git hosting client: conflicts, protected
 branches, very large or binary repositories, and organization installations
 require a separate workflow.
@@ -271,11 +263,10 @@ and reported usage, recovers a completed answer, and settles usage. Inspect the
 filesystem before continuing. If no provider turn exists, operator investigation
 is required; do not blindly release the reservation or replay the request.
 
-If the hosted environment has permanently expired, export/recover anything
-available from the provider and compare it with `runtime_files` before deleting
-the old provider session and clearing that project's `session_id`, connector
-token and state. This deliberately is not automatic: a disconnected sandbox may
-contain the only remaining copy of recent edits. Alert on stalled jobs, failed
+The gateway replaces a provider-confirmed expired or failed environment from
+`runtime_files` when no provider job has unsettled usage. A disconnected sandbox
+whose provider state remains active is held for operator inspection because it
+may contain the only copy of recent edits. Alert on stalled jobs, failed
 backups, disconnected sessions and held reservations.
 
 ## Verification
@@ -320,8 +311,8 @@ repository before accepting customer traffic:
    after restart to test source snapshot and Git reconstruction.
 3. In a fresh blank project, open Preview and choose **Create sample Next.js
    app**. Confirm the page renders and its API message appears. Verify Terminal
-   sees the same files and Console shows the server logs. Refresh Preview; HMR
-   is not supported. Test an app failure and retry path.
+   sees the same files and Console shows the server logs. Verify HMR over the
+   preview WebSocket. Test an app failure and retry path.
 4. Ask the agent to edit the sample app. Confirm Explorer, Terminal and Preview
    show the result. Open Usage to check settled tokens. Exhaust a low test quota
    and confirm another task is refused without making a provider call. Cancel a

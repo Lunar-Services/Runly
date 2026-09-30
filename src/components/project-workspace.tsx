@@ -513,7 +513,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
       workspaceToolStart.current = workspaceView;
       return;
     }
-    if (runtimeState !== "stopped") return;
+    if (runtimeState !== "stopped" && runtimeState !== "error") return;
 
     // Entering a workspace-backed tool starts it on demand. If the server
     // later idles it, the next interaction requests it again.
@@ -1344,10 +1344,13 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                     {gitError}
                   </p>
                 )}
-                {!githubLinked && !gitBusy && (
-                  <Link href="/settings/account">
-                    Connect GitHub in Account settings
-                  </Link>
+                {!githubLinked && !gitBusy && !gitError && (
+                  <>
+                    <p>GitHub account not yet linked.</p>
+                    <Link href="/settings/account">
+                      Connect GitHub in Account settings
+                    </Link>
+                  </>
                 )}
                 {githubLinked && !githubRepos.length && !gitBusy && (
                   <Link href="/settings/account">

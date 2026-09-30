@@ -57,6 +57,8 @@ class Bridge:
         self.alive = True
         self.preview_ready = False
         self.preview_slots = threading.BoundedSemaphore(32)
+        self.preview_sockets = {}
+        self.preview_socket_lock = threading.Lock()
         self.command_slots = threading.BoundedSemaphore(16)
 
     def handle_preview_request(self, message):
@@ -102,6 +104,91 @@ class Bridge:
                 self.preview_slots.release()
 
         threading.Thread(target=forward, daemon=True).start()
+
+    def handle_preview_socket_open(self, message):
+        import websocket
+        request_id = message.get("id")
+        path = message.get("path")
+        host = message.get("host")
+        origin = message.get("origin")
+        if (not isinstance(request_id, str) or len(request_id) > 64 or
+                not isinstance(path, str) or not path.startswith("/") or path.startswith("//") or len(path) > 4096 or
+                not isinstance(host, str) or len(host) > 253 or
+                origin != "https://" + host):
+            return
+        with self.preview_socket_lock:
+            if len(self.preview_sockets) >= 32:
+                self.send({"type": "preview.ws.error", "id": request_id})
+                return
+
+        def forward():
+            connection = None
+            try:
+                headers = []
+                for pair in message.get("headers", []):
+                    if (isinstance(pair, list) and len(pair) == 2 and
+                            pair[0].lower() in {"cookie", "user-agent"} and
+                            isinstance(pair[1], str) and "\r" not in pair[1] and "\n" not in pair[1]):
+                        headers.append(f"{pair[0]}: {pair[1]}")
+                port = int(os.environ.get("RUNLY_PREVIEW_PORT", "3000"))
+                connection = websocket.create_connection(
+                    f"ws://127.0.0.1:{port}{path}", timeout=15,
+                    header=headers, origin=origin, host=host,
+                    enable_multithread=True,
+                )
+                with self.preview_socket_lock:
+                    self.preview_sockets[request_id] = connection
+                self.send({"type": "preview.ws.ready", "id": request_id})
+                while self.alive:
+                    opcode, data = connection.recv_data(control_frame=True)
+                    if opcode == websocket.ABNF.OPCODE_CLOSE:
+                        break
+                    if opcode in (websocket.ABNF.OPCODE_TEXT, websocket.ABNF.OPCODE_BINARY):
+                        payload = data.encode() if isinstance(data, str) else data
+                        if len(payload) > MAX_PREVIEW_BODY:
+                            break
+                        self.send({"type": "preview.ws.data", "id": request_id,
+                                   "data": base64.b64encode(payload).decode("ascii"),
+                                   "binary": opcode == websocket.ABNF.OPCODE_BINARY})
+            except Exception:
+                self.send({"type": "preview.ws.error", "id": request_id})
+            finally:
+                with self.preview_socket_lock:
+                    self.preview_sockets.pop(request_id, None)
+                if connection:
+                    connection.close()
+                self.send({"type": "preview.ws.close", "id": request_id})
+
+        threading.Thread(target=forward, daemon=True).start()
+
+    def handle_preview_socket_data(self, message):
+        import websocket
+        request_id = message.get("id")
+        with self.preview_socket_lock:
+            connection = self.preview_sockets.get(request_id)
+        if not connection:
+            return
+        try:
+            payload = base64.b64decode(message.get("data", ""), validate=True)
+            if len(payload) > MAX_PREVIEW_BODY:
+                raise ValueError("Preview message too large")
+            connection.send(payload if message.get("binary") else payload.decode("utf-8"),
+                            opcode=websocket.ABNF.OPCODE_BINARY if message.get("binary") else websocket.ABNF.OPCODE_TEXT)
+        except Exception:
+            connection.close()
+
+    def handle_preview_socket_close(self, message):
+        with self.preview_socket_lock:
+            connection = self.preview_sockets.pop(message.get("id"), None)
+        if connection:
+            connection.close()
+
+    def close_preview_sockets(self):
+        with self.preview_socket_lock:
+            connections = list(self.preview_sockets.values())
+            self.preview_sockets.clear()
+        for connection in connections:
+            connection.close()
 
     def scan(self, force=False):
         with self.lock:
@@ -344,6 +431,46 @@ class Bridge:
                     result = {"content": path.read_text(encoding="utf-8"), "hash": file_hash(path)}
                 elif operation == "snapshot":
                     self.scan(force=True)
+                elif operation == "replace":
+                    expected = message.get("expected")
+                    files = message.get("files")
+                    if not isinstance(expected, list) or not isinstance(files, list) or len(expected) > MAX_FILES or len(files) > MAX_FILES:
+                        raise ValueError("Invalid replacement manifest")
+                    self.scan(force=True)
+                    baseline = {}
+                    for item in expected:
+                        path = safe_path(item.get("path"))
+                        if item.get("kind") not in ("file", "folder") or not isinstance(item.get("hash"), str):
+                            raise ValueError("Invalid replacement baseline")
+                        baseline[str(path.relative_to(ROOT)).replace("\\", "/")] = item["hash"] + item["kind"]
+                    if baseline != self.previous:
+                        raise ValueError("Workspace files changed. Refresh before replacing them.")
+                    target = {}
+                    total = 0
+                    for item in files:
+                        if not isinstance(item, dict) or item.get("kind") != "file" or not isinstance(item.get("content"), str):
+                            raise ValueError("Invalid replacement file")
+                        path = safe_path(item.get("path"))
+                        content = item["content"].encode("utf-8")
+                        total += len(content)
+                        if len(content) > MAX_FILE or total > MAX_TOTAL or "\x00" in item["content"]:
+                            raise ValueError("Replacement exceeds workspace source limits")
+                        if hashlib.sha256(content).hexdigest() != item.get("hash") or path in target:
+                            raise ValueError("Replacement file hash is invalid")
+                        target[path] = content
+                    self.stop_app()
+                    for path in sorted((safe_path(name) for name in self.previous if self.previous[name].endswith("file") and safe_path(name) not in target), reverse=True):
+                        path.unlink()
+                    for path, content in target.items():
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        temporary = path.with_name(f".runly-{uuid.uuid4().hex}.tmp")
+                        temporary.write_bytes(content)
+                        temporary.replace(path)
+                    for name in sorted((name for name in self.previous if self.previous[name].endswith("folder")), key=lambda name: name.count("/"), reverse=True):
+                        directory = safe_path(name)
+                        if directory.is_dir() and not any(directory.iterdir()):
+                            directory.rmdir()
+                    self.scan(force=True)
                 elif operation == "terminal.open":
                     self.open_terminal(message.get("cols", 100), message.get("rows", 24))
                 elif operation == "terminal.input":
@@ -454,9 +581,16 @@ def main():
                 threading.Thread(target=execute_command, daemon=True).start()
         elif message.get("type") == "preview.request":
             bridge.handle_preview_request(message)
+        elif message.get("type") == "preview.ws.open":
+            bridge.handle_preview_socket_open(message)
+        elif message.get("type") == "preview.ws.data":
+            bridge.handle_preview_socket_data(message)
+        elif message.get("type") == "preview.ws.close":
+            bridge.handle_preview_socket_close(message)
     def on_error(ws, error):
         print(f"Gateway WebSocket error: {error}", flush=True)
     def on_close(ws, code, reason):
+        bridge.close_preview_sockets()
         print(f"Gateway WebSocket closed ({code}): {reason or 'no reason'}", flush=True)
     def watch():
         while bridge.alive:

@@ -328,6 +328,9 @@ export function AccountSettings() {
           Link GitHub to use repository controls in your projects. Email sign-in
           remains available for accounts with a password.
         </p>
+        {!loading && !failed && !githubLinked && (
+          <p className="muted">GitHub account not yet linked.</p>
+        )}
         <button
           type="button"
           className="button button-outline"

@@ -88,6 +88,15 @@ type PreviewRequest = {
 };
 const rooms = new Map<string, Room>();
 const previewRequests = new Map<string, PreviewRequest>();
+const previewSockets = new Map<
+  string,
+  {
+    project: string;
+    socket: WebSocket;
+    ready: boolean;
+    queued: { data: string; binary: boolean }[];
+  }
+>();
 const previewDomain = process.env.RUNLY_PREVIEW_DOMAIN?.toLowerCase() || "";
 const sandboxDomains = [
   new URL(gateway!.url).hostname.toLowerCase(),
@@ -317,12 +326,52 @@ async function startWorkspace(project: string) {
   if (!current) throw new Error("Workspace record missing");
   if (current.session_id) {
     // A gateway restart may simply have interrupted the connector. Give it time
-    // to reconnect before replacing compute. Never overwrite a live workspace.
-    for (let i = 0; i < 10 && !value.bridge; i++) await delay(1000);
+    // to reconnect before inspecting the hosted environment.
+    for (let i = 0; i < 30 && !value.bridge; i++) await delay(1000);
     if (value.bridge) return;
-    throw new Error(
-      "The existing sandbox is disconnected. Restore gateway connectivity before restarting; it may contain unsaved files.",
+    const unresolved = await check(
+      db
+        .from("runtime_jobs")
+        .select("id")
+        .eq("project_id", project)
+        .eq("provider_submitted", true)
+        .is("usage", null)
+        .limit(1),
     );
+    if (unresolved?.length)
+      throw new Error(
+        "A prior agent task needs usage reconciliation before this workspace can be recovered.",
+      );
+    let replaceable = false;
+    try {
+      const oldSession = await openai.beta.agents.sessions.retrieve(
+        current.session_id,
+      );
+      const environmentId =
+        oldSession.environment && "id" in oldSession.environment
+          ? oldSession.environment.id
+          : null;
+      if (environmentId) {
+        const environment =
+          await openai.beta.agents.environments.retrieve(environmentId);
+        replaceable = ["expired", "failed"].includes(environment.status);
+      }
+      if (oldSession.status === "failed") replaceable = true;
+    } catch (error) {
+      if (error instanceof OpenAI.APIError && error.status === 404)
+        replaceable = true;
+      else throw error;
+    }
+    if (!replaceable)
+      throw new Error(
+        "The hosted sandbox may still contain unsaved work. Restore its connector before replacing it.",
+      );
+    // Only a confirmed terminal environment can be replaced from the durable
+    // source snapshot. Generation and bridge credentials rotate below.
+    await updateRuntime(project, { session_id: null, state: "stopped" });
+    value.generation = undefined;
+    value.appRunning = false;
+    value.previewUrl = null;
   }
   const active = await check(
     db
@@ -996,6 +1045,100 @@ async function proxyPreview(
     plainResponse(response, 503, "Could not reach the preview workspace.");
   }
 }
+async function attachPreviewSocket(
+  socket: WebSocket,
+  request: IncomingMessage,
+) {
+  socket.pause();
+  const host = (request.headers.host || "").split(":")[0].toLowerCase();
+  const suffix = `.${previewDomain}`;
+  const token = host.slice(0, -suffix.length);
+  if (
+    !hasLease ||
+    closing ||
+    !host.endsWith(suffix) ||
+    !/^[a-f0-9]{48}$/.test(token) ||
+    !request.url?.startsWith("/") ||
+    request.url.startsWith("//") ||
+    request.url.length > 4096 ||
+    request.headers.origin !== `https://${host}` ||
+    previewSockets.size >= 64
+  ) {
+    socket.close(1008, "Invalid preview connection");
+    return;
+  }
+  try {
+    const runtime = await check(
+      db
+        .from("project_runtimes")
+        .select("project_id,generation,state")
+        .eq("preview_token_hash", digest(token))
+        .eq("gateway_id", gatewayId)
+        .maybeSingle(),
+    );
+    const value = runtime ? rooms.get(runtime.project_id) : undefined;
+    if (
+      !runtime ||
+      runtime.state !== "ready" ||
+      !value?.appRunning ||
+      value.generation !== runtime.generation ||
+      value.bridge?.readyState !== WebSocket.OPEN
+    ) {
+      socket.close(1013, "Preview is unavailable");
+      return;
+    }
+    const id = randomUUID();
+    previewSockets.set(id, {
+      project: runtime.project_id,
+      socket,
+      ready: false,
+      queued: [],
+    });
+    const headers: [string, string][] = [];
+    for (const name of ["cookie", "user-agent", "sec-websocket-protocol"])
+      if (typeof request.headers[name] === "string")
+        headers.push([name, request.headers[name]]);
+    send(value.bridge, {
+      type: "preview.ws.open",
+      id,
+      path: request.url,
+      host,
+      origin: request.headers.origin,
+      headers,
+    });
+    socket.on("message", (data, binary) => {
+      const bytes = Buffer.isBuffer(data)
+        ? data
+        : data instanceof ArrayBuffer
+          ? Buffer.from(data)
+          : Array.isArray(data)
+            ? Buffer.concat(data)
+            : Buffer.from(data);
+      if (
+        bytes.length > 1024 * 1024 ||
+        socket.bufferedAmount > 2 * 1024 * 1024
+      ) {
+        socket.close(1009, "Preview message too large");
+        return;
+      }
+      const item = previewSockets.get(id);
+      if (item?.socket !== socket) return;
+      const payload = { data: bytes.toString("base64"), binary };
+      if (!item.ready) {
+        if (item.queued.length >= 32) socket.close(1013, "Preview is busy");
+        else item.queued.push(payload);
+      } else send(value.bridge!, { type: "preview.ws.data", id, ...payload });
+    });
+    socket.on("close", () => {
+      previewSockets.delete(id);
+      send(value.bridge!, { type: "preview.ws.close", id });
+    });
+    socket.on("error", () => socket.close());
+    socket.resume();
+  } catch {
+    socket.close(1013, "Preview authorization unavailable");
+  }
+}
 const internalNonces = new Map<string, number>();
 const internalGitSchema = z.object({
   project: z.string().uuid(),
@@ -1016,6 +1159,113 @@ const internalGitSchema = z.object({
   email: z.email().max(254).optional(),
   message: z.string().max(120).optional(),
 });
+const internalFilesSchema = z.discriminatedUnion("action", [
+  z.object({
+    project: z.string().uuid(),
+    user: z.string().uuid(),
+    action: z.literal("snapshot"),
+  }),
+  z.object({
+    project: z.string().uuid(),
+    user: z.string().uuid(),
+    action: z.literal("replace"),
+    expected: z
+      .array(
+        z.object({
+          path: pathSchema,
+          kind: z.enum(["file", "folder"]),
+          hash: z.string().max(64),
+        }),
+      )
+      .max(1000),
+    files: z.array(fileSchema).max(1000),
+  }),
+]);
+async function handleInternalFiles(
+  request: IncomingMessage,
+  response: ServerResponse,
+) {
+  try {
+    if (
+      !hasLease ||
+      closing ||
+      !["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(
+        request.socket.remoteAddress || "",
+      )
+    )
+      throw new Error("Private workspace endpoint unavailable");
+    const stamp = Number(request.headers["x-runly-timestamp"]);
+    const nonce = String(request.headers["x-runly-nonce"] || "");
+    const signature = Buffer.from(
+      String(request.headers["x-runly-signature"] || ""),
+      "hex",
+    );
+    if (
+      !Number.isFinite(stamp) ||
+      Math.abs(Date.now() - stamp) > 30_000 ||
+      !/^[a-f0-9-]{36}$/.test(nonce) ||
+      internalNonces.has(nonce)
+    )
+      throw new Error("Invalid private request");
+    const chunks: Buffer[] = [];
+    let length = 0;
+    for await (const part of request) {
+      const chunk = Buffer.from(part);
+      length += chunk.length;
+      if (length > 10 * 1024 * 1024)
+        throw new Error("Workspace request too large");
+      chunks.push(chunk);
+    }
+    const raw = Buffer.concat(chunks);
+    const expectedSignature = createHmac("sha256", secret)
+      .update(`${stamp}.${nonce}.`)
+      .update(raw)
+      .digest();
+    if (
+      signature.length !== expectedSignature.length ||
+      !timingSafeEqual(signature, expectedSignature)
+    )
+      throw new Error("Invalid private signature");
+    for (const [key, until] of internalNonces)
+      if (until < Date.now()) internalNonces.delete(key);
+    internalNonces.set(nonce, Date.now() + 60_000);
+    const input = internalFilesSchema.parse(JSON.parse(raw.toString("utf8")));
+    if (!(await access(input.project, input.user)))
+      throw new Error("Project access denied");
+    const value = room(input.project);
+    if (value.busy || value.bridge?.readyState !== WebSocket.OPEN)
+      throw new Error("The workspace is busy or disconnected");
+    value.busy = true;
+    try {
+      const result = await callBridge(
+        input.project,
+        input.action === "snapshot"
+          ? { op: "snapshot" }
+          : { op: "replace", expected: input.expected, files: input.files },
+        240_000,
+      );
+      await value.persistence;
+      response.writeHead(200, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      });
+      response.end(JSON.stringify(result || {}));
+    } finally {
+      value.busy = false;
+    }
+  } catch (error) {
+    response.writeHead(409, {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    });
+    response.end(
+      JSON.stringify({
+        message:
+          error instanceof Error ? error.message : "Workspace operation failed",
+      }),
+    );
+  }
+}
 async function handleInternalGit(
   request: IncomingMessage,
   response: ServerResponse,
@@ -1109,6 +1359,12 @@ async function handleInternalGit(
   }
 }
 const http = createServer((request, response) => {
+  if (request.url === "/internal/files") {
+    if (request.method !== "POST")
+      return plainResponse(response, 405, "Method not allowed");
+    void handleInternalFiles(request, response);
+    return;
+  }
   if (request.url === "/internal/git") {
     if (request.method !== "POST")
       return plainResponse(response, 405, "Method not allowed");
@@ -1139,6 +1395,15 @@ const sockets = new WebSocketServer({
   perMessageDeflate: false,
 });
 sockets.on("connection", (socket, request) => {
+  if (
+    (request.headers.host || "")
+      .toLowerCase()
+      .split(":")[0]
+      .endsWith(`.${previewDomain}`)
+  ) {
+    void attachPreviewSocket(socket, request);
+    return;
+  }
   if (closing || !hasLease) {
     socket.close(1013, "Gateway is not ready");
     return;
@@ -1301,6 +1566,37 @@ sockets.on("connection", (socket, request) => {
           finishPreview(String(frame.id || ""), frame);
         } else if (
           [
+            "preview.ws.ready",
+            "preview.ws.data",
+            "preview.ws.close",
+            "preview.ws.error",
+          ].includes(frame.type)
+        ) {
+          const item = previewSockets.get(String(frame.id || ""));
+          if (!item || item.project !== project) return;
+          if (frame.type === "preview.ws.ready") {
+            item.ready = true;
+            for (const payload of item.queued)
+              send(socket, {
+                type: "preview.ws.data",
+                id: frame.id,
+                ...payload,
+              });
+            item.queued = [];
+          } else if (frame.type === "preview.ws.data") {
+            const data = Buffer.from(String(frame.data || ""), "base64");
+            if (
+              data.length > 1024 * 1024 ||
+              item.socket.bufferedAmount > 2 * 1024 * 1024
+            )
+              item.socket.close(1009, "Preview message too large");
+            else item.socket.send(frame.binary ? data : data.toString("utf8"));
+          } else {
+            previewSockets.delete(String(frame.id));
+            item.socket.close(frame.type === "preview.ws.error" ? 1011 : 1000);
+          }
+        } else if (
+          [
             "terminal.output",
             "terminal.exit",
             "console.output",
@@ -1378,6 +1674,11 @@ sockets.on("connection", (socket, request) => {
     if (value.bridge === socket) {
       value.bridge = undefined;
       failPreviewRequests(project, "Preview workspace disconnected.");
+      for (const [id, item] of previewSockets)
+        if (item.project === project) {
+          previewSockets.delete(id);
+          item.socket.close(1013, "Preview workspace disconnected");
+        }
       for (const pending of value.pending.values()) {
         clearTimeout(pending.timer);
         pending.reject(

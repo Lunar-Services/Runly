@@ -7,20 +7,18 @@ import {
   rateLimit,
   sameOrigin,
 } from "@/lib/api";
-import {
-  installationRepositories,
-  installationToken,
-  linkedGithubUserId,
-} from "@/lib/github";
+import { installationRepositories, linkedGithubUserId } from "@/lib/github";
+import { brokerGit } from "@/lib/github-broker";
 import { enqueueRuntime, runtimeAccess } from "@/lib/runtime/server";
-import { internalGit } from "@/lib/runtime/internal-git";
 
 type Context = { params: Promise<{ projectId: string }> };
 const branchName = z
   .string()
   .min(1)
   .max(100)
-  .regex(/^[A-Za-z0-9_][A-Za-z0-9_./-]*$/);
+  .regex(
+    /^(?!-)(?!.*(?:\.\.|@\{|\/\/|\.lock(?:\/|$)))[A-Za-z0-9_][A-Za-z0-9_./-]*$/,
+  );
 const inputSchema = z.object({
   action: z.enum(["link", "status", "branch", "checkout", "pull", "push"]),
   repositoryId: z.number().int().positive().optional(),
@@ -33,7 +31,9 @@ async function projectAccess(projectId: string) {
   const { db, user } = await runtimeAccess(projectId);
   const { data: project, error } = await db
     .from("projects")
-    .select("id,owner_id,github_repo_id,github_branch,github_installation_id")
+    .select(
+      "id,owner_id,github_repo_id,github_branch,github_installation_id,github_commit_sha",
+    )
     .eq("id", projectId)
     .single();
   if (error || !project) throw new ApiError(404, "Project not found.");
@@ -101,17 +101,6 @@ export async function POST(request: Request, context: Context) {
     if (!parsed.success)
       throw new ApiError(400, "Check the repository action and try again.");
     const input = parsed.data;
-    const localSite = /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::|\/|$)/.test(
-      process.env.RUNLY_SITE_URL || "",
-    );
-    if (
-      (process.env.NODE_ENV === "production" || !localSite) &&
-      input.action !== "status"
-    )
-      throw new ApiError(
-        503,
-        "Git writes are unavailable until an isolated credential broker is configured.",
-      );
     const installationId =
       input.action === "link"
         ? input.installationId
@@ -159,32 +148,19 @@ export async function POST(request: Request, context: Context) {
     if (input.action === "push" && !input.message)
       throw new ApiError(400, "Enter a commit message.");
     await readyWorkspace(projectId, user.id);
-    const token =
-      input.action === "status"
-        ? undefined
-        : await installationToken(installationId, repositoryId);
-    const common = {
-      project: projectId,
+    const result = await brokerGit({
+      project,
       user: user.id,
-      branch,
-      url: repository.clone_url,
-      ...(token ? { token } : {}),
-    };
-    if (input.action !== "link")
-      await internalGit({ ...common, action: "restore" });
-    const result = await internalGit({
-      ...common,
+      repository,
+      installationId,
       action: input.action,
-      ...(input.action === "push"
-        ? {
-            author:
-              user.user_metadata?.full_name ||
-              user.email?.split("@")[0] ||
-              "Runly user",
-            email: user.email!,
-            message: input.message,
-          }
-        : {}),
+      branch,
+      author:
+        user.user_metadata?.full_name ||
+        user.email?.split("@")[0] ||
+        "Runly user",
+      email: user.email!,
+      message: input.message,
     });
     if (input.action !== "status") {
       const { error } = await adminClient()

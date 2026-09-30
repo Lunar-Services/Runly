@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import os
 import signal
 import shutil
@@ -42,6 +43,19 @@ class BridgeTests(unittest.TestCase):
         self.assertFalse((bridge.ROOT / "src/a.ts").exists())
         self.assertNotIn("error", self.command("delete", path="b.ts", hash=first["result"]["hash"]))
         self.assertFalse((bridge.ROOT / "b.ts").exists())
+
+    def test_repository_replacement_checks_current_files_before_changing_them(self):
+        self.command("write", path="old.txt", content="original", hash="")
+        self.command("snapshot")
+        baseline = next(f for f in reversed(self.frames) if f["type"] == "files.changed")["files"]
+        content = "replacement"
+        target = [{"path": "new.txt", "kind": "file", "content": content,
+                   "hash": hashlib.sha256(content.encode()).hexdigest()}]
+        self.assertIn("error", self.command("replace", expected=[], files=target))
+        self.assertEqual((bridge.ROOT / "old.txt").read_text(), "original")
+        self.assertNotIn("error", self.command("replace", expected=baseline, files=target))
+        self.assertFalse((bridge.ROOT / "old.txt").exists())
+        self.assertEqual((bridge.ROOT / "new.txt").read_text(), content)
 
     def test_paths_and_no_recursive_delete(self):
         for value in ["../escape", "/etc/passwd", "a/../../escape", "a//b", "a\\b", "C:/x", "a/.git/config", ".runly/x", ".env", "src/.env.local", "secrets/private.pem"]:

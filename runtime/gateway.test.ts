@@ -142,8 +142,11 @@ test(
         "browser auth",
       );
       let previewHeaders: [string, string][] = [];
+      const previewSocketFrames: Record<string, unknown>[] = [];
       bridge.ws.on("message", (raw) => {
         const command = JSON.parse(raw.toString());
+        if (String(command.type).startsWith("preview.ws."))
+          previewSocketFrames.push(command);
         if (command.type === "preview.request") {
           previewHeaders = command.headers;
           bridge.ws.send(
@@ -160,6 +163,16 @@ test(
               ),
             }),
           );
+          return;
+        }
+        if (command.type === "preview.ws.open") {
+          bridge.ws.send(
+            JSON.stringify({ type: "preview.ws.ready", id: command.id }),
+          );
+          return;
+        }
+        if (command.type === "preview.ws.data") {
+          bridge.ws.send(JSON.stringify(command));
           return;
         }
         if (command.type !== "command") return;
@@ -328,6 +341,26 @@ test(
       assert.equal(preview.headers["content-security-policy"], undefined);
       assert.match(String(preview.headers["set-cookie"]), /session=x; Path=\//);
       assert.doesNotMatch(String(preview.headers["set-cookie"]), /Domain=/i);
+      const previewSocket = new WebSocket(
+        `ws://127.0.0.1:${port}/_next/webpack-hmr`,
+        {
+          origin: `https://${"a".repeat(48)}.preview.example.test`,
+          headers: { host: `${"a".repeat(48)}.preview.example.test` },
+        },
+      );
+      connected.push(previewSocket);
+      await once(previewSocket, "open");
+      const echoed = once(previewSocket, "message");
+      previewSocket.send("hot reload");
+      const [message] = await Promise.race([
+        echoed,
+        delay(3000).then(() => {
+          throw new Error(
+            `Preview WebSocket did not echo: ${JSON.stringify(previewSocketFrames)}`,
+          );
+        }),
+      ]);
+      assert.equal(message.toString(), "hot reload");
       bridge.ws.send(
         JSON.stringify({
           type: "terminal.output",
