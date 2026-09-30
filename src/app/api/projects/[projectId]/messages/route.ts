@@ -1,3 +1,12 @@
+import { adminClient } from "@/lib/api";
+import {
+  MEDIA_BUCKET,
+  mediaPath,
+  mediaRefSchema,
+  mediaManifestSchema,
+  encodeMessage,
+  reservedMessage,
+} from "@/lib/chat-media";
 import { z } from "zod";
 import {
   ApiError,
@@ -23,6 +32,7 @@ export async function POST(
         message: z.string().trim().min(1).max(12_000),
         chatId: z.string().uuid().optional(),
         requestId: z.string().uuid(),
+        media: z.array(mediaRefSchema).max(4).default([]),
       })
       .safeParse(await body(request, 16_384));
     if (!input.success) throw new ApiError(400, "Write a message first.");
@@ -34,6 +44,26 @@ export async function POST(
       .eq("id", projectId)
       .maybeSingle();
     if (!project) throw new ApiError(404, "Project not found.");
+    if (reservedMessage(input.data.message))
+      throw new ApiError(400, "Invalid message format.");
+    for (const ref of input.data.media) {
+      if (ref.owner !== user.id)
+        throw new ApiError(403, "Attach media uploaded by your account.");
+      const raw = await adminClient()
+        .storage.from(MEDIA_BUCKET)
+        .download(mediaPath(projectId, ref) + "/manifest.json");
+      if (
+        !raw.data ||
+        !mediaManifestSchema.parse(JSON.parse(await raw.data.text())).ready
+      )
+        throw new ApiError(400, "Finish uploading your media first.");
+    }
+    let encoded: string;
+    try {
+      encoded = encodeMessage(input.data.message, input.data.media);
+    } catch {
+      throw new ApiError(400, "Your message and attachments are too long.");
+    }
     let conversation = input.data.chatId
       ? (
           await db
@@ -54,7 +84,7 @@ export async function POST(
       conversation_id: conversation.id,
       actor_id: user.id,
       role: "user" as const,
-      body: input.data.message,
+      body: encoded,
       created_at: new Date().toISOString(),
     };
     await enqueueRuntime(
@@ -63,7 +93,7 @@ export async function POST(
       "agent",
       message.id,
       conversation.id,
-      input.data.message,
+      encoded,
     );
     return Response.json(
       {

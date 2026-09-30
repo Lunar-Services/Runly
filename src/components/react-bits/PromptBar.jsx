@@ -190,6 +190,11 @@ export default function PromptBar({
   onStop = undefined,
   onAttach = undefined,
   onDictate = undefined,
+  onMedia = undefined,
+  onRecord = undefined,
+  onRemoveAttachment = undefined,
+  recording = false,
+  mediaBusy = false,
   background = "#27272a",
   color = "#f5f5f5",
   menuBackground = "#323236",
@@ -255,7 +260,7 @@ export default function PromptBar({
   })();
   const cursor = Math.min(active, Math.max(0, list.length - 1));
   const canSend = draft.trim().length > 0 || attachments.length > 0;
-  const armed = busy ? Boolean(onStop) : canSend;
+  const armed = busy ? Boolean(onStop) : canSend && !mediaBusy && !recording;
   const level = efforts[effortIndex] ?? "";
   const maxed = efforts.length > 1 && effortIndex === efforts.length - 1;
 
@@ -484,7 +489,7 @@ export default function PromptBar({
   };
 
   const send = async () => {
-    if (!canSend || busy) return;
+    if (!canSend || busy || mediaBusy || recording) return;
     const sentDraft = draft;
     const accepted = await latest.current.onSend?.(draft.trim(), {
       attachments,
@@ -728,9 +733,10 @@ export default function PromptBar({
                   type="button"
                   className="prompt-bar__chip-x"
                   aria-label={`Remove ${file}`}
-                  onClick={() =>
-                    setAttachments((a) => a.filter((_, j) => j !== i))
-                  }
+                  onClick={() => {
+                    onRemoveAttachment?.(file);
+                    setAttachments((a) => a.filter((_, j) => j !== i));
+                  }}
                 >
                   <HugeiconsIcon
                     icon={Cancel01Icon}
@@ -824,6 +830,39 @@ export default function PromptBar({
               <span>{level}</span>
             </button>
           ) : null}
+          {onMedia && (
+            <button
+              type="button"
+              className="prompt-bar__tool prompt-bar__media"
+              disabled={busy || mediaBusy || recording}
+              aria-label="Attach media"
+              onClick={async () => {
+                const names = await onMedia();
+                setAttachments((current) => [...current, ...names]);
+              }}
+            >
+              <HugeiconsIcon icon={Attachment01Icon} size={15} />
+              <span>{mediaBusy ? "Uploading…" : "Media"}</span>
+            </button>
+          )}
+          {onRecord && (
+            <button
+              type="button"
+              className="prompt-bar__tool prompt-bar__media"
+              disabled={busy || mediaBusy}
+              aria-label={
+                recording ? "Stop voice recording" : "Record voice message"
+              }
+              aria-pressed={recording}
+              onClick={async () => {
+                const names = await onRecord();
+                setAttachments((current) => [...current, ...names]);
+              }}
+            >
+              <HugeiconsIcon icon={Mic01Icon} size={15} />
+              <span>{recording ? "Stop recording" : "Voice"}</span>
+            </button>
+          )}
           <span className="prompt-bar__spacer" />
           {onDictate ? (
             <button

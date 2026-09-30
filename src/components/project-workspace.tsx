@@ -1,4 +1,6 @@
 "use client";
+import { ChatMediaMessage } from "./chat-media-message";
+import { type MediaRef } from "@/lib/chat-media";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -257,6 +259,29 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
   const [project, setProject] = useState<Project | null>(null);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [userName, setUserName] = useState("there");
+  const [account, setAccount] = useState<{
+    displayName: string;
+    email: string;
+    avatarUrl: string;
+  } | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = () => {
+      fetch("/api/account", { signal: controller.signal })
+        .then(async (response) => (response.ok ? response.json() : null))
+        .then((profile) => {
+          if (profile) setAccount(profile);
+        })
+        .catch(() => undefined);
+    };
+    load();
+    window.addEventListener("runly-profile-updated", load);
+    return () => {
+      controller.abort();
+      window.removeEventListener("runly-profile-updated", load);
+    };
+  }, []);
+
   const [dayPart, setDayPart] = useState<DayPart | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -321,6 +346,30 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
   const [gitCommitMessage, setGitCommitMessage] = useState("Update from Runly");
   const [starterBusy, setStarterBusy] = useState(false);
   const [appMenuOpen, setAppMenuOpen] = useState<"view" | "help" | null>(null);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      const owner = (event.target as Element)
+        .closest("[data-workspace-popup]")
+        ?.getAttribute("data-workspace-popup");
+      if (owner !== "project") setProjectMenuOpen(false);
+      if (owner !== "branch") setBranchMenuOpen(false);
+      setAppMenuOpen((current) => (current === owner ? current : null));
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setProjectMenuOpen(false);
+        setBranchMenuOpen(false);
+        setAppMenuOpen(null);
+      }
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", escape);
+    };
+  }, []);
+
   const activeChatRef = useRef(activeChatId);
   useEffect(() => {
     activeChatRef.current = activeChatId;
@@ -1014,16 +1063,16 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
     }
   }
 
-  async function sendMessage(message: string) {
+  async function sendMessage(message: string, media: MediaRef[] = []) {
     if (!message.trim() || sending) return false;
     const text = message.trim();
     if (
-      pendingMessage.current?.text !== text ||
+      pendingMessage.current?.text !== text + JSON.stringify(media) ||
       pendingMessage.current?.chat !== activeChatId
     )
       pendingMessage.current = {
         id: crypto.randomUUID(),
-        text,
+        text: text + JSON.stringify(media),
         chat: activeChatId,
       };
     setSending(true);
@@ -1035,6 +1084,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
+          media,
           chatId: activeChatId || undefined,
           requestId: pendingMessage.current.id,
         }),
@@ -1190,7 +1240,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
   return (
     <div
       className="runly-workspace codex-workspace reference-workspace"
-      onMouseDown={(event) => {
+      onPointerDown={(event) => {
         if (!(event.target as HTMLElement).closest(".editor-menu-anchor")) {
           setProjectMenuOpen(false);
           setBranchMenuOpen(false);
@@ -1212,7 +1262,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
           className="editor-appbar-menu"
           aria-label="Editor application menu"
         >
-          <div className="editor-menu-anchor">
+          <div className="editor-menu-anchor" data-workspace-popup="view">
             <button
               type="button"
               aria-expanded={appMenuOpen === "view"}
@@ -1260,7 +1310,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               </div>
             )}
           </div>
-          <div className="editor-menu-anchor">
+          <div className="editor-menu-anchor" data-workspace-popup="help">
             <button
               type="button"
               aria-expanded={appMenuOpen === "help"}
@@ -1293,7 +1343,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
           </div>
         </nav>
         <div className="editor-project-controls">
-          <div className="editor-menu-anchor">
+          <div className="editor-menu-anchor" data-workspace-popup="project">
             <button
               type="button"
               className="editor-project-selector"
@@ -1342,7 +1392,7 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               </div>
             )}
           </div>
-          <div className="editor-menu-anchor">
+          <div className="editor-menu-anchor" data-workspace-popup="branch">
             <button
               type="button"
               className="editor-branch-selector"
@@ -1732,48 +1782,83 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
           </button>
         </nav>
         <footer className="reference-account">
-          <span>D</span>
-          <p>Runly account</p>
+          <Link
+            href="/settings"
+            className="reference-account-link"
+            aria-label="Open Runly account settings"
+          >
+            <span
+              className="reference-account-avatar"
+              aria-hidden="true"
+              style={
+                account?.avatarUrl
+                  ? { backgroundImage: `url(${account.avatarUrl})` }
+                  : undefined
+              }
+            >
+              {!account?.avatarUrl &&
+                (
+                  account?.displayName ||
+                  account?.email ||
+                  (userName !== "there" ? userName : "Runly")
+                )
+                  .trim()
+                  .split(/\s+/)
+                  .slice(0, 2)
+                  .map((part) => part[0])
+                  .join("")
+                  .toUpperCase()}
+            </span>
+            <span className="reference-account-info">
+              <strong>
+                {account?.displayName ||
+                  account?.email ||
+                  (userName !== "there" ? userName : "Runly account")}
+              </strong>
+              <small>{account?.email || "Runly account"}</small>
+            </span>
+            <Settings size={16} aria-hidden="true" />
+          </Link>
         </footer>
       </aside>
 
       <main className="reference-main">
         {workspaceView === "chat" && (
-          <section className="reference-chat-stage silk-section">
+          <section
+            className={`reference-chat-stage silk-section${messages.length ? "" : " is-chat-empty"}`}
+          >
             <SilkBackground />
+            <div className="reference-intro" aria-hidden={messages.length > 0}>
+              <p className="reference-greeting">
+                {dayPart
+                  ? `Good ${dayPart}, ${userName}`
+                  : "What should we build?"}
+              </p>
+              <h1>Runly</h1>
+            </div>
             <div className="reference-thread">
-              {messages.length ? (
-                messages.map((message) => (
-                  <article
-                    className={`reference-message message-${message.role}`}
-                    key={message.id}
-                  >
-                    {message.role !== "user" && (
-                      <Image
-                        className="reference-message-mark"
-                        src="/brand/runly-mark.png"
-                        width={24}
-                        height={24}
-                        alt=""
+              {messages.length
+                ? messages.map((message) => (
+                    <article
+                      className={`reference-message message-${message.role}`}
+                      key={message.id}
+                    >
+                      {message.role !== "user" && (
+                        <Image
+                          className="reference-message-mark"
+                          src="/brand/runly-mark.png"
+                          width={24}
+                          height={24}
+                          alt=""
+                        />
+                      )}
+                      <ChatMediaMessage
+                        body={message.body}
+                        projectId={projectId}
                       />
-                    )}
-                    <p>{message.body}</p>
-                  </article>
-                ))
-              ) : (
-                <div className="reference-empty">
-                  <h1>
-                    {dayPart
-                      ? `Good ${dayPart}, ${userName}`
-                      : "What should we build?"}
-                  </h1>
-                  <p>
-                    {dayPart
-                      ? "What shall we build today?"
-                      : "Describe your idea and Runly will plan the project with you."}
-                  </p>
-                </div>
-              )}
+                    </article>
+                  ))
+                : null}
               {(sending || runtime.agentBusy) && (
                 <LatticeLoader
                   label={
@@ -1785,6 +1870,8 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               )}
             </div>
             <ChatPromptBar
+              key={activeChatId}
+              projectId={projectId}
               chatId={activeChatId}
               sending={sending}
               working={runtime.agentBusy}

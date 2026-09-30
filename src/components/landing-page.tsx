@@ -58,6 +58,27 @@ export function LandingPage({
     return () => window.removeEventListener("scroll", update);
   }, []);
 
+  useEffect(() => {
+    if (!accountMenuOpen && !menuOpen) return;
+    const dismiss = (event: PointerEvent) => {
+      const target = event.target as Element;
+      if (!target.closest(".account-menu")) setAccountMenuOpen(false);
+      if (!header.current?.contains(target)) setMenuOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAccountMenuOpen(false);
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [accountMenuOpen, menuOpen]);
+
   async function startBuilding() {
     if (!prompt.trim()) return;
     const firstMessage = prompt.trim();
@@ -411,6 +432,8 @@ export function LandingPage({
         <div>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
+          <Link href="/refund">Refunds</Link>
+          <Link href="#faq">FAQ</Link>
           <Link href="/pricing">Pricing</Link>
           <Link href="/about">About us</Link>
         </div>

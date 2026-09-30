@@ -72,7 +72,7 @@
   position: relative;
   display: grid;
   place-items: center;
-  aspect-ratio: 1080 / 680;
+  aspect-ratio: 854 / 480;
   overflow: hidden;
   border-radius: 14px;
 }
@@ -635,5 +635,9 @@
 .visual {
   overflow: hidden;
   height: auto;
-  aspect-ratio: 1080 / 680;
+  aspect-ratio: 854 / 480;
+}
+
+.visual {
+  background: #000;
 }

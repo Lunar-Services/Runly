@@ -2,6 +2,7 @@
 // Pass a turn ID only after inspecting the provider session and matching the job.
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
+import { combinedUsage } from "../src/lib/chat-media";
 import { z } from "zod";
 import { digest } from "../src/lib/runtime/shared";
 
@@ -66,8 +67,8 @@ async function main() {
     await checked(
       db.rpc("settle_runtime_usage", {
         p_job: job.id,
-        p_input: turn.usage.input_tokens,
-        p_output: turn.usage.output_tokens,
+        p_input: combinedUsage(turn.usage, job.usage || {}).input_tokens,
+        p_output: combinedUsage(turn.usage, job.usage || {}).output_tokens,
         p_turn: turnId,
       }),
     );
@@ -111,7 +112,7 @@ async function main() {
         .from("runtime_jobs")
         .update({
           provider_turn_id: turnId,
-          usage: turn.usage,
+          usage: combinedUsage(turn.usage, job.usage || {}),
           state: turn.status === "completed" ? "completed" : "failed",
           error:
             turn.status === "completed"
