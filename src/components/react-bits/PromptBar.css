@@ -586,3 +586,16 @@
   color: var(--pb-ink);
   background: color-mix(in srgb, var(--pb-ink) 10%, transparent);
 }
+
+.runly-composer-meta button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+  transition: color 180ms ease;
+}
+.runly-composer-meta button:hover {
+  color: var(--text-main);
+}

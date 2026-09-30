@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import Link from "next/link";
 import { Attachment01Icon } from "@hugeicons/core-free-icons";
 import PromptBar from "./react-bits/PromptBar";
 
@@ -16,6 +15,7 @@ type Props = {
   onSend: (text: string, media?: MediaRef[]) => Promise<boolean>;
   onStop: () => Promise<void>;
   onError: (message: string) => void;
+  onUsage: () => void;
 };
 
 const sources = [
@@ -36,6 +36,7 @@ export function ChatPromptBar({
   onSend,
   onStop,
   onError,
+  onUsage,
 }: Props) {
   const files = useRef(new Map<string, string>());
   const media = useRef(new Map<string, MediaRef>());
@@ -255,7 +256,9 @@ export function ChatPromptBar({
               ? "Working on your project"
               : "Enter to send · Shift + Enter for a new line"}
         </span>
-        <Link href="/dashboard">Usage & plan</Link>
+        <button type="button" onClick={onUsage}>
+          Usage &amp; plan
+        </button>
       </div>
     </div>
   );

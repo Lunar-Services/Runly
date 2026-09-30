@@ -179,6 +179,12 @@ where user_id = (select id from auth.users where email = 'you@example.com');
 
 An administrator can register or edit sellable plans at `/admin/billing`. Enter a plan ID, display name, Product ID, monthly Price ID, allowance limits, and active state. The server retrieves the Price with the Stripe secret key and only saves it when it belongs to the specified Product and is active, USD, and monthly recurring.
 
+The bootstrap account's admin role is revoked if that account loses its verified
+bootstrap email (migration `202609290003`). After upgrading an existing database,
+review any admin roles without a matching `platform_owners` row before launch;
+these may be legitimate manually granted admins or stale bootstrap grants. The
+migration deliberately does not revoke those ambiguous historical grants.
+
 ## Configure OpenAI later
 
 Add `OPENAI_API_KEY` and an account-accessible `OPENAI_MODEL` to `.env.local`. The `/api/ai/chat` route refuses requests until both exist, validates the authenticated Supabase user, validates input with Zod, atomically reserves usage, calls the provider from the server, and settles or releases the reservation.

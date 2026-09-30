@@ -38,12 +38,21 @@ export async function GET() {
       .select("role")
       .eq("user_id", user.id)
       .maybeSingle();
+    const { data: identities, error: identityError } =
+      await db.auth.getUserIdentities();
+    if (identityError)
+      throw new ApiError(502, "Couldn't load linked accounts.");
     return Response.json(
       {
         email: user.email,
         displayName: data.display_name || "",
         avatarUrl: await avatarUrl(data.avatar_path, data.avatar_url),
         role: role?.role === "admin" ? "admin" : "user",
+        githubLinked: Boolean(
+          identities?.identities?.some(
+            (identity) => identity.provider === "github",
+          ),
+        ),
       },
       { headers: { "Cache-Control": "no-store" } },
     );

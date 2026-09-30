@@ -199,6 +199,7 @@ async function main() {
     ...process.env,
     NODE_ENV: "development",
     RUNLY_RUNTIME_MODE: "mock",
+    RUNLY_PREVIEW_DOMAIN: "preview.example.test",
     RUNLY_LOCAL_SUPABASE: "true",
     NEXT_PUBLIC_SUPABASE_URL: local.url,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: local.publishableKey,

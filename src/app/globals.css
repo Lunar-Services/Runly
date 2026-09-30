@@ -1818,6 +1818,38 @@ a {
   grid-template-columns: 1.5fr 0.75fr;
   gap: 20px;
 }
+.settings-tabs {
+  display: flex;
+  gap: 24px;
+  margin: 0 0 20px;
+  border-bottom: 1px solid var(--line);
+}
+.settings-tabs a {
+  padding: 0 2px 11px;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+}
+.settings-tabs a.active {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+  font-weight: 700;
+}
+.preferences-panel {
+  width: min(100%, 720px);
+}
+.preference-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.preference-row small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+}
 .form-panel {
   display: grid;
   gap: 20px;

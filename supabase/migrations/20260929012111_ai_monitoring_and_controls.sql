@@ -110,4 +110,4 @@ begin
   return p_id;
 end $$;
 revoke all on function public.enqueue_runtime_job(uuid,uuid,uuid,text,text,uuid,text) from public,anon,authenticated;
-grant execute on function public.enqueue_runtime_job(uuid,uuid,uuid,text,text,uuid,text) to service_role;
+grant execute on function public.enqueue_runtime_job(uuid,uuid,uuid,text,text,uuid,text) to service_role;;

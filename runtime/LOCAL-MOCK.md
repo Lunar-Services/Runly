@@ -46,7 +46,7 @@ on localhost, with a synthetic key. Stripe credentials are blanked for this run.
 Mock preview ports are allocated dynamically and bound to `127.0.0.1`; they are
 not reachable from other computers on the network. The iframe runs with a
 restricted sandbox and without access to the Runly app origin. Hosted OpenAI
-runtime preview forwarding is not yet implemented.
+runtime preview forwarding uses the separate production preview domain.
 
 Scripted chat commands:
 

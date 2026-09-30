@@ -32,15 +32,18 @@ Current deliberate limits:
   recursive. Explorer editing is paused during agent work. The shared terminal
   is a single shell, not one shell per collaborator.
 - Local mock mode publishes an app port on the host loopback and renders it in a
-  sandboxed, cross-origin iframe. Hosted provider previews still require a
-  separately isolated preview origin and authenticated HTTP/WebSocket forwarding.
+  sandboxed, cross-origin iframe. Hosted provider previews require an isolated
+  preview origin and bounded authenticated HTTP and WebSocket forwarding.
   Never serve untrusted app HTML from the Runly application origin.
 - Logs are bounded in-memory tails, not durable audit logs. Saved files,
   messages, jobs and reported token usage are durable in Postgres.
 - Hosted expiry is provider-controlled. A live terminal WebSocket is not a
   documented provider keepalive. File snapshots are continuously backed up;
-  restoring an expired/disconnected environment currently requires operator
-  recovery, not automatic replacement of potentially unsaved work.
+  a confirmed expired or failed environment is automatically replaced from the
+  saved snapshot when no provider job has unsettled usage. A disconnected
+  environment is held for a five-minute reconnect window; after that, received
+  file changes are drained to Postgres and the provider session is deleted. A
+  persistence error or unsettled provider job defers cleanup and is logged.
 
 ## Processes and scaling
 
@@ -80,12 +83,18 @@ RUNLY_RUNTIME_SECRET=<at-least-32-random-characters>
 RUNLY_RUNTIME_GATEWAYS=[{"id":"primary","url":"wss://runtime.your-domain.example"}]
 RUNLY_RUNTIME_GATEWAY_ID=primary
 RUNLY_RUNTIME_PORT=4001
+RUNLY_RUNTIME_INTERNAL_URL=http://127.0.0.1:4001
 RUNLY_RUNTIME_MAX_ACTIVE=10
+RUNLY_RUNTIME_CONTAINER_SIZE=small
 RUNLY_RUNTIME_IDLE_MINUTES=5
+RUNLY_RUNTIME_DISCONNECT_GRACE_MINUTES=5
 RUNLY_AGENT_TIMEOUT_MINUTES=10
 RUNLY_SITE_URL=https://your-app.example
 NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
 SUPABASE_SERVICE_ROLE_KEY=<server-only-key>
+GITHUB_APP_ID=<github-app-id>
+GITHUB_APP_SLUG=<github-app-slug>
+GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\\n...\\n-----END RSA PRIVATE KEY-----"
 ```
 
 Generate the shared secret locally with
@@ -95,6 +104,9 @@ Configure provider project spending controls and alerts separately: token
 reservations/timeouts are **not a hard monetary cap**, and sandbox runtime has
 separate costs. The existing `daily_spend_limit_cents` is not used to price sandbox
 compute. `runtime_policy` provides global daily task/start admission limits.
+Runly selects OpenAI's `small` container by default (1 vCPU, 1 GB memory); set
+`RUNLY_RUNTIME_CONTAINER_SIZE=medium` or `large` only when a project outgrows it.
+The small tier is the lowest-cost option in the current provider pricing.
 
 ### Local development
 
@@ -119,7 +131,13 @@ compute. `runtime_policy` provides global daily task/start admission limits.
    does not create a subscription or grant free usage.
 
 4. Open a project and switch to Files or Terminal; the server starts its
-   workspace on demand and stops it after five minutes without user activity.
+   workspace on demand and stops it after the configured idle period (five
+   minutes by default). This favors releasing compute promptly during long
+   idle periods. A later restart can incur a new five-minute minimum charge.
+   If the hosted connector disconnects, the gateway allows five minutes for it
+   to reconnect, then saves all received file changes and deletes the provider
+   session. Sessions with unfinished provider usage are retained for operator
+   reconciliation so the task's output and billable usage can still be recovered.
    Use the **Import browser files** button in Files mode to bring over old
    localStorage files; conflicting files are not overwritten and the browser
    backup remains.
@@ -144,15 +162,15 @@ runly-ai.xyz {
 runtime.runly-ai.xyz {
     reverse_proxy 127.0.0.1:4001
 }
-*.preview.runly-ai.xyz {
-    # Install a wildcard certificate for *.preview.runly-ai.xyz, issued with DNS-01.
+*.preview-runly-ai.site {
+    # Install a wildcard certificate for *.preview-runly-ai.site, issued with DNS-01.
     tls /etc/caddy/certs/runly-preview.crt /etc/caddy/certs/runly-preview.key
     reverse_proxy 127.0.0.1:4001
 }
 ```
 
 Create DNS A/AAAA records for `runly-ai.xyz`, `runtime.runly-ai.xyz`, and the
-wildcard `*.preview.runly-ai.xyz` to the VPS; optionally point `www` to the apex.
+wildcard `*.preview-runly-ai.site` to the VPS; optionally point `www` to the apex.
 The preview wildcard certificate must be issued using DNS-01 (a regular HTTP
 challenge cannot issue a wildcard certificate). Restrict ports 3000/4001 to
 loopback and expose only 80/443 through the firewall. Add edge connection/rate limits.
@@ -164,15 +182,63 @@ Before enabling the runtime for users, apply all Supabase migrations, configure
 the Supabase Auth site URL and redirect allowlist for `https://runly-ai.xyz`,
 provision active plan entitlements, and explicitly enable `runtime_policy` only
 after reviewing quotas and provider spending limits. Start Next.js and the
-gateway as separate supervised services. Set `RUNLY_PREVIEW_DOMAIN=preview.runly-ai.xyz`
+gateway as separate supervised services. Set `RUNLY_PREVIEW_DOMAIN=preview-runly-ai.site`
 in `.env.prod`, apply the runtime migrations (including the preview-token column),
 and configure DNS plus a valid wildcard TLS certificate before enabling Preview.
+The final auth migration removes automatic administrator grants based on an
+email address. Review existing `account_roles` and `platform_owners` rows,
+because previously granted roles are not silently revoked by that migration.
 The gateway relays bounded HTTP/1.1 request/response bodies (1 MiB request,
-8 MiB response) over the sandbox's existing WSS connection; it does not expose
-the sandbox port directly. WebSocket upgrades (including development HMR) are
-not yet tunneled, so use a production-style app server or refresh manually while
-developing. The `preview.runly-ai.xyz` subdomain is cross-origin but same-site
-with `runly-ai.xyz`; it is not a separate registrable-site security boundary.
+8 MiB response) and WebSocket upgrades (including development HMR) over the
+sandbox's existing WSS connection; it does not expose the sandbox port directly.
+`preview-runly-ai.site` is a separate registrable site from `runly-ai.xyz`.
+
+Hosted Git writes run through the trusted Next.js broker. Installation tokens
+remain server-side and are never passed into the hosted sandbox. The gateway
+listens on loopback only; keep the TLS reverse proxy on the same VPS. Project
+`.env*`, key, and credential files are excluded from Explorer snapshots, but
+never place platform secrets in a project sandbox.
+Sandbox outbound networking is restricted to the runtime gateway, npm registry,
+and required OpenAI hosts by default. Add only reviewed exact hostnames through
+`RUNLY_SANDBOX_ALLOWED_DOMAINS` when a project's server-side app genuinely needs
+additional network access; browser-side Preview requests use the user's browser
+network instead.
+
+### GitHub setup and repository controls
+
+GitHub sign-in and repository operations are separate grants:
+
+1. In GitHub, create an **OAuth App** for Supabase Auth and configure its callback
+   to the URL displayed in Supabase's GitHub provider settings (normally
+   `https://<project-ref>.supabase.co/auth/v1/callback`). Enable GitHub in
+   Supabase Auth, enter the OAuth client ID/secret, allow the Runly callback
+   `https://runly-ai.xyz/auth/callback`, and enable **manual identity linking**.
+   GitHub-only users can add an email password in Account settings.
+2. Create a **GitHub App** with Repository Contents read/write and Metadata read.
+   If Runly should edit `.github/workflows`, also grant Workflows read/write.
+   Set its post-install Setup URL to `https://runly-ai.xyz/api/github/setup`
+   and do not require user authorization during installation. Generate a private
+   key. Set `GITHUB_APP_ID`, `GITHUB_APP_SLUG` and `GITHUB_APP_PRIVATE_KEY` in
+   the ignored `.env.prod`; encode PEM newlines as `\\n` in the quoted value.
+3. Link GitHub from Account settings, install the GitHub App on the linked
+   **personal** GitHub account, and select repositories. Organization installs
+   are deliberately rejected until GitHub user-access authorization can verify
+   installer membership. A GitHub App installation token is minted on the server
+   for one repository per operation and never returned to the browser.
+4. `RUNLY_RUNTIME_INTERNAL_URL` must point to the gateway's loopback listener
+   (for the single-VPS deployment, `http://127.0.0.1:4001`). The internal file
+   endpoint rejects non-loopback callers and requires a short-lived HMAC request.
+   Keep port 4001 private behind the reverse proxy. Multi-VPS gateway routing
+   needs a private authenticated per-shard route before adding more shards.
+
+The project Git menu can import a repository into a blank project, attach an
+existing project to an empty repository, create/checkout branches, fast-forward
+pull, and commit/push. It refuses to merge a non-empty repository into a
+non-empty project, or to switch/pull over local edits. Git history is managed
+through GitHub's API. Source files remain backed up in Postgres.
+Do not assume this replaces a full Git hosting client: conflicts, protected
+branches, very large or binary repositories, and organization installations
+require a separate workflow.
 
 ## Safety and failure behavior
 
@@ -210,11 +276,10 @@ and reported usage, recovers a completed answer, and settles usage. Inspect the
 filesystem before continuing. If no provider turn exists, operator investigation
 is required; do not blindly release the reservation or replay the request.
 
-If the hosted environment has permanently expired, export/recover anything
-available from the provider and compare it with `runtime_files` before deleting
-the old provider session and clearing that project's `session_id`, connector
-token and state. This deliberately is not automatic: a disconnected sandbox may
-contain the only remaining copy of recent edits. Alert on stalled jobs, failed
+The gateway replaces a provider-confirmed expired or failed environment from
+`runtime_files` when no provider job has unsettled usage. A disconnected sandbox
+whose provider state remains active is held for operator inspection because it
+may contain the only copy of recent edits. Alert on stalled jobs, failed
 backups, disconnected sessions and held reservations.
 
 ## Verification
@@ -250,3 +315,29 @@ The Media button accepts JPEG, PNG, WebP, GIF, MP4, WebM, and supported audio fi
 Uploads use the private `runly-chat-media` Supabase Storage bucket, created by the authenticated server on first upload. Keep it private; do not add public read or anonymous upload policies. The server issues signed upload/read URLs after checking project access. Service-role credentials remain on the server and worker.
 
 The worker needs `OPENAI_API_KEY` as usual. Images use Agents vision inputs; video uses six chronological sampled frames (without its soundtrack). Audio and voice use `gpt-4o-mini-transcribe`; transcription tokens are included in the usage ledger. Draft uploads that are abandoned remain private; apply storage retention cleanup according to your policy.
+
+### Production release gate
+
+After applying `202609290001_usage_windows.sql` and
+`202609290002_github_project_installation.sql` (and all earlier migrations),
+check these flows with a disposable paid test account and a disposable GitHub
+repository before accepting customer traffic:
+
+1. Sign up with email, then link GitHub; sign out and in with both providers.
+   For a GitHub-only account, set an email password and test email sign-in.
+   Verify an unlinked account receives HTTP 403 from project Git actions.
+2. Install the GitHub App on that personal account, import a non-empty repo into
+   a blank project, edit a file, commit/push, create and checkout a branch, and
+   fast-forward pull a remote change. Stop the sandbox and repeat status/push
+   after restart to test source snapshot and Git reconstruction.
+3. In a fresh blank project, open Preview and choose **Create sample Next.js
+   app**. Confirm the page renders and its API message appears. Verify Terminal
+   sees the same files and Console shows the server logs. Verify HMR over the
+   preview WebSocket. Test an app failure and retry path.
+4. Ask the agent to edit the sample app. Confirm Explorer, Terminal and Preview
+   show the result. Open Usage to check settled tokens. Exhaust a low test quota
+   and confirm another task is refused without making a provider call. Cancel a
+   task and reconcile any uncertain usage before interpreting the balance.
+5. Test preview wildcard TLS/DNS, private runtime loopback access, app origin
+   CSRF checks, project membership revocation, restart recovery, and billing
+   emergency stop. Disable the runtime policy if any of these fail.

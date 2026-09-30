@@ -1,6 +1,9 @@
 import base64
+import hashlib
 import os
 import signal
+import shutil
+import subprocess
 from pathlib import Path
 import tempfile
 import time
@@ -41,12 +44,39 @@ class BridgeTests(unittest.TestCase):
         self.assertNotIn("error", self.command("delete", path="b.ts", hash=first["result"]["hash"]))
         self.assertFalse((bridge.ROOT / "b.ts").exists())
 
+    def test_repository_replacement_checks_current_files_before_changing_them(self):
+        self.command("write", path="old.txt", content="original", hash="")
+        self.command("snapshot")
+        baseline = next(f for f in reversed(self.frames) if f["type"] == "files.changed")["files"]
+        content = "replacement"
+        target = [{"path": "new.txt", "kind": "file", "content": content,
+                   "hash": hashlib.sha256(content.encode()).hexdigest()}]
+        self.assertIn("error", self.command("replace", expected=[], files=target))
+        self.assertEqual((bridge.ROOT / "old.txt").read_text(), "original")
+        self.assertNotIn("error", self.command("replace", expected=baseline, files=target))
+        self.assertFalse((bridge.ROOT / "old.txt").exists())
+        self.assertEqual((bridge.ROOT / "new.txt").read_text(), content)
+
     def test_paths_and_no_recursive_delete(self):
-        for value in ["../escape", "/etc/passwd", "a/../../escape", "a//b", "a\\b", "C:/x", "a/.git/config", ".runly/x"]:
+        for value in ["../escape", "/etc/passwd", "a/../../escape", "a//b", "a\\b", "C:/x", "a/.git/config", ".runly/x", ".env", "src/.env.local", "secrets/private.pem"]:
             self.assertIn("error", self.command("write", path=value, content="x", hash=""))
         self.command("mkdir", path="folder")
         self.assertIn("error", self.command("delete", path="folder", hash=""))
         self.assertTrue((bridge.ROOT / "folder").is_dir())
+
+    def test_snapshot_excludes_secret_like_files(self):
+        (bridge.ROOT / ".env.local").write_text("PRIVATE_TEST_VALUE=hidden")
+        (bridge.ROOT / "public.txt").write_text("visible")
+        self.command("snapshot")
+        snapshot = next(f for f in reversed(self.frames) if f["type"] == "files.changed")
+        self.assertEqual([item["path"] for item in snapshot["files"]], ["public.txt"])
+
+    def test_child_processes_do_not_inherit_platform_keys(self):
+        with patch.dict(os.environ, {"RUNLY_BRIDGE_TOKEN": "bridge", "CODEX_API_KEY": "executor", "OPENAI_API_KEY": "application", "GITHUB_TOKEN": "github", "SAFE_VALUE": "ok"}):
+            child = self.connector.environment()
+        self.assertEqual(child["SAFE_VALUE"], "ok")
+        for name in ("RUNLY_BRIDGE_TOKEN", "CODEX_API_KEY", "OPENAI_API_KEY", "GITHUB_TOKEN"):
+            self.assertNotIn(name, child)
 
     def test_utf8_hash_and_reconnect_snapshot(self):
         self.command("write", path="hello.txt", content="hello 🐱\n", hash="")
@@ -100,6 +130,57 @@ class BridgeTests(unittest.TestCase):
         finally:
             server.shutdown()
             server.server_close()
+
+    def test_git_clone_push_branch_and_restore_saved_files(self):
+        with tempfile.TemporaryDirectory() as remote_dir:
+            remote = Path(remote_dir) / "repo.git"
+            subprocess.run(["git", "init", "--bare", "--initial-branch=main", str(remote)], check=True, capture_output=True)
+            url = remote.as_uri()
+            with patch.object(bridge, "GITHUB_URL", __import__("re").compile(r"^file:///.*$")):
+                def git(action, **extra):
+                    return self.command("git", action=action, url=url, branch=extra.pop("branch", "main"), token="test-installation-token-123", **extra)
+                linked = git("link")
+                self.assertNotIn("error", linked)
+                self.assertTrue(linked["result"]["initialized"])
+                self.command("write", path="index.html", content="<h1>Runly</h1>", hash="")
+                pushed = git("push", author="Runly Tester", email="test@example.com", message="Create demo")
+                self.assertNotIn("error", pushed)
+                self.assertEqual(pushed["result"]["branch"], "main")
+                created = git("branch", branch="feature/test")
+                self.assertNotIn("error", created)
+                self.assertEqual(created["result"]["branch"], "feature/test")
+                def clear_readonly(func, path, _error):
+                    os.chmod(path, 0o700)
+                    func(path)
+                shutil.rmtree(bridge.ROOT / ".git", onerror=clear_readonly)
+                restored = git("restore", branch="feature/test")
+                self.assertNotIn("error", restored)
+                self.assertEqual(restored["result"]["branch"], "feature/test")
+                self.assertFalse(restored["result"]["dirty"])
+                self.assertEqual((bridge.ROOT / "index.html").read_text(), "<h1>Runly</h1>")
+
+    def test_git_imports_existing_repository_without_overwriting_project(self):
+        with tempfile.TemporaryDirectory() as remote_dir:
+            base = Path(remote_dir)
+            remote = base / "repo.git"
+            seed = base / "seed"
+            subprocess.run(["git", "init", "--bare", "--initial-branch=main", str(remote)], check=True, capture_output=True)
+            subprocess.run(["git", "init", "-b", "main", str(seed)], check=True, capture_output=True)
+            (seed / "index.html").write_text("<h1>Remote</h1>")
+            subprocess.run(["git", "-C", str(seed), "add", "index.html"], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(seed), "-c", "user.name=Tester", "-c", "user.email=test@example.com", "commit", "-m", "Seed"], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(seed), "remote", "add", "origin", remote.as_uri()], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(seed), "push", "-u", "origin", "main"], check=True, capture_output=True)
+            with patch.object(bridge, "GITHUB_URL", __import__("re").compile(r"^file:///.*$")):
+                fields = {"action": "link", "url": remote.as_uri(), "branch": "main", "token": "test-installation-token-123"}
+                linked = self.command("git", **fields)
+                self.assertNotIn("error", linked)
+                self.assertEqual((bridge.ROOT / "index.html").read_text(), "<h1>Remote</h1>")
+                shutil.rmtree(bridge.ROOT / ".git", onerror=lambda func, path, _error: (os.chmod(path, 0o700), func(path)))
+                (bridge.ROOT / "local.txt").write_text("keep me")
+                refused = self.command("git", **fields)
+                self.assertIn("error", refused)
+                self.assertEqual((bridge.ROOT / "local.txt").read_text(), "keep me")
 
     @unittest.skipIf(os.name == "nt", "Hosted terminal is Linux-only")
     def test_symlink_escape(self):
