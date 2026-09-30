@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
-  ArrowUp,
   Blocks,
   ChevronDown,
   ChevronRight,
@@ -14,10 +13,7 @@ import {
   FilePlus2,
   FolderOpen,
   Folder,
-  Gauge,
   GitBranch,
-  Image as ImageIcon,
-  Mic,
   Moon,
   PanelBottom,
   Pencil,
@@ -40,6 +36,8 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "./theme-provider";
 import { useProjectRuntime, type WorkspaceFile } from "./use-project-runtime";
 import { WorkspaceTerminal } from "./workspace-terminal";
+import { ChatPromptBar } from "./chat-prompt-bar";
+import { SilkBackground } from "./site-visuals";
 import { LatticeLoader } from "./react-bits";
 
 type Project = { id: string; name: string; status: string };
@@ -216,7 +214,6 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
     startY: number;
     startHeight: number;
   } | null>(null);
-  const [prompt, setPrompt] = useState("");
   const pendingMessage = useRef<{
     id: string;
     text: string;
@@ -302,7 +299,6 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
         : "Inactive";
   const newFileInput = useRef<HTMLInputElement>(null);
   const renameChatInput = useRef<HTMLInputElement>(null);
-  const composerInput = useRef<HTMLTextAreaElement>(null);
 
   function resizeBottomPanel(height: number) {
     const maxHeight = Math.max(188, window.innerHeight - 55 - 60 - 175);
@@ -818,10 +814,9 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
     }
   }
 
-  async function sendMessage(event: React.FormEvent) {
-    event.preventDefault();
-    if (!prompt.trim() || sending) return;
-    const text = prompt.trim();
+  async function sendMessage(message: string) {
+    if (!message.trim() || sending) return false;
+    const text = message.trim();
     if (
       pendingMessage.current?.text !== text ||
       pendingMessage.current?.chat !== activeChatId
@@ -869,12 +864,13 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
           ),
         );
       }
-      setPrompt("");
       runtime.queued(result.jobId);
+      return true;
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Couldn't save the message.",
       );
+      return false;
     } finally {
       setSending(false);
     }
@@ -892,7 +888,6 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
       setChats((current) => [result.chat, ...current]);
       setActiveChatId(result.chat.id);
       setMessages([]);
-      setPrompt("");
       router.push(`/project/${projectId}?chat=${result.chat.id}`);
     } catch (reason) {
       setError(
@@ -1407,7 +1402,8 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
 
       <main className="reference-main">
         {workspaceView === "chat" && (
-          <section className="reference-chat-stage">
+          <section className="reference-chat-stage silk-section">
+            <SilkBackground />
             <div className="reference-thread">
               {messages.length ? (
                 messages.map((message) => (
@@ -1451,45 +1447,24 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                 />
               )}
             </div>
-            <form className="reference-composer" onSubmit={sendMessage}>
-              <textarea
-                ref={composerInput}
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                onKeyDown={(event) => {
-                  if (
-                    event.key === "Enter" &&
-                    !event.shiftKey &&
-                    !event.nativeEvent.isComposing
-                  ) {
-                    event.preventDefault();
-                    event.currentTarget.form?.requestSubmit();
-                  }
-                }}
-                placeholder="What would you like to know?"
-                aria-label="Message Runly"
-              />
-              <div>
-                <span>
-                  <button type="button" aria-label="Attach image">
-                    <ImageIcon size={21} />
-                  </button>
-                  <button type="button" aria-label="Usage" title="Usage">
-                    <Gauge size={23} />
-                  </button>
-                  <button type="button" aria-label="Voice input">
-                    <Mic size={21} />
-                  </button>
-                </span>
-                <button
-                  className="reference-send"
-                  disabled={!prompt.trim() || sending}
-                  aria-label="Send message"
-                >
-                  <ArrowUp size={21} />
-                </button>
-              </div>
-            </form>
+            <ChatPromptBar
+              chatId={activeChatId}
+              sending={sending}
+              working={runtime.agentBusy}
+              onSend={sendMessage}
+              onStop={async () => {
+                try {
+                  await runtime.request("agent.cancel");
+                } catch (reason) {
+                  setError(
+                    reason instanceof Error
+                      ? reason.message
+                      : "Couldn't stop the task.",
+                  );
+                }
+              }}
+              onError={setError}
+            />
           </section>
         )}
 

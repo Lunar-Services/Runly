@@ -59,17 +59,17 @@ html[data-theme="dark"] .brand .brand-gradient {
 }
 html[data-theme="dark"] {
   color-scheme: dark;
-  --surface-page: #050505;
-  --surface-card: #0e0e0e;
-  --surface-raised: #191919;
+  --surface-page: #000000;
+  --surface-card: #000000;
+  --surface-raised: #000000;
   --text-main: #f1f2ed;
   --text-secondary: #b1b5ab;
   --border-ui: #303030;
   --action: #eeefe9;
   --action-text: #171916;
   --action-hover: #d4d8cc;
-  --header-glass: rgb(5 5 5 / 94%);
-  --marketing-header-frost: rgb(5 5 5 / 86%);
+  --header-glass: #000000;
+  --marketing-header-frost: #000000;
   --focus-ui: #c4ceba;
   --danger-text: #ffb3ad;
   --danger-surface: #3c2121;
@@ -1216,4 +1216,42 @@ html body .catalog-item-details {
     justify-self: start;
     padding-left: 0;
   }
+}
+
+/* A single black canvas across dark-mode pages; borders distinguish surfaces. */
+html[data-theme="dark"]
+  body
+  :is(
+    .site-header,
+    .app-sidebar,
+    .app-topbar,
+    .reference-workspace,
+    .reference-main,
+    .reference-sidebar,
+    .reference-topbar,
+    .reference-chat-stage,
+    .reference-tool-stage,
+    .reference-tool-head,
+    .reference-loading,
+    .reference-search,
+    .reference-code-card,
+    .reference-code-card .line-numbers,
+    .reference-message,
+    .reference-tool-stage > .terminal-body,
+    .workspace-context-menu,
+    .reference-composer,
+    .preview-toolbar,
+    .app-toolbar,
+    .auth-form-panel
+  ) {
+  background: #000;
+}
+html[data-theme="dark"] body .admin-shell .app-topbar {
+  background: #000;
+}
+html[data-theme="dark"] body .admin-shell .app-sidebar {
+  background: #000;
+}
+html[data-theme="dark"] *::-webkit-scrollbar-track {
+  background: #000;
 }

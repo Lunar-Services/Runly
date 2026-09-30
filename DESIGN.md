@@ -112,13 +112,13 @@ Lucide line icons at 15–20px. Text labels remain on consequential controls.
 
 ### Motion
 
-The static Runly mark accompanies branded wordmarks in headers, footers, account screens, and workspace navigation. The two user-supplied Dreamina clips are the only cat artwork: silent forward/reverse loops in the hero, Meet Runly, Cowork, and sign-in. Posters come from those clips. Playback pauses off-screen and in hidden tabs; reduced motion disables automatic playback. Visible 44px controls allow explicit play and pause. Original black fur is preserved in both themes without image inversion. No animated R or orbit decoration.
+The static Runly mark accompanies branded wordmarks in headers, footers, account screens, and workspace navigation. The two user-supplied Dreamina clips remain animated section artwork: silent forward/reverse loops in the hero, Meet Runly, Cowork, and sign-in. Posters come from those clips. Playback pauses off-screen and in hidden tabs; reduced motion disables automatic playback. Cat playback has no visible pause controls. Original black fur is preserved in both themes without image inversion. No animated R or orbit decoration.
 
 Interaction tokens are canonical in `src/app/interactions.css`: `--motion-fast:150ms`, `--motion-normal:200ms`, `--motion-enter:250ms`, `--motion-ease:cubic-bezier(.2,.8,.2,1)`. Buttons, fields, menus, notices, navigation, and route fades consume these shared tokens. Neutral grey focus replaces the former green ring. Reduced-motion disables motion globally. Existing layout and black-and-white identity stay unchanged.
 
 The subscription comparison has one illustrative 12-second idea-to-outline-to-preview sequence. It has a pause control and becomes a static idea card under reduced-motion preference. Its terminal moment is decorative storytelling, never an application's loading state. Light and dark appearances use matching page and header tones; the animated scene may use contained paper or terminal surfaces for contrast.
 
-The decorative code sketch stands on its own within Meet Runly, using a white card in light mode and a dark card in dark mode. The ASCII portrait, ASCII cat, and teacup are not placed beside it or in Cowork. Pricing has no extra cat decoration; its content remains the focus. At the final invitation, the user-supplied reaching-hands artwork is split into two independently masked hand layers; only the hands move toward one another, never the entire picture. Reduced-motion preference makes them still. These details are illustrative site accents, never application loading states or claims of generated output.
+The decorative code sketch stands on its own within Meet Runly, using a white card in light mode and a dark card in dark mode. The ASCII portrait, ASCII cat, and teacup are not placed beside it or in Cowork. Pricing has no extra cat decoration; its content remains the focus. The final invitation has no reaching hands. Theme-aware monochrome Silk shaders animate behind the hero, invitation, and chat, with reduced-motion and visibility handling. The five supplied cat illustrations form an scroll-driven FlexCarousel between the hero and Meet Runly. The carousel has restrained bending, no color dispersion, no manual controls or timed autoplay, and respects reduced motion. These illustrations describe possible workflows, not active integrations or generated results.
 
 ### Content and data visualization
 
@@ -132,3 +132,9 @@ Voice is plain, specific, and builder-facing. Setup gaps are labeled “Not conf
 - **Do:** Show truthful empty, setup, and unavailable states.
 - **Don't:** add generic gradients, glowing blobs, or decorative glass cards.
 - **Don't:** imply credentials, billing, database policies, or sandboxing are active before they are verified.
+
+### AI composer
+
+The supplied React Bits PromptBar is integrated into project chat. Its send action uses the authenticated project message endpoint, retains drafts on failure, and preserves idempotent request IDs. Active AI tasks can be cancelled through agent.cancel. Text and code attachments become explicit message context, validated against API length and byte limits. Model and effort selectors remain hidden until backend support exists; no fictional model choices or connected sources are shown. Menus use opaque theme surfaces. The Usage & plan link opens the dashboard.
+
+Dark-mode base surfaces share pure black (#000), including the page, cards, header, sidebars, and admin panels. Borders and text define hierarchy. Silk spans the full viewport width. The picture section stays in view while page scrolling advances its five images; it does not intercept scrolling or accept direct interaction.

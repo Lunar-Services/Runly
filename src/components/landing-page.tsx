@@ -19,6 +19,7 @@ import { CodeCard } from "./code-card";
 import art from "./landing-art.module.css";
 import { CatAnimation } from "./cat-animation";
 import { TextRotation } from "./text-rotation";
+import { SilkBackground, ProductStories } from "./site-visuals";
 import { GetStartedButton } from "./get-started-button";
 
 const suggestions = [
@@ -226,7 +227,8 @@ export function LandingPage({
       </header>
 
       <main id="main-content">
-        <section className="cat-hero">
+        <section className="cat-hero silk-section">
+          <SilkBackground />
           <div className="cat-hero-copy">
             <TextRotation />
             <p>Tell Runly what you want to build.</p>
@@ -288,6 +290,8 @@ export function LandingPage({
             />
           </div>
         </section>
+
+        <ProductStories />
 
         <section id="product" className="cat-meet">
           <h2>
@@ -369,7 +373,8 @@ export function LandingPage({
         </section>
 
         <BusinessMotion />
-        <section className={`cat-close ${art.close}`}>
+        <section className={`cat-close silk-section ${art.close}`}>
+          <SilkBackground />
           <h2>What are you thinking?</h2>
           <a className="button button-dark" href="#hero-prompt">
             Let’s start
