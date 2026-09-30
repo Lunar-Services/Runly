@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "./app-shell";
-import { Plus, Search, X } from "lucide-react";
+import { Plus, Search, X, ArrowUpRight, FolderOpen } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProjectActions } from "./project-actions";
@@ -106,8 +106,7 @@ export function ProjectsDashboard() {
     <AppShell title="Your projects">
       <div className="page-actions">
         <p className="muted">
-          Your saved project records. AI generation and file editing are not
-          enabled yet.
+          Your projects, conversations, and files. Ready for the next idea.
         </p>
         <button
           className="button button-dark"
@@ -170,6 +169,14 @@ export function ProjectsDashboard() {
                   className="saved-project-link"
                   href={`/project/${project.id}`}
                 >
+                  <div className="project-card-heading">
+                    <span className="project-folder">
+                      <FolderOpen size={22} />
+                    </span>
+                    <span className="project-open">
+                      Open project <ArrowUpRight size={16} />
+                    </span>
+                  </div>
                   <h3>{project.name}</h3>
                   <p>
                     Saved · {new Date(project.updated_at).toLocaleDateString()}

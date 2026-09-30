@@ -8,7 +8,14 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { WebSocket, WebSocketServer } from "ws";
 import { createClient } from "@supabase/supabase-js";
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
+import {
+  MEDIA_BUCKET,
+  decodeMessage,
+  mediaPath,
+  mediaManifestSchema,
+  combinedUsage,
+} from "../src/lib/chat-media";
 import { z } from "zod";
 import {
   digest,
@@ -422,7 +429,7 @@ async function stopWorkspace(project: string) {
       .select("id")
       .eq("project_id", project)
       .eq("provider_submitted", true)
-      .is("usage", null)
+      .is("usage->input_tokens", null)
       .limit(1),
   );
   if (unresolved?.length)
@@ -487,7 +494,7 @@ async function runAgent(job: Job): Promise<AgentTelemetry> {
       .eq("project_id", job.project_id)
       .eq("state", "failed")
       .eq("provider_submitted", true)
-      .is("usage", null)
+      .is("usage->input_tokens", null)
       .limit(1),
   );
   if (previous?.length)
@@ -507,12 +514,85 @@ async function runAgent(job: Job): Promise<AgentTelemetry> {
   const deadline = setTimeout(() => controller.abort(), TURN_MS);
   let turnId = "",
     completed = false;
+  const mediaUsage = { media_input_tokens: 0, media_output_tokens: 0 };
+  const current = decodeMessage(job.input);
+  const mediaContent: { type: "input_image"; image_url: string }[] = [];
+  let transcript = "";
+  let mediaRequestPending = false;
+  let agentSubmitted = false;
   const parts = new Map<string, string>();
   const toolsUsed = new Set<string>();
   let toolCalls = 0;
   let commandsRun = 0;
   let publishedAt = 0;
   try {
+    for (const ref of current.media) {
+      const bucket = db.storage.from(MEDIA_BUCKET);
+      const base = mediaPath(job.project_id, ref);
+      const raw = await bucket.download(base + "/manifest.json");
+      if (!raw.data) throw new Error("An attachment is unavailable.");
+      const manifest = mediaManifestSchema.parse(
+        JSON.parse(await raw.data.text()),
+      );
+      if (!manifest.ready) throw new Error("An attachment is not ready.");
+      if (manifest.mime.startsWith("audio/")) {
+        const original = await bucket.download(base + "/original");
+        if (!original.data)
+          throw new Error("Couldn't load the audio attachment.");
+        await check(
+          db
+            .from("runtime_jobs")
+            .update({ provider_submitted: true })
+            .eq("id", job.id),
+        );
+        mediaRequestPending = true;
+        const audio = await openai.audio.transcriptions.create(
+          {
+            model: "gpt-4o-mini-transcribe",
+            file: await toFile(
+              await original.data.arrayBuffer(),
+              manifest.name,
+              { type: manifest.mime },
+            ),
+            response_format: "json",
+          },
+          { signal: controller.signal },
+        );
+        if (!audio.usage || audio.usage.type !== "tokens")
+          throw new Error(
+            "Audio usage is unavailable; the reservation remains held for reconciliation.",
+          );
+        mediaRequestPending = false;
+        mediaUsage.media_input_tokens += audio.usage.input_tokens;
+        mediaUsage.media_output_tokens += audio.usage.output_tokens;
+        await check(
+          db
+            .from("runtime_jobs")
+            .update({ usage: mediaUsage })
+            .eq("id", job.id),
+        );
+        transcript += `\nAudio attachment ${manifest.name}:\n${audio.text}\n`;
+      } else {
+        const paths = manifest.mime.startsWith("video/")
+          ? manifest.frames
+          : [base + "/original"];
+        for (const path of paths) {
+          if (!path.startsWith(base + "/"))
+            throw new Error("Invalid attachment path.");
+          const file = await bucket.download(path);
+          if (!file.data) throw new Error("Couldn't load an attachment.");
+          const mime = manifest.mime.startsWith("video/")
+            ? "image/jpeg"
+            : manifest.mime;
+          mediaContent.push({
+            type: "input_image",
+            image_url: `data:${mime};base64,${Buffer.from(await file.data.arrayBuffer()).toString("base64")}`,
+          });
+        }
+        if (manifest.mime.startsWith("video/"))
+          transcript += `\nVideo ${manifest.name}: the attached images are six chronological sampled frames; audio is not included.\n`;
+      }
+    }
     // Connect before submitting input; the provider stream does not replay events.
     const events = await openai.beta.agents.sessions.events.stream(sessionId, {
       signal: controller.signal,
@@ -524,6 +604,7 @@ async function runAgent(job: Job): Promise<AgentTelemetry> {
           .update({ provider_submitted: true })
           .eq("id", job.id),
       );
+      agentSubmitted = true;
       await openai.beta.agents.sessions.events.create(sessionId, {
         "Idempotency-Key": job.id,
         events: [
@@ -539,10 +620,13 @@ async function runAgent(job: Job): Promise<AgentTelemetry> {
                       history || []
                     )
                       .reverse()
-                      .map((m) => `${m.role}: ${m.body}`)
+                      .map((m) => `${m.role}: ${decodeMessage(m.body).text}`)
                       .join("\n")
-                      .slice(-40_000)}\n\nCurrent request:\n${job.input}`,
+                      .slice(
+                        -40_000,
+                      )}\n\nCurrent request:\n${current.text}${transcript}`,
                   },
+                  ...mediaContent,
                 ],
               },
             ],
@@ -673,7 +757,14 @@ async function runAgent(job: Job): Promise<AgentTelemetry> {
       session_id: sessionId,
     });
     await check(
-      db.from("runtime_jobs").update({ usage: turn.usage }).eq("id", job.id),
+      db
+        .from("runtime_jobs")
+        .update({
+          usage: turn.usage
+            ? combinedUsage(turn.usage, mediaUsage)
+            : mediaUsage,
+        })
+        .eq("id", job.id),
     );
     if (!turn.usage)
       throw new Error(
@@ -682,8 +773,8 @@ async function runAgent(job: Job): Promise<AgentTelemetry> {
     await check(
       db.rpc("settle_runtime_usage", {
         p_job: job.id,
-        p_input: turn.usage.input_tokens,
-        p_output: turn.usage.output_tokens,
+        p_input: combinedUsage(turn.usage, mediaUsage).input_tokens,
+        p_output: combinedUsage(turn.usage, mediaUsage).output_tokens,
         p_turn: turnId,
       }),
     );
@@ -691,6 +782,31 @@ async function runAgent(job: Job): Promise<AgentTelemetry> {
     await value.persistence;
     return { toolsUsed: [...toolsUsed], toolCalls, commandsRun };
   } catch (error) {
+    if (
+      !agentSubmitted &&
+      !mediaRequestPending &&
+      mediaUsage.media_input_tokens + mediaUsage.media_output_tokens > 0
+    ) {
+      await check(
+        db.rpc("settle_runtime_usage", {
+          p_job: job.id,
+          p_input: mediaUsage.media_input_tokens,
+          p_output: mediaUsage.media_output_tokens,
+          p_turn: `media:${job.id}`,
+        }),
+      );
+      await check(
+        db
+          .from("runtime_jobs")
+          .update({
+            usage: combinedUsage(
+              { input_tokens: 0, output_tokens: 0 },
+              mediaUsage,
+            ),
+          })
+          .eq("id", job.id),
+      );
+    }
     // A disconnected client/stream is not cancellation. Explicitly stop the turn.
     await openai.beta.agents.sessions.events
       .create(sessionId, { events: [{ type: "agent.session.input.cancel" }] })
@@ -711,15 +827,19 @@ async function runAgent(job: Job): Promise<AgentTelemetry> {
             await check(
               db.rpc("settle_runtime_usage", {
                 p_job: job.id,
-                p_input: turn.usage.input_tokens,
-                p_output: turn.usage.output_tokens,
+                p_input: combinedUsage(turn.usage, mediaUsage).input_tokens,
+                p_output: combinedUsage(turn.usage, mediaUsage).output_tokens,
                 p_turn: turnId,
               }),
             );
             await check(
               db
                 .from("runtime_jobs")
-                .update({ usage: turn.usage })
+                .update({
+                  usage: turn.usage
+                    ? combinedUsage(turn.usage, mediaUsage)
+                    : mediaUsage,
+                })
                 .eq("id", job.id),
             );
             break;

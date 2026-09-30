@@ -72,6 +72,31 @@ export function AppShell({
   const { darkTheme } = useTheme();
   const router = useRouter();
   useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      document
+        .querySelectorAll<HTMLDetailsElement>(".app-shell details[open]")
+        .forEach((menu) => {
+          if (!menu.contains(event.target as Node)) menu.open = false;
+        });
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      document
+        .querySelectorAll<HTMLDetailsElement>(".app-shell details[open]")
+        .forEach((menu) => {
+          menu.open = false;
+          menu.querySelector("summary")?.focus();
+        });
+    };
+    document.addEventListener("pointerdown", dismiss, true);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss, true);
+      document.removeEventListener("keydown", escape);
+    };
+  }, []);
+
+  useEffect(() => {
     async function loadAccount() {
       const response = await fetch("/api/account");
       if (response.ok) setAccount(await response.json());

@@ -1,3 +1,4 @@
+import { decodeMessage } from "@/lib/chat-media";
 import { z } from "zod";
 import {
   ApiError,
@@ -63,7 +64,7 @@ export async function GET(
     }
     for (const message of chatMessages.data || []) {
       if (!titles.has(message.conversation_id))
-        titles.set(message.conversation_id, message.body);
+        titles.set(message.conversation_id, decodeMessage(message.body).text);
     }
     const { data: messages, error: messagesError } = conversation
       ? await db

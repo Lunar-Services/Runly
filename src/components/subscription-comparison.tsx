@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { useTheme } from "./theme-provider";
 
 import styles from "./subscription-comparison.module.css";
 
@@ -26,7 +25,6 @@ const subscriptions = [
 ];
 
 export function SubscriptionComparison() {
-  const { darkTheme } = useTheme();
   const film = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const video = film.current;
@@ -58,7 +56,7 @@ export function SubscriptionComparison() {
       motion.removeEventListener("change", syncPlayback);
       video.pause();
     };
-  }, [darkTheme]);
+  }, []);
   return (
     <section
       className={styles.section}
@@ -79,19 +77,14 @@ export function SubscriptionComparison() {
           <div className={styles.visual}>
             <video
               ref={film}
-              key={darkTheme ? "dark" : "light"}
               className={styles.productFilm}
-              src={`/videos/idea-to-store-${darkTheme ? "dark" : "light"}.mp4?v=5`}
+              src="/videos/runly-intro.mp4"
               muted
               loop
               playsInline
               preload="auto"
-              poster={
-                darkTheme
-                  ? "/videos/idea-to-store-dark-poster.jpg?v=5"
-                  : "/videos/idea-to-store-poster.jpg?v=5"
-              }
-              aria-label="An illustrative website taking shape with Runly"
+              poster="/videos/runly-intro-poster.jpg"
+              aria-label="Runly animated logo"
             />
           </div>
           <div className={styles.runlyDetails}>

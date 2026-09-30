@@ -242,3 +242,11 @@ to modify it; verify Explorer and `cat` see identical content; run an app and
 check logs; cancel a task and check usage; reconnect browser/gateway; stop and
 restart the workspace and compare files; test expired credentials, membership
 revocation, snapshot failure and idle shutdown. Only then enable customer traffic.
+
+### Chat media
+
+The Media button accepts JPEG, PNG, WebP, GIF, MP4, WebM, and supported audio files. Voice records up to 90 seconds. Limits are 5 MB per image and 20 MB for audio/video, with four attachments per message. The picker validates audio/video clips up to two minutes.
+
+Uploads use the private `runly-chat-media` Supabase Storage bucket, created by the authenticated server on first upload. Keep it private; do not add public read or anonymous upload policies. The server issues signed upload/read URLs after checking project access. Service-role credentials remain on the server and worker.
+
+The worker needs `OPENAI_API_KEY` as usual. Images use Agents vision inputs; video uses six chronological sampled frames (without its soundtrack). Audio and voice use `gpt-4o-mini-transcribe`; transcription tokens are included in the usage ledger. Draft uploads that are abandoned remain private; apply storage retention cleanup according to your policy.

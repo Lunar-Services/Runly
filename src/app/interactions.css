@@ -680,54 +680,54 @@ html[data-theme="dark"] body::before {
   border-color: #aeb2aa;
 }
 .app-shell.is-dark {
-  background: #111211;
-  color: #f4f5f1;
+  background: #000;
+  color: #f2f2f2;
 }
 .app-shell.is-dark .app-topbar {
-  background: rgb(24 25 23 / 82%);
-  border-color: #353732;
-  color: #f4f5f1;
+  background: #000;
+  border-color: #303030;
+  color: #f2f2f2;
 }
 .app-shell.is-dark .app-topbar p,
 .app-shell.is-dark .muted,
 .app-shell.is-dark .panel-head p,
 .app-shell.is-dark .saved-projects p,
 .app-shell.is-dark .saved-projects small {
-  color: #b7b9b4;
+  color: #b3b3b3;
 }
 .app-shell.is-dark .app-theme-toggle,
 .app-shell.is-dark .icon-action {
-  background: #242522;
-  border-color: #3b3e38;
-  color: #f4f5f1;
+  background: #111;
+  border-color: #303030;
+  color: #f2f2f2;
 }
 .app-shell.is-dark .app-theme-toggle:hover,
 .app-shell.is-dark .icon-action:hover {
-  background: #30322e;
+  background: #1c1c1c;
 }
 .app-shell.is-dark .metric,
 .app-shell.is-dark .panel,
 .app-shell.is-dark .saved-projects article,
 .app-shell.is-dark .runly-dialog {
-  background: #1a1b19;
-  border-color: #393b36;
-  color: #f4f5f1;
+  background: #000;
+  border-color: #303030;
+  color: #f2f2f2;
 }
 .app-shell.is-dark .panel-head {
-  border-color: #353732;
+  border-color: #303030;
 }
 .app-shell.is-dark .search-field,
 .app-shell.is-dark .search-field input,
 .app-shell.is-dark .runly-dialog input {
-  background: #22231f;
-  border-color: #3c3f39;
-  color: #f4f5f1;
+  background: #000;
+  border-color: #303030;
+  color: #f2f2f2;
 }
 .app-shell.is-dark .project-skeleton {
-  background: #2a2c28;
+  background: #111;
 }
 .app-shell.is-dark .field-help {
-  color: #afb2ab;
+  color: #b3b3b3;
 }
 @media (max-width: 900px) {
   .cat-site .site-header {
