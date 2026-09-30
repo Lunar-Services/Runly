@@ -1439,18 +1439,76 @@ html body .cat-site .site-header:not(.is-scrolled) {
   }
 }
 
-html body .cat-site .site-header .nav-primary a:hover,
-html body .cat-site .site-header .nav-actions > a:not(.get-started-cta):hover {
+html
+  body
+  .cat-site
+  .site-header
+  :is(.nav-primary a, .nav-actions > a:not(.get-started-cta)) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  transform: none;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease;
+}
+html
+  body
+  .cat-site
+  .site-header
+  :is(.nav-primary a, .nav-actions > a:not(.get-started-cta)):is(
+    :hover,
+    :focus-visible
+  ) {
   background: color-mix(in srgb, var(--text-main) 12%, transparent);
   color: var(--text-main);
+  transform: none;
 }
-html[data-theme="dark"] body .cat-site .site-header .nav-primary a:hover,
 html[data-theme="dark"]
   body
   .cat-site
   .site-header
-  .nav-actions
-  > a:not(.get-started-cta):hover {
-  background: #242424;
+  :is(.nav-primary a, .nav-actions > a:not(.get-started-cta)):is(
+    :hover,
+    :focus-visible
+  ) {
+  background: rgb(255 255 255 / 13%);
   color: #fff;
+}
+html
+  body
+  .cat-site
+  .site-header
+  :is(.nav-primary a, .nav-actions > a:not(.get-started-cta)):focus-visible {
+  outline: 2px solid var(--text-main);
+  outline-offset: 3px;
+}
+@media (min-width: 901px) and (max-width: 1100px) {
+  html body .cat-site .site-header .nav-primary {
+    gap: 3px;
+  }
+  html body .cat-site .site-header .nav-primary a {
+    padding-inline: 8px;
+  }
+}
+@media (max-width: 900px) {
+  html body .cat-site .site-header .nav-primary a {
+    justify-content: flex-start;
+    min-height: 46px;
+    border-radius: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html
+    body
+    .cat-site
+    .site-header
+    :is(.nav-primary a, .nav-actions > a:not(.get-started-cta)) {
+    transition: none;
+  }
 }

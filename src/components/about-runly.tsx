@@ -28,6 +28,15 @@ const people = [
       "Alongside leading the company, he stays involved in development and helps shape the technical direction behind products like Runly.",
     ],
   },
+  {
+    name: "Fakita Alsudani",
+    role: "Marketing Manager",
+    focus: "Community. Communication. Polish.",
+    paragraphs: [
+      "Fakita leads marketing and social media for LunarGroup, helping shape how our products are presented and how we communicate with our community.",
+      "Fakita also contributes to product testing, providing feedback, catching issues, and helping make sure new features feel polished before they reach users.",
+    ],
+  },
 ];
 
 const principles = [
@@ -122,6 +131,8 @@ export function AboutRunly() {
             Product vision.
             <br />
             Technical foundations.
+            <br />
+            Community connection.
             <br />
             One shared direction.
           </p>
