@@ -1288,7 +1288,7 @@ const FlexCarousel = ({
 
     const onWheel = (e) => {
       const s = settingsRef.current;
-      if (!s || e.ctrlKey) return;
+      if (!s || !s.captureWheel || e.ctrlKey) return;
       let dx = e.deltaX;
       let dy = e.deltaY;
       if (e.shiftKey && Math.abs(dx) < Math.abs(dy)) {
@@ -1315,6 +1315,11 @@ const FlexCarousel = ({
     const onKeyDown = (e) => {
       const s = settingsRef.current;
       if (!s) return;
+      if (
+        !s.captureWheel &&
+        ["ArrowDown", "ArrowUp", "Home", "End", " "].includes(e.key)
+      )
+        return;
       const m = metrics(s);
       if (e.key === "ArrowRight" || e.key === "ArrowDown") {
         e.preventDefault();
@@ -1365,7 +1370,8 @@ const FlexCarousel = ({
       container.addEventListener("pointerup", onPointerUp);
       container.addEventListener("pointerleave", onPointerLeave);
       container.addEventListener("pointercancel", onPointerCancel);
-      container.addEventListener("wheel", onWheel, { passive: false });
+      if (captureWheel)
+        container.addEventListener("wheel", onWheel, { passive: false });
       container.addEventListener("keydown", onKeyDown);
       container.addEventListener("focus", onFocus);
       container.addEventListener("blur", onBlur);
@@ -1413,7 +1419,7 @@ const FlexCarousel = ({
       gl.getExtension("WEBGL_lose_context")?.loseContext();
       if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
     };
-  }, [interactive]);
+  }, [interactive, captureWheel]);
 
   const current = list[active] || list[0];
   const label = current
@@ -1424,6 +1430,7 @@ const FlexCarousel = ({
     <div
       ref={containerRef}
       className={`flex-carousel ${interactive ? "" : "flex-carousel--passive"} ${className}`.trim()}
+      data-page-scroll={!captureWheel ? "" : undefined}
       style={{
         ...style,
         "--flex-carousel-half": `${Math.min(Math.max(cardHeight, 0.05), 1) * 50}%`,

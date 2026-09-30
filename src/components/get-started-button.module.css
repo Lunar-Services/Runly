@@ -2,16 +2,16 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  min-height: 55px;
+  min-height: 44px;
   gap: 4px;
-  padding: 0 34px;
+  padding: 0 28px;
   overflow: hidden;
   border: 2px solid transparent;
   border-radius: 999px;
   background: var(--ink);
   color: var(--paper);
   box-shadow: 0 0 0 1px var(--ink);
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 700;
   transition:
     color 600ms cubic-bezier(0.23, 1, 0.32, 1),
@@ -23,7 +23,7 @@
 .arrow {
   position: absolute;
   z-index: 2;
-  width: 22px;
+  width: 18px;
   fill: currentColor;
   transition: transform 800ms cubic-bezier(0.23, 1, 0.32, 1);
 }

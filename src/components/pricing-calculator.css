@@ -1,0 +1,235 @@
+html body .cat-site .plan-comparison {
+  width: min(100%, 920px);
+  max-width: 920px;
+  padding: clamp(24px, 3vw, 40px);
+  border-radius: 32px;
+  border-color: var(--border-ui);
+  background: var(--surface-card);
+  color: var(--text-main);
+  box-shadow: 0 16px 50px rgb(0 0 0 / 4%);
+}
+.calculator-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.calculator-heading h3 {
+  margin: 0;
+  font: 500 20px/1.3 var(--sans);
+  letter-spacing: -0.025em;
+}
+.calculator-heading > span {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+html body .cat-site .plan-comparison .plan-switch {
+  padding: 5px;
+  border: 1px solid var(--border-ui);
+  border-radius: 18px;
+  background: var(--surface-page);
+}
+html body .cat-site .plan-comparison .plan-switch button {
+  min-height: 46px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition:
+    color 200ms ease,
+    transform 200ms ease;
+}
+html body .cat-site .plan-comparison .plan-switch button[aria-pressed="true"] {
+  color: var(--text-main);
+}
+html body .cat-site .plan-comparison .plan-switch-indicator {
+  border-radius: 12px;
+  background: var(--surface-raised);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
+  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+html[data-theme="dark"] body .cat-site .plan-comparison .plan-switch-indicator {
+  background: #202020;
+  box-shadow: inset 0 1px rgb(255 255 255 / 6%);
+}
+html body .cat-site .plan-comparison .estimate-content {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 36px;
+  padding: 32px 0;
+}
+html body .cat-site .plan-comparison .estimate-content p,
+html body .cat-site .plan-comparison .estimate-content label,
+html body .cat-site .plan-comparison .estimate-content small {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+html body .cat-site .plan-comparison .estimate-content number-flow-react {
+  font-size: clamp(48px, 5vw, 68px);
+  letter-spacing: -0.05em;
+  line-height: 1.1;
+  color: var(--text-main);
+}
+.calculator-price > p {
+  margin: 0 0 12px;
+}
+html body .cat-site .plan-comparison .calculator-term {
+  padding: 20px;
+  border: 1px solid var(--border-ui);
+  border-radius: 20px;
+  min-width: 205px;
+}
+html body .cat-site .plan-comparison .month-stepper {
+  border: 0;
+  gap: 4px;
+  margin-top: 10px;
+}
+html body .cat-site .plan-comparison .month-stepper button {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  color: var(--text-main);
+  transition:
+    background 200ms ease,
+    transform 200ms ease;
+}
+html body .cat-site .plan-comparison .month-stepper input {
+  width: 64px;
+  height: 44px;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+html body .cat-site .plan-comparison .calculator-term-note {
+  margin: 12px 0 0;
+  font-size: 11px;
+}
+html body .cat-site .plan-comparison .estimate-checkout {
+  padding-top: 24px;
+  gap: 28px;
+  border-color: var(--border-ui);
+}
+html body .cat-site .plan-comparison .estimate-note {
+  font-size: 12px;
+  line-height: 1.7;
+  max-width: 460px;
+  color: var(--text-secondary);
+}
+html body .cat-site .plan-comparison .estimate-checkout .button {
+  min-height: 48px;
+  min-width: 164px;
+  padding: 0 22px;
+  border-radius: 15px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.cat-site .site-header .nav-primary a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 12px;
+  transition:
+    background 220ms ease,
+    color 220ms ease,
+    transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cat-site .site-header .nav-primary a::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 7px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: center;
+  opacity: 0.5;
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cat-site .site-header .nav-primary a:hover {
+    background: color-mix(in srgb, var(--text-main) 7%, transparent);
+    transform: translateY(-1px);
+  }
+  .cat-site .site-header .nav-primary a:hover::after {
+    transform: scaleX(1);
+  }
+  html
+    body
+    .cat-site
+    .plan-comparison
+    .month-stepper
+    button:not(:disabled):hover {
+    background: color-mix(in srgb, var(--text-main) 8%, transparent);
+  }
+  html
+    body
+    .cat-site
+    .plan-comparison
+    .month-stepper
+    button:not(:disabled):active {
+    transform: scale(0.94);
+  }
+  html body .cat-site .plan-comparison .plan-switch button:hover {
+    color: var(--text-main);
+  }
+}
+@media (max-width: 600px) {
+  html body .cat-site .plan-comparison {
+    border-radius: 24px;
+    padding: 22px;
+  }
+  .calculator-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+  html body .cat-site .plan-comparison .estimate-content {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  html body .cat-site .plan-comparison .calculator-term {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    min-width: 0;
+  }
+  html body .cat-site .plan-comparison .month-stepper {
+    margin-top: 0;
+  }
+  html body .cat-site .plan-comparison .month-stepper input {
+    width: 42px;
+  }
+  html body .cat-site .plan-comparison .calculator-term-note {
+    margin: 0;
+    grid-column: 1 / -1;
+  }
+  html body .cat-site .plan-comparison .estimate-checkout {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html body .cat-site .plan-comparison .plan-switch-indicator,
+  .cat-site .site-header .nav-primary a,
+  .cat-site .site-header .nav-primary a::after {
+    transition: none;
+  }
+}
+@media (max-width: 380px) {
+  html body .cat-site .plan-comparison .calculator-term {
+    grid-template-columns: 1fr;
+  }
+  html body .cat-site .plan-comparison .month-stepper {
+    justify-self: start;
+  }
+}

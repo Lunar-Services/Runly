@@ -11,6 +11,9 @@
   overscroll-behavior: contain;
   outline: none;
 }
+.flex-carousel[data-page-scroll] {
+  overscroll-behavior: auto;
+}
 
 .flex-carousel[data-hover="open"] {
   cursor: zoom-in;

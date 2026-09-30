@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import NumberFlow from "@number-flow/react";
-import { Minus, Plus } from "lucide-react";
+import { ArrowUpRight, Minus, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import "./pricing-calculator.css";
 
 const plans = [
   { id: "standard", name: "Standard", price: 3, tokens: 100000 },
@@ -64,6 +65,10 @@ export function PlanComparison({
   }
   return (
     <section className="plan-comparison" aria-label="Plan cost estimator">
+      <div className="calculator-heading">
+        <h3>Choose your plan</h3>
+        <span>Make it fit your next idea.</span>
+      </div>
       <div className="plan-switch" role="group" aria-label="Select a plan">
         <span
           className="plan-switch-indicator"
@@ -81,7 +86,7 @@ export function PlanComparison({
         ))}
       </div>
       <div className="estimate-content">
-        <div>
+        <div className="calculator-price">
           <p>
             Estimated cost for {months === 1 ? "one month" : `${months} months`}
           </p>
@@ -99,7 +104,7 @@ export function PlanComparison({
             {plan.tokens.toLocaleString("en-US")} tokens per 3-hour window
           </small>
         </div>
-        <div>
+        <div className="calculator-term">
           <label htmlFor="estimate-months">Subscription length</label>
           <div className="month-stepper">
             <button
@@ -130,6 +135,7 @@ export function PlanComparison({
               <Plus size={20} />
             </button>
           </div>
+          <p className="calculator-term-note">Choose 1–12 months.</p>
         </div>
       </div>
       <div className="estimate-checkout">
@@ -145,6 +151,7 @@ export function PlanComparison({
           onClick={checkout}
         >
           {pending ? "Opening secure checkout…" : `Buy ${plan.name}`}
+          {!pending && <ArrowUpRight size={17} aria-hidden="true" />}
         </button>
       </div>
       {message && (
