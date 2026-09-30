@@ -1,169 +1,288 @@
-.about-runly {
-  max-width: 1200px;
+.about-page {
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 110px 38px;
+  padding: 20px 38px 100px;
   color: var(--text-main);
-  scroll-margin-top: 110px;
+}
+.about-hero {
+  min-height: 440px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 32px;
+  background: #080808;
+  color: #fff;
+  display: flex;
+  align-items: flex-end;
+  padding: 58px;
+  isolation: isolate;
+}
+.about-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(130deg, #000 10%, #151515 50%, #020202 85%);
+}
+.about-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid #343434;
+  border-radius: inherit;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent calc(25% - 1px),
+    rgb(255 255 255 / 5%) 25%
+  );
+}
+.about-hero-art {
+  position: absolute;
+  width: 430px;
+  right: 45px;
+  top: -28px;
+  transform: rotate(-12deg);
+  opacity: 0.12;
+  filter: invert(1);
+  z-index: -1;
+}
+.about-hero-art img {
+  width: 100%;
+  height: auto;
+}
+.about-hero-copy > p {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: #b9b9b9;
+  margin: 0 0 24px;
+}
+.about-hero h1 {
+  font: 500 clamp(48px, 7vw, 86px) / 1.02 var(--sans);
+  letter-spacing: -0.065em;
+  max-width: 650px;
+  margin: 0 0 24px;
+}
+.about-hero-copy > span {
+  font-size: 15px;
+  color: #c2c2c2;
 }
 .about-story {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 80px;
-  padding-bottom: 80px;
-  border-bottom: 1px solid var(--border-ui);
+  grid-template-columns: 1fr 1fr;
+  gap: 70px;
+  padding: 100px 24px 80px;
 }
-.about-eyebrow,
-.person-role {
-  display: block;
+.about-eyebrow {
   font-size: 11px;
   letter-spacing: 0.12em;
-  font-weight: 600;
   color: var(--text-secondary);
 }
-.about-heading h2 {
-  margin: 22px 0 44px;
-  font: 400 clamp(42px, 5vw, 68px) / 1.04 var(--serif);
-  letter-spacing: -0.045em;
-}
-.about-copy {
-  padding-top: 28px;
+.about-page h2 {
+  font: 400 clamp(34px, 4vw, 50px) / 1.1 var(--sans);
+  letter-spacing: -0.055em;
+  margin: 22px 0 0;
 }
 .about-copy p {
   margin: 0 0 24px;
+  font-size: 16px;
+  line-height: 1.85;
   color: var(--text-secondary);
-  font-size: 17px;
-  line-height: 1.75;
 }
-.about-copy .about-principle {
-  margin-top: 32px;
+.about-copy {
+  padding-top: 27px;
+}
+.about-principles {
+  padding: 64px 24px;
+  border-block: 1px solid var(--border-ui);
+}
+.about-principles > p {
   font-size: 15px;
-}
-.about-principle strong {
-  display: block;
-  margin-top: 14px;
-  color: var(--text-main);
-  font-weight: 400;
-  font-size: 23px;
-  line-height: 1.45;
-  letter-spacing: -0.025em;
-}
-.lunar-signature {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  font-size: 22px;
-  letter-spacing: -0.03em;
-}
-.lunar-signature > span > span {
-  display: block;
-  margin-top: 5px;
   color: var(--text-secondary);
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  margin: 22px 0 36px;
 }
-.lunar-orbit {
-  position: relative;
-  display: block;
-  width: 70px;
-  height: 70px;
+.principle-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
 }
-.lunar-orbit i:first-child {
-  position: absolute;
-  inset: 15px;
-  border-radius: 50%;
-  background: var(--text-main);
-  box-shadow: inset -10px -3px 0 var(--surface-card);
+.principle-grid article {
+  padding: 28px;
+  border: 1px solid var(--border-ui);
+  border-radius: 20px;
+  background: var(--surface-card);
 }
-.lunar-orbit i:last-child {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--text-main);
-  top: 8px;
-  right: 8px;
+.principle-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: var(--paper);
+  background: var(--ink);
+  border-radius: 12px;
+  margin-bottom: 60px;
+}
+.principle-grid h3 {
+  font: 500 20px/1.3 var(--sans);
+  letter-spacing: -0.03em;
+  margin: 0 0 12px;
+}
+.principle-grid p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 0;
+}
+.about-team-section {
+  padding: 80px 24px;
 }
 .about-team-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  margin: 54px 0 32px;
-  gap: 24px;
+  gap: 30px;
+  margin-bottom: 38px;
 }
-.about-team-heading p {
+.about-team-heading > p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.8;
   margin: 0;
-  font: 400 30px/1.2 var(--serif);
-  letter-spacing: -0.03em;
 }
 .about-team {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
 }
-.person-front h3,
-.person-back h3 {
-  margin: 20px 0 14px;
-  font: 400 43px/1.1 var(--serif);
-  letter-spacing: -0.035em;
+.person-card {
+  min-width: 0;
+  border: 1px solid var(--border-ui);
+  border-radius: 24px;
+  overflow: hidden;
+  background: var(--surface-card);
 }
-.person-front p,
-.person-back p {
+.person-identity {
+  position: relative;
+  padding: 32px;
+  background: linear-gradient(140deg, #1e1e1e, #050505);
+  color: #fff;
+  border-bottom: 1px solid #333;
+}
+.person-role {
+  color: #c3c3c3;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.person-identity h3 {
+  font: 500 clamp(52px, 6vw, 78px) / 1.05 var(--sans);
+  letter-spacing: -0.065em;
+  margin: 55px 0 20px;
+  color: #e3e3e3;
+  background: linear-gradient(#fff 20%, #aaa);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.person-identity > p {
+  margin: 0;
+  font-size: 13px;
+  color: #bdbdbd;
+}
+.person-biography {
+  padding: 32px;
+}
+.person-biography p {
   color: var(--text-secondary);
   font-size: 15px;
-  line-height: 1.75;
-  margin: 0 0 18px;
+  line-height: 1.8;
+  margin: 0 0 22px;
 }
-.person-front .person-focus {
-  font-size: 13px;
-  color: var(--text-main);
-  margin-bottom: 18px;
+.person-biography p:last-child {
+  margin-bottom: 0;
 }
-.person-monogram {
-  position: relative;
-  display: grid;
-  place-items: center;
-  height: 200px;
-  margin-top: 30px;
+.about-invitation {
+  text-align: center;
+  padding: 70px 24px 0;
   border-top: 1px solid var(--border-ui);
-  border-bottom: 1px solid var(--border-ui);
-  overflow: hidden;
 }
-.person-monogram > span {
-  position: relative;
-  z-index: 1;
-  font: 400 150px/0.9 var(--serif);
-  letter-spacing: -0.08em;
+.about-invitation > p {
+  color: var(--text-secondary);
+  font-size: 15px;
+  margin: 22px 0 30px;
 }
-.person-monogram i {
-  position: absolute;
-  width: 140%;
-  height: 1px;
-  background: var(--border-ui);
-  transform: rotate(-25deg);
+.about-invitation a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 28px;
+  border-radius: 999px;
+  background: var(--text-main);
+  color: var(--surface-card);
+  font-size: 14px;
+  font-weight: 600;
+  transition:
+    transform 200ms ease,
+    opacity 200ms ease;
 }
-.person-back h3 {
-  margin-top: 26px;
-  margin-bottom: 28px;
+.about-invitation a:hover {
+  transform: translateY(-2px);
+  opacity: 0.85;
+}
+.about-invitation a:active {
+  transform: scale(0.98);
+}
+.about-invitation a:focus-visible {
+  outline: 2px solid var(--text-main);
+  outline-offset: 5px;
 }
 @media (max-width: 760px) {
-  .about-runly {
-    padding: 70px 22px;
+  .about-page {
+    padding: 12px 20px 64px;
+  }
+  .about-hero {
+    min-height: 370px;
+    padding: 30px;
+    border-radius: 24px;
+  }
+  .about-hero-art {
+    width: 330px;
+    right: -70px;
+    top: 0;
   }
   .about-story {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 24px;
-    padding-bottom: 44px;
+    grid-template-columns: 1fr;
+    padding: 64px 4px 44px;
+    gap: 20px;
   }
   .about-copy {
     padding-top: 0;
   }
+  .about-principles {
+    padding: 48px 4px;
+  }
+  .principle-grid {
+    grid-template-columns: 1fr;
+  }
+  .principle-icon {
+    margin-bottom: 35px;
+  }
+  .about-team-section {
+    padding: 56px 4px;
+  }
   .about-team {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 1fr;
   }
   .about-team-heading {
     align-items: flex-start;
+    flex-direction: column;
+    gap: 20px;
   }
-  .about-team-heading p {
-    font-size: 23px;
+  .person-identity,
+  .person-biography {
+    padding: 26px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .about-invitation a {
+    transition: none;
   }
 }

@@ -16,7 +16,7 @@ import {
 import { AppShell } from "./app-shell";
 import { Brand } from "./brand";
 import { BillingSettings, UpgradePlans } from "./billing";
-import { PlanComparison } from "./business-motion";
+import { PricingCards } from "./pricing-cards";
 import { AdminBillingPlans } from "./admin-billing-plans";
 import { ProjectWorkspace as InteractiveProjectWorkspace } from "./project-workspace";
 import { AdminMonitoring, AdminUsers } from "./admin-operations";
@@ -407,7 +407,7 @@ function PricingPage() {
           <span className="stripe-payment-logo" aria-hidden="true" />
         </a>
       </section>
-      <PlanComparison />
+      <PricingCards />
     </div>
   );
 }

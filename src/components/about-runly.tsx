@@ -1,6 +1,8 @@
 "use client";
 
-import FlipCard from "./react-bits/FlipCard";
+import Image from "next/image";
+import Link from "next/link";
+import { PenTool, Layers, Sparkles } from "lucide-react";
 import "./about-runly.css";
 
 const people = [
@@ -28,26 +30,50 @@ const people = [
   },
 ];
 
+const principles = [
+  {
+    name: "Strong design",
+    text: "Clear interfaces. Thoughtful details. Products that feel good to use.",
+    icon: PenTool,
+  },
+  {
+    name: "Solid engineering",
+    text: "Development, infrastructure, and systems built to support the product.",
+    icon: Layers,
+  },
+  {
+    name: "Real usefulness",
+    text: "A clear purpose behind every product, grounded in what people need.",
+    icon: Sparkles,
+  },
+];
+
 export function AboutRunly() {
   return (
-    <section id="about" className="about-runly" aria-labelledby="about-title">
-      <div className="about-story">
-        <div className="about-heading">
-          <span className="about-eyebrow">THE PEOPLE BEHIND THE PRODUCT</span>
-          <h2 id="about-title">
+    <div className="about-page">
+      <section className="about-hero" aria-labelledby="about-title">
+        <div className="about-hero-art" aria-hidden="true">
+          <Image
+            src="/brand/runly-logo.png"
+            alt=""
+            width={1312}
+            height={1199}
+          />
+        </div>
+        <div className="about-hero-copy">
+          <p>RUNLY / LUNARGROUP</p>
+          <h1 id="about-title">Built with purpose.</h1>
+          <span>The company and people behind Runly.</span>
+        </div>
+      </section>
+      <section className="about-story" aria-labelledby="company-title">
+        <div>
+          <span className="about-eyebrow">ABOUT LUNARGROUP</span>
+          <h2 id="company-title">
             Runly is built
             <br />
             by LunarGroup.
           </h2>
-          <div className="lunar-signature" aria-hidden="true">
-            <span className="lunar-orbit">
-              <i />
-              <i />
-            </span>
-            <span>
-              LunarGroup<span>Ideas into reality.</span>
-            </span>
-          </div>
         </div>
         <div className="about-copy">
           <p>
@@ -60,54 +86,69 @@ export function AboutRunly() {
             bringing together our work across development, infrastructure,
             design, and product.
           </p>
-          <p className="about-principle">
-            We build with a simple approach:
-            <br />
-            <strong>
-              move fast, stay focused,
+        </div>
+      </section>
+      <section className="about-principles" aria-labelledby="principles-title">
+        <span className="about-eyebrow">OUR APPROACH</span>
+        <h2 id="principles-title">
+          Move fast. Stay focused.
+          <br />
+          Make products worth using.
+        </h2>
+        <p>We build with a simple approach.</p>
+        <div className="principle-grid">
+          {principles.map(({ name, text, icon: Icon }) => (
+            <article key={name}>
+              <span className="principle-icon">
+                <Icon size={20} strokeWidth={1.5} aria-hidden="true" />
+              </span>
+              <h3>{name}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="about-team-section" aria-labelledby="team-title">
+        <div className="about-team-heading">
+          <div>
+            <span className="about-eyebrow">OUR TEAM</span>
+            <h2 id="team-title">
+              The people
               <br />
-              and make products worth using.
-            </strong>
+              behind the purpose.
+            </h2>
+          </div>
+          <p>
+            Product vision.
+            <br />
+            Technical foundations.
+            <br />
+            One shared direction.
           </p>
         </div>
-      </div>
-      <div className="about-team-heading">
-        <span className="about-eyebrow">MEET THE TEAM</span>
-        <p>
-          Different strengths.
-          <br />
-          One shared direction.
-        </p>
-      </div>
-      <div className="about-team">
-        {people.map((person) => (
-          <FlipCard
-            key={person.name}
-            name={person.name}
-            front={
-              <div className="person-front">
-                <span className="person-role">{person.role}</span>
-                <div className="person-monogram" aria-hidden="true">
-                  <span>{person.name[0]}</span>
-                  <i />
-                </div>
+        <div className="about-team">
+          {people.map((person) => (
+            <article className="person-card" key={person.name}>
+              <div className="person-identity">
+                <span className="person-role">LUNARGROUP / {person.role}</span>
                 <h3>{person.name}</h3>
-                <p className="person-focus">{person.focus}</p>
-                <p>{person.intro}</p>
+                <p>{person.focus}</p>
               </div>
-            }
-            back={
-              <div className="person-back">
-                <span className="person-role">{person.role}</span>
-                <h3>{person.name}</h3>
+              <div className="person-biography">
                 {person.paragraphs.map((paragraph) => (
                   <p key={paragraph}>{paragraph}</p>
                 ))}
               </div>
-            }
-          />
-        ))}
-      </div>
-    </section>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="about-invitation">
+        <span className="about-eyebrow">MEET THE PRODUCT</span>
+        <h2>That focus is Runly.</h2>
+        <p>A place to turn an idea into something worth using.</p>
+        <Link href="/#product">Explore Runly</Link>
+      </section>
+    </div>
   );
 }

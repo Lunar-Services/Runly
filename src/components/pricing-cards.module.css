@@ -1,0 +1,220 @@
+.pricing {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 0 30px;
+}
+.heading {
+  text-align: center;
+}
+.heading > p {
+  color: var(--text-secondary);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  margin: 0 0 24px;
+}
+.heading h2 {
+  color: var(--text-main);
+  font: 700 clamp(84px, 15vw, 180px) / 0.95 var(--sans);
+  letter-spacing: -0.075em;
+  margin: 0;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  position: relative;
+  margin-top: -22px;
+}
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #303030;
+  border-radius: 24px;
+  overflow: hidden;
+  background: linear-gradient(160deg, #191919, #090909 65%, #101010);
+  color: #fafafa;
+  box-shadow: inset 0 0 0 4px rgb(255 255 255 / 2%);
+  transition:
+    border-color 240ms ease,
+    transform 240ms ease;
+}
+.card::before {
+  content: "";
+  position: absolute;
+  height: 120px;
+  inset: -70px 20px auto;
+  background: linear-gradient(
+    95deg,
+    transparent 8%,
+    #fff 28%,
+    transparent 45%,
+    #fff 65%,
+    transparent 85%
+  );
+  filter: blur(17px);
+  opacity: 0.28;
+  pointer-events: none;
+}
+.featured {
+  border-color: #686868;
+}
+.card:hover {
+  border-color: #777;
+  transform: translateY(-4px);
+}
+.card[data-selected] {
+  border-color: #a0a0a0;
+}
+.top {
+  padding: 32px 26px 28px;
+  border-bottom: 1px solid #282828;
+}
+.label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.label h3 {
+  font: 400 14px/1.4 var(--sans);
+  margin: 0;
+  color: #d0d0d0;
+}
+.label > span {
+  font-size: 10px;
+  padding: 4px 9px;
+  border: 1px solid #505050;
+  border-radius: 999px;
+}
+.price {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin: 20px 0 12px;
+  white-space: nowrap;
+}
+.price strong {
+  font: 600 clamp(40px, 4vw, 58px) / 1 var(--sans);
+  letter-spacing: -0.065em;
+  background: linear-gradient(#fff 25%, #bcbcbc 85%);
+  background-clip: text;
+  color: transparent;
+}
+.price > span {
+  color: #a9a9a9;
+  font-size: 17px;
+}
+.description {
+  font-size: 13px;
+  color: #b4b4b4;
+  margin: 0;
+}
+.card ul {
+  margin: 0;
+  padding: 28px 26px;
+  list-style: none;
+  display: grid;
+  gap: 19px;
+}
+.card li {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  color: #c9c9c9;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.check {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  background: #242424;
+  border-radius: 50%;
+  color: #e0e0e0;
+}
+.bottom {
+  margin-top: auto;
+  padding: 20px 24px 8px;
+}
+.bottom button {
+  cursor: pointer;
+  width: 100%;
+  min-height: 44px;
+  border-radius: 999px;
+  border: 1px solid #343434;
+  background: #000;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  transition:
+    background 200ms ease,
+    transform 200ms ease;
+  box-shadow: 0 -2px 15px rgb(255 255 255 / 7%);
+}
+.featured button {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+.bottom button:hover {
+  background: #252525;
+}
+.featured button:hover {
+  background: #dedede;
+}
+.bottom button:active {
+  transform: scale(0.98);
+}
+.bottom button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 4px;
+}
+.bottom button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.feedback {
+  min-height: 25px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.feedback p {
+  margin: 10px 0;
+  color: #fff;
+}
+.note {
+  margin: 24px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.6;
+}
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: 1fr;
+    max-width: 440px;
+    margin: -10px auto 0;
+    gap: 18px;
+  }
+  .heading h2 {
+    font-size: clamp(74px, 18vw, 130px);
+  }
+  .top {
+    padding: 28px;
+  }
+  .card ul {
+    padding: 24px 28px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .bottom button {
+    transition: none;
+  }
+  .card:hover {
+    transform: none;
+  }
+}

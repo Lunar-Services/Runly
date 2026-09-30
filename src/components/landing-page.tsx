@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Brand } from "./brand";
-import { BusinessMotion, PlanComparison } from "./business-motion";
+import { BusinessMotion } from "./business-motion";
+import { PricingCards } from "./pricing-cards";
 import { SubscriptionComparison } from "./subscription-comparison";
 import { CodeCard } from "./code-card";
 import art from "./landing-art.module.css";
@@ -33,11 +34,11 @@ const suggestions = [
 export function LandingPage({
   account,
   initialPlan,
-  initialMonths,
+  aboutPage = false,
 }: {
   account: { email: string; displayName: string; avatarUrl: string } | null;
   initialPlan?: string;
-  initialMonths?: number;
+  aboutPage?: boolean;
 }) {
   const [prompt, setPrompt] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -148,18 +149,31 @@ export function LandingPage({
           }}
         >
           <div className="nav-primary">
-            <a href="#product" onClick={() => setMenuOpen(false)}>
+            <a
+              href={aboutPage ? "/#product" : "#product"}
+              onClick={() => setMenuOpen(false)}
+            >
               Meet Runly
             </a>
-            <a href="#cowork" onClick={() => setMenuOpen(false)}>
+            <a
+              href={aboutPage ? "/#cowork" : "#cowork"}
+              onClick={() => setMenuOpen(false)}
+            >
               For teams
             </a>
-            <a href="#pricing" onClick={() => setMenuOpen(false)}>
+            <a
+              href={aboutPage ? "/#pricing" : "#pricing"}
+              onClick={() => setMenuOpen(false)}
+            >
               Pricing
             </a>
-            <a href="#about" onClick={() => setMenuOpen(false)}>
+            <Link
+              href="/about"
+              aria-current={aboutPage ? "page" : undefined}
+              onClick={() => setMenuOpen(false)}
+            >
               About us
-            </a>
+            </Link>
           </div>
           <div className="nav-actions">
             {account ? (
@@ -232,162 +246,164 @@ export function LandingPage({
       </header>
 
       <main id="main-content">
-        <section className="cat-hero silk-section">
-          <SilkBackground />
-          <div className="cat-hero-copy">
-            <TextRotation />
-            <p>Tell Runly what you want to build.</p>
-            <form
-              className="cat-composer"
-              noValidate
-              onSubmit={(event) => {
-                event.preventDefault();
-                startBuilding();
-              }}
-            >
-              <label htmlFor="hero-prompt" className="cat-sr-only">
-                What would you like to build?
-              </label>
-              <textarea
-                className="resize-none"
-                id="hero-prompt"
-                rows={3}
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                placeholder="A website, a tool, something you've been thinking about…"
-              />
-              <div className="cat-composer-actions">
-                <div className="cat-suggestions">
-                  {suggestions.map((text) => (
-                    <button
-                      type="button"
-                      key={text}
-                      onClick={() => setPrompt(text)}
-                    >
-                      {text}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  className="cat-send"
-                  type="submit"
-                  disabled={!prompt.trim() || startingProject}
-                  aria-busy={startingProject}
-                  aria-label="Start building"
+        {aboutPage ? (
+          <AboutRunly />
+        ) : (
+          <>
+            <section className="cat-hero silk-section">
+              <SilkBackground />
+              <div className="cat-hero-copy">
+                <TextRotation />
+                <p>Tell Runly what you want to build.</p>
+                <form
+                  className="cat-composer"
+                  noValidate
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    startBuilding();
+                  }}
                 >
-                  <ArrowUp size={24} />
-                </button>
+                  <label htmlFor="hero-prompt" className="cat-sr-only">
+                    What would you like to build?
+                  </label>
+                  <textarea
+                    className="resize-none"
+                    id="hero-prompt"
+                    rows={3}
+                    value={prompt}
+                    onChange={(event) => setPrompt(event.target.value)}
+                    placeholder="A website, a tool, something you've been thinking about…"
+                  />
+                  <div className="cat-composer-actions">
+                    <div className="cat-suggestions">
+                      {suggestions.map((text) => (
+                        <button
+                          type="button"
+                          key={text}
+                          onClick={() => setPrompt(text)}
+                        >
+                          {text}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      className="cat-send"
+                      type="submit"
+                      disabled={!prompt.trim() || startingProject}
+                      aria-busy={startingProject}
+                      aria-label="Start building"
+                    >
+                      <ArrowUp size={24} />
+                    </button>
+                  </div>
+                </form>
+                {message && (
+                  <p role="alert" className="cat-error">
+                    {message}
+                  </p>
+                )}
               </div>
-            </form>
-            {message && (
-              <p role="alert" className="cat-error">
-                {message}
-              </p>
-            )}
-          </div>
-          <div className="cat-hero-art">
-            <CatAnimation
-              name="hero-loop"
-              label="A curious black cat looking around"
-              width={1250}
-              height={1250}
-              hero
-            />
-          </div>
-        </section>
+              <div className="cat-hero-art">
+                <CatAnimation
+                  name="hero-loop"
+                  label="A curious black cat looking around"
+                  width={1250}
+                  height={1250}
+                  hero
+                />
+              </div>
+            </section>
 
-        <ProductStories />
+            <ProductStories />
 
-        <section id="product" className="cat-meet">
-          <h2>
-            Meet your curious
-            <br />
-            little collaborator.
-          </h2>
-          <p>
-            A space to work through an idea, try a change,
-            <br className="cat-desktop-break" /> and see where it takes you.
-          </p>
-          <div className="cat-watcher cat-watcher-video">
-            <CatAnimation
-              name="curious-loop"
-              label="A little black cat turning its head curiously"
-              width={1500}
-              height={844}
-            />
-          </div>
-          <div className="cat-notes">
-            <article>
-              <h3>Start with a thought.</h3>
-              <p>A rough sentence is enough. Add the details as you go.</p>
-            </article>
-            <article>
-              <h3>Make it your own.</h3>
-              <p>Keep the conversation and your project in the same place.</p>
-            </article>
-            <article>
-              <h3>Take another look.</h3>
-              <p>Review the work, change your mind, and keep going.</p>
-            </article>
-          </div>
-          <div className={art.workbench}>
-            <div className={art.workbenchCopy}>
-              <h3>See the idea take shape.</h3>
+            <section id="product" className="cat-meet">
+              <h2>
+                Meet your curious
+                <br />
+                little collaborator.
+              </h2>
               <p>
-                Start with a sentence, inspect the work, then change what needs
-                changing.
+                A space to work through an idea, try a change,
+                <br className="cat-desktop-break" /> and see where it takes you.
               </p>
-              <CodeCard />
-            </div>
-          </div>
-        </section>
+              <div className="cat-watcher cat-watcher-video">
+                <CatAnimation
+                  name="curious-loop"
+                  label="A little black cat turning its head curiously"
+                  width={1500}
+                  height={844}
+                />
+              </div>
+              <div className="cat-notes">
+                <article>
+                  <h3>Start with a thought.</h3>
+                  <p>A rough sentence is enough. Add the details as you go.</p>
+                </article>
+                <article>
+                  <h3>Make it your own.</h3>
+                  <p>
+                    Keep the conversation and your project in the same place.
+                  </p>
+                </article>
+                <article>
+                  <h3>Take another look.</h3>
+                  <p>Review the work, change your mind, and keep going.</p>
+                </article>
+              </div>
+              <div className={art.workbench}>
+                <div className={art.workbenchCopy}>
+                  <h3>See the idea take shape.</h3>
+                  <p>
+                    Start with a sentence, inspect the work, then change what
+                    needs changing.
+                  </p>
+                  <CodeCard />
+                </div>
+              </div>
+            </section>
 
-        <ProjectJourney onTryPrompt={setPrompt} />
+            <ProjectJourney onTryPrompt={setPrompt} />
 
-        <section id="cowork" className="cat-team">
-          <div>
-            <span className="cat-label">Runly Cowork</span>
-            <h2>
-              A little company
-              <br />
-              for your next idea.
-            </h2>
-            <p>Bring the people you build with into one shared workspace.</p>
-            <Link className="cowork-explore" href="/cowork">
-              Explore Cowork
-            </Link>
-          </div>
-          <div className="cat-team-animation">
-            <CatAnimation
-              name="hero-loop"
-              label="A black cat keeping you company"
-              width={1250}
-              height={1250}
-            />
-          </div>
-        </section>
+            <section id="cowork" className="cat-team">
+              <div>
+                <span className="cat-label">Runly Cowork</span>
+                <h2>
+                  A little company
+                  <br />
+                  for your next idea.
+                </h2>
+                <p>
+                  Bring the people you build with into one shared workspace.
+                </p>
+                <Link className="cowork-explore" href="/cowork">
+                  Explore Cowork
+                </Link>
+              </div>
+              <div className="cat-team-animation">
+                <CatAnimation
+                  name="hero-loop"
+                  label="A black cat keeping you company"
+                  width={1250}
+                  height={1250}
+                />
+              </div>
+            </section>
 
-        <section id="pricing" className={`cat-pricing ${art.pricing}`}>
-          <div className="cat-pricing-head">
-            <h2>A plan for your pace.</h2>
-            <p>Start on your own. Bring a team when you’re ready.</p>
-          </div>
-          <PlanComparison
-            initialPlan={initialPlan}
-            initialMonths={initialMonths}
-          />
-          <SubscriptionComparison />
-        </section>
+            <section id="pricing" className={`cat-pricing ${art.pricing}`}>
+              <PricingCards initialPlan={initialPlan} />
+              <SubscriptionComparison />
+            </section>
 
-        <BusinessMotion />
-        <AboutRunly />
-        <section className={`cat-close silk-section ${art.close}`}>
-          <SilkBackground />
-          <h2>What are you thinking?</h2>
-          <a className="button button-dark" href="#hero-prompt">
-            Let’s start
-          </a>
-        </section>
+            <BusinessMotion />
+            <section className={`cat-close silk-section ${art.close}`}>
+              <SilkBackground />
+              <h2>What are you thinking?</h2>
+              <a className="button button-dark" href="#hero-prompt">
+                Let’s start
+              </a>
+            </section>
+          </>
+        )}
       </main>
       <footer>
         <Brand />
@@ -396,7 +412,7 @@ export function LandingPage({
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/pricing">Pricing</Link>
-          <a href="#about">About us</a>
+          <Link href="/about">About us</Link>
         </div>
         <small>© 2026 Runly</small>
       </footer>

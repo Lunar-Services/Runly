@@ -121,7 +121,7 @@ export function SubscriptionComparison() {
       <p className={styles.disclosure}>
         US monthly list prices checked September 24, 2026. Products, features,
         and usage limits differ. Plans are billed monthly for the term selected
-        in the calculator. Sources:{" "}
+        at checkout. Sources:{" "}
         {subscriptions.map((subscription, index) => (
           <span key={subscription.name}>
             {index > 0 ? ", " : ""}
