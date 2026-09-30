@@ -4,7 +4,10 @@ import { resolve } from "node:path";
 // Every production entry point, including the standalone gateway, must use
 // production-only safety gates even when the service manager omits NODE_ENV.
 process.env.NODE_ENV = "production";
-const envPath = resolve(process.cwd(), ".env.prod");
+const envPath = resolve(
+  process.cwd(),
+  process.env.RUNLY_PROD_ENV_FILE?.trim() || ".env.prod",
+);
 process.loadEnvFile(envPath);
 
 const nextCli = resolve("node_modules/next/dist/bin/next");
@@ -22,14 +25,14 @@ if (!commands[command]) {
   process.exit(2);
 }
 
-const childEnv = { ...process.env };
 if (command === "runtime") {
   // GitHub credentials belong to the trusted web broker. The gateway relays
-  // untrusted sandbox traffic and has no reason to hold them in its process.
-  for (const name of Object.keys(childEnv))
+  // untrusted sandbox traffic and has no reason to hold them in either process.
+  for (const name of Object.keys(process.env))
     if (name.startsWith("GITHUB_") || name.startsWith("STRIPE_"))
-      delete childEnv[name];
+      delete process.env[name];
 }
+const childEnv = { ...process.env };
 
 const child = spawn(process.execPath, [...commands[command], ...extraArgs], {
   env: childEnv,

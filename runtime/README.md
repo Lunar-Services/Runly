@@ -73,8 +73,9 @@ Use Node 22.13+ within the repository's supported Node range, and pnpm 10.
 Production deployment can use the ignored `.env.prod` template at the repository
 root; fill it with production credentials and keep it only on the VPS. The
 `build:prod`, `start:prod`, and `runtime:prod` scripts load `.env.prod` before
-starting the relevant process. See `.env.example` for the complete variable
-inventory.
+starting the relevant process by default. Set `RUNLY_PROD_ENV_FILE` to an
+absolute path to load a separate file. See `.env.example` for the complete
+variable inventory.
 
 ```dotenv
 OPENAI_API_KEY=<project-scoped-provider-key>
@@ -101,8 +102,14 @@ The web process is the GitHub credential broker. It mints installation tokens
 for one repository, reads and writes workspace snapshots through the private
 loopback file endpoint, and performs GitHub API calls itself. A separate Git
 worker is unnecessary on a single VPS. The gateway production launcher removes
-GitHub and Stripe variables from its child environment. A complete one-line PEM
-key is accepted as well as a PEM with escaped newlines.
+GitHub and Stripe variables from its own environment and its child environment.
+For host-level isolation, run the web app and gateway under separate OS users:
+give only the web user read access to `.env.prod` or its private equivalent,
+and set `RUNLY_PROD_ENV_FILE=/etc/runly/runtime.env` for the gateway service.
+Copy only the gateway's required variables into that file. In particular, omit
+all `GITHUB_*` and `STRIPE_*` variables. Both users need read access to the
+application code, and the web user needs access to the Next.js build output.
+A complete one-line PEM key is accepted as well as a PEM with escaped newlines.
 
 Generate the shared secret locally with
 `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
