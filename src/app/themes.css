@@ -160,7 +160,11 @@ html[data-theme="light"] body .app-topbar {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  gap: 35px;
+  gap: 20px;
+}
+.cat-site .site-header :is(.nav-primary a, .nav-actions > a) {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .cat-site .site-header .nav-actions {
   margin-left: auto;
@@ -297,7 +301,21 @@ html[data-theme="dark"] .cat-site.is-dark .site-header.is-scrolled {
   height: 34px;
 }
 .cat-site .site-header.is-scrolled .nav-primary {
-  gap: 28px;
+  gap: 20px;
+}
+@media (min-width: 901px) and (max-width: 1100px) {
+  .cat-site .site-header .nav-primary {
+    position: static;
+    transform: none;
+    gap: 8px;
+  }
+  .cat-site .site-header .nav-links {
+    gap: 12px;
+    font-size: 14px;
+  }
+  .cat-site .site-header .nav-actions {
+    gap: 12px;
+  }
 }
 .cat-site .site-header.is-scrolled .nav-actions {
   gap: 15px;

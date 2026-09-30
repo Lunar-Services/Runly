@@ -10,7 +10,7 @@ import {
 } from "motion/react";
 import "./TiltedCard.css";
 
-const spring = { damping: 30, stiffness: 100, mass: 2 };
+const spring = { damping: 22, stiffness: 260, mass: 0.55 };
 
 /** Adapted from the supplied React Bits TiltedCard; touch scrolling stays native. */
 export default function TiltedCard({

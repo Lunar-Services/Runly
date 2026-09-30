@@ -22,6 +22,7 @@ import { TextRotation } from "./text-rotation";
 import { SilkBackground, ProductStories } from "./site-visuals";
 import { GetStartedButton } from "./get-started-button";
 import { ProjectJourney } from "./project-journey";
+import { AboutRunly } from "./about-runly";
 
 const suggestions = [
   "A personal website",
@@ -155,6 +156,9 @@ export function LandingPage({
             </a>
             <a href="#pricing" onClick={() => setMenuOpen(false)}>
               Pricing
+            </a>
+            <a href="#about" onClick={() => setMenuOpen(false)}>
+              About us
             </a>
           </div>
           <div className="nav-actions">
@@ -376,6 +380,7 @@ export function LandingPage({
         </section>
 
         <BusinessMotion />
+        <AboutRunly />
         <section className={`cat-close silk-section ${art.close}`}>
           <SilkBackground />
           <h2>What are you thinking?</h2>
@@ -391,6 +396,7 @@ export function LandingPage({
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/pricing">Pricing</Link>
+          <a href="#about">About us</a>
         </div>
         <small>© 2026 Runly</small>
       </footer>

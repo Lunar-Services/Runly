@@ -13,8 +13,6 @@
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 22px;
-  border: 1px solid #e6e6e6;
 }
 .tilted-card-overlay {
   position: absolute;

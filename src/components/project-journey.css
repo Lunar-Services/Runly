@@ -63,14 +63,7 @@
 }
 .journey-visual {
   min-width: 0;
-  padding: 12px;
-  border-radius: 32px;
-  background: linear-gradient(135deg, #f2f2f2, #fff 45%, #e7e7e7);
-  box-shadow: 0 20px 45px rgb(0 0 0 / 5%);
-}
-html[data-theme="dark"] .journey-visual {
-  background: linear-gradient(135deg, #252525, #080808 45%, #303030);
-  box-shadow: none;
+  background: transparent;
 }
 .journey-try {
   display: inline-block;
@@ -165,10 +158,6 @@ html[data-theme="dark"] .journey-visual {
   }
   .journey-step:nth-child(even) .journey-copy {
     order: 0;
-  }
-  .journey-visual {
-    padding: 8px;
-    border-radius: 26px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -1,0 +1,169 @@
+.about-runly {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 110px 38px;
+  color: var(--text-main);
+  scroll-margin-top: 110px;
+}
+.about-story {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 80px;
+  padding-bottom: 80px;
+  border-bottom: 1px solid var(--border-ui);
+}
+.about-eyebrow,
+.person-role {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.about-heading h2 {
+  margin: 22px 0 44px;
+  font: 400 clamp(42px, 5vw, 68px) / 1.04 var(--serif);
+  letter-spacing: -0.045em;
+}
+.about-copy {
+  padding-top: 28px;
+}
+.about-copy p {
+  margin: 0 0 24px;
+  color: var(--text-secondary);
+  font-size: 17px;
+  line-height: 1.75;
+}
+.about-copy .about-principle {
+  margin-top: 32px;
+  font-size: 15px;
+}
+.about-principle strong {
+  display: block;
+  margin-top: 14px;
+  color: var(--text-main);
+  font-weight: 400;
+  font-size: 23px;
+  line-height: 1.45;
+  letter-spacing: -0.025em;
+}
+.lunar-signature {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 22px;
+  letter-spacing: -0.03em;
+}
+.lunar-signature > span > span {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.lunar-orbit {
+  position: relative;
+  display: block;
+  width: 70px;
+  height: 70px;
+}
+.lunar-orbit i:first-child {
+  position: absolute;
+  inset: 15px;
+  border-radius: 50%;
+  background: var(--text-main);
+  box-shadow: inset -10px -3px 0 var(--surface-card);
+}
+.lunar-orbit i:last-child {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-main);
+  top: 8px;
+  right: 8px;
+}
+.about-team-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 54px 0 32px;
+  gap: 24px;
+}
+.about-team-heading p {
+  margin: 0;
+  font: 400 30px/1.2 var(--serif);
+  letter-spacing: -0.03em;
+}
+.about-team {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.person-front h3,
+.person-back h3 {
+  margin: 20px 0 14px;
+  font: 400 43px/1.1 var(--serif);
+  letter-spacing: -0.035em;
+}
+.person-front p,
+.person-back p {
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.75;
+  margin: 0 0 18px;
+}
+.person-front .person-focus {
+  font-size: 13px;
+  color: var(--text-main);
+  margin-bottom: 18px;
+}
+.person-monogram {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 200px;
+  margin-top: 30px;
+  border-top: 1px solid var(--border-ui);
+  border-bottom: 1px solid var(--border-ui);
+  overflow: hidden;
+}
+.person-monogram > span {
+  position: relative;
+  z-index: 1;
+  font: 400 150px/0.9 var(--serif);
+  letter-spacing: -0.08em;
+}
+.person-monogram i {
+  position: absolute;
+  width: 140%;
+  height: 1px;
+  background: var(--border-ui);
+  transform: rotate(-25deg);
+}
+.person-back h3 {
+  margin-top: 26px;
+  margin-bottom: 28px;
+}
+@media (max-width: 760px) {
+  .about-runly {
+    padding: 70px 22px;
+  }
+  .about-story {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding-bottom: 44px;
+  }
+  .about-copy {
+    padding-top: 0;
+  }
+  .about-team {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .about-team-heading {
+    align-items: flex-start;
+  }
+  .about-team-heading p {
+    font-size: 23px;
+  }
+}

@@ -237,6 +237,8 @@ export function BusinessMotion() {
       >
         <ParticleText
           text="Your next chapter."
+          trigger="mount"
+          pointerRepel={0}
           color={darkTheme ? "#f2f2f2" : "#191919"}
           highlightColor={darkTheme ? "#bcbcbc" : "#656565"}
         />

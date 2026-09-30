@@ -41,6 +41,7 @@ export default function ParticleText({
 }) {
   const root = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const formed = useRef(false);
   useEffect(() => {
     const host = root.current,
       surface = canvas.current;
@@ -66,6 +67,10 @@ export default function ParticleText({
     }[] = [];
     const pointer = { active: false, x: 0, y: 0 };
     function gather() {
+      if (!particles.length) return;
+      if (trigger === "mount" && formed.current) return;
+      formed.current = true;
+      if (host) host.dataset.formed = "true";
       start = performance.now();
       particles.forEach((p) => {
         const angle = p.seed * Math.PI * 2;
@@ -158,7 +163,11 @@ export default function ParticleText({
           }
         }
       host.dataset.ready = "true";
-      gather();
+      if (formed.current) {
+        start = performance.now() - gatherDuration - stagger;
+      } else if (visible) {
+        gather();
+      }
       if (visible && !frame) frame = requestAnimationFrame(render);
     }
     const enter = () => {
