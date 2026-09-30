@@ -72,7 +72,7 @@
   position: relative;
   display: grid;
   place-items: center;
-  height: 228px;
+  aspect-ratio: 1080 / 680;
   overflow: hidden;
   border-radius: 14px;
 }
@@ -627,11 +627,13 @@
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 18px;
   user-select: none;
   pointer-events: none;
 }
 .visual {
   overflow: hidden;
+  height: auto;
+  aspect-ratio: 1080 / 680;
 }

@@ -31,16 +31,31 @@ export function SubscriptionComparison() {
   useEffect(() => {
     const video = film.current;
     if (!video) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let visible = false;
+    const syncPlayback = () => {
+      if (visible && !document.hidden && !motion.matches) {
         void video.play().catch(() => {});
       } else {
         video.pause();
       }
-    });
+    };
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        visible = entry.isIntersecting;
+        syncPlayback();
+      },
+      {
+        rootMargin: "80px",
+      },
+    );
     observer.observe(video);
+    document.addEventListener("visibilitychange", syncPlayback);
+    motion.addEventListener("change", syncPlayback);
     return () => {
       observer.disconnect();
+      document.removeEventListener("visibilitychange", syncPlayback);
+      motion.removeEventListener("change", syncPlayback);
       video.pause();
     };
   }, [darkTheme]);
@@ -66,14 +81,15 @@ export function SubscriptionComparison() {
               ref={film}
               key={darkTheme ? "dark" : "light"}
               className={styles.productFilm}
-              src={`/videos/idea-to-store-${darkTheme ? "dark" : "light"}.mp4?v=2`}
-              autoPlay
+              src={`/videos/idea-to-store-${darkTheme ? "dark" : "light"}.mp4?v=5`}
               muted
               loop
               playsInline
-              preload="metadata"
+              preload="auto"
               poster={
-                darkTheme ? undefined : "/videos/idea-to-store-poster.jpg"
+                darkTheme
+                  ? "/videos/idea-to-store-dark-poster.jpg?v=5"
+                  : "/videos/idea-to-store-poster.jpg?v=5"
               }
               aria-label="An illustrative website taking shape with Runly"
             />
