@@ -9,6 +9,7 @@
   "packageManager": "pnpm@10.18.3",
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "dev:frontend": "next dev",
     "dev:stripe": "node scripts/dev.mjs --stripe",
     "dev:runtime": "node scripts/dev.mjs --external-services --runtime",
     "dev:mock": "node scripts/dev-runtime-mock.mjs",
