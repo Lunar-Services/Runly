@@ -1,0 +1,75 @@
+.site-header {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  position: relative;
+  z-index: 50;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.nav-pill {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 9999px;
+  padding: 8px 32px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  white-space: nowrap;
+}
+
+.nav-pill a {
+  color: #4a5568;
+  font-size: 13px;
+  font-weight: 450;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.nav-pill a:hover {
+  color: #1a202c;
+}
+.nav-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.nav-login-link {
+  color: #1a202c;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.nav-cta-pill {
+  background: #11151c;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 22px;
+  border-radius: 9999px;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.nav-cta-pill:hover {
+  background-color: #4a5568;
+}

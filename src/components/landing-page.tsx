@@ -18,6 +18,7 @@ import { BusinessMotion, PlanComparison } from "./business-motion";
 import { SubscriptionComparison } from "./subscription-comparison";
 import { CodeCard } from "./code-card";
 import art from "./landing-art.module.css";
+import "./landing.css";
 
 const suggestions = [
   "A personal website",
@@ -187,15 +188,11 @@ export function LandingPage({
 
   return (
     <div className={`marketing-shell cat-site${darkTheme ? " is-dark" : ""}`}>
-      <header
-        className="site-header"
-        ref={header}
-        style={{
-          backdropFilter: "var(--marketing-header-blur)",
-          WebkitBackdropFilter: "var(--marketing-header-blur)",
-        }}
-      >
-        <Brand />
+      <header className="site-header" ref={header}>
+        <div className="brand-wrapper">
+          <Brand />
+        </div>
+
         <nav
           id="main-navigation"
           className={menuOpen ? "nav-links is-open" : "nav-links"}
@@ -207,17 +204,18 @@ export function LandingPage({
             }
           }}
         >
-          <div className="nav-primary">
-            <a href="#product" onClick={() => setMenuOpen(false)}>
-              Meet Runly
+          <div className="nav-pill">
+            <a href="#create" onClick={() => setMenuOpen(false)}>
+              Create
             </a>
-            <a href="#cowork" onClick={() => setMenuOpen(false)}>
-              For teams
+            <a href="#how-it-works" onClick={() => setMenuOpen(false)}>
+              How it works
             </a>
-            <a href="#pricing" onClick={() => setMenuOpen(false)}>
-              Pricing
+            <a href="#explore" onClick={() => setMenuOpen(false)}>
+              Explore
             </a>
           </div>
+
           <div className="nav-actions">
             {account ? (
               <div className="account-menu">
@@ -269,15 +267,17 @@ export function LandingPage({
               </div>
             ) : (
               <>
-                <Link href="/login">Log in</Link>
-                <Link className="button button-dark nav-cta" href="/signup">
+                <Link href="/login" className="nav-login-link">
+                  Log in
+                </Link>
+                <Link href="/signup" className="nav-cta-pill">
                   Get started
                 </Link>
               </>
             )}
-            <ThemeToggle />
           </div>
         </nav>
+
         <button
           id="navigation-toggle"
           className="menu-button"
