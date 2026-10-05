@@ -20,18 +20,19 @@ Keep server secrets in `.env.local` only. Normal local development intentionally
 
 ### 2. Everyday commands
 
-| Command             | Use it when                                                                                                 |
-| ------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `pnpm dev`          | Start the app with an isolated local Supabase database. Recommended for UI and auth work.                   |
-| `pnpm dev:stripe`   | Start local development with Stripe test-mode keys enabled. Use for Checkout, billing, and webhook testing. |
-| `pnpm build`        | Create a production build and catch build-time errors.                                                      |
-| `pnpm start`        | Serve the last production build locally. Run `pnpm build` first.                                            |
-| `pnpm lint`         | Check ESLint rules.                                                                                         |
-| `pnpm typecheck`    | Check TypeScript types.                                                                                     |
-| `pnpm verify`       | Run lint, typecheck, and build together. Use before opening a PR.                                           |
-| `pnpm check`        | Run staged formatting/lint/security checks locally. Used by the pre-commit hook.                            |
-| `pnpm format`       | Auto-format the repository with Prettier.                                                                   |
-| `pnpm format:check` | Verify formatting without changing files.                                                                   |
+| Command                   | Use it when                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `pnpm dev:frontend` (new) | Start the app to only work on frontend.                                                                     |
+| `pnpm dev`                | Start the app with an isolated local Supabase database. Recommended for UI and auth work.                   |
+| `pnpm dev:stripe`         | Start local development with Stripe test-mode keys enabled. Use for Checkout, billing, and webhook testing. |
+| `pnpm build`              | Create a production build and catch build-time errors.                                                      |
+| `pnpm start`              | Serve the last production build locally. Run `pnpm build` first.                                            |
+| `pnpm lint`               | Check ESLint rules.                                                                                         |
+| `pnpm typecheck`          | Check TypeScript types.                                                                                     |
+| `pnpm verify`             | Run lint, typecheck, and build together. Use before opening a PR.                                           |
+| `pnpm check`              | Run staged formatting/lint/security checks locally. Used by the pre-commit hook.                            |
+| `pnpm format`             | Auto-format the repository with Prettier.                                                                   |
+| `pnpm format:check`       | Verify formatting without changing files.                                                                   |
 
 ### 3. Local database commands
 
