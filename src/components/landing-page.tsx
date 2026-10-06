@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Paperclip,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -187,6 +188,7 @@ export function LandingPage({
     "R";
 
   return (
+    //
     <div className={`marketing-shell cat-site${darkTheme ? " is-dark" : ""}`}>
       <header className="site-header" ref={header}>
         <div className="brand-wrapper">
@@ -291,7 +293,7 @@ export function LandingPage({
       </header>
 
       <main>
-        <section className="cat-hero">
+        {/* <section className="cat-hero">
           <div className="cat-hero-copy">
             <h1>
               A little idea.
@@ -359,10 +361,94 @@ export function LandingPage({
               priority
             />
           </div>
+        </section> */}
+
+        <section className="sky-hero-section">
+          <div className="sky-hero-container">
+            <h1 className="sky-hero-title">
+              From what if
+              <br />
+              <span className="sky-hero-serif">to there it is.</span>
+            </h1>
+
+            <p className="sky-hero-subtitle">
+              Edit a video. Build a website. Bring an app to life.
+              <br />
+              Your ideas, made real through a conversation.
+            </p>
+
+            <form
+              className="sky-composer"
+              noValidate
+              onSubmit={(event) => {
+                event.preventDefault();
+                startBuilding();
+              }}
+            >
+              <label htmlFor="hero-prompt" className="cat-sr-only">
+                What would you like to create?
+              </label>
+              <textarea
+                className="sky-textarea"
+                id="hero-prompt"
+                rows={2}
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+                placeholder="What would you like to create?"
+              />
+
+              <div className="sky-composer-footer">
+                <button type="button" className="sky-attach-btn">
+                  <span
+                    style={{ width: 15, height: 15, display: "inline-flex" }}
+                  >
+                    <Paperclip />
+                  </span>
+                  <span>Add files or inspiration</span>
+                </button>
+
+                <button
+                  className="sky-send-btn"
+                  type="submit"
+                  disabled={!prompt.trim() || startingProject}
+                  aria-busy={startingProject}
+                  aria-label="Start building"
+                >
+                  <ArrowUp size={18} />
+                </button>
+              </div>
+            </form>
+
+            {message && (
+              <p role="alert" className="cat-error">
+                {message}
+              </p>
+            )}
+
+            {/* Suggestion Pills */}
+            <div className="sky-suggestions">
+              {["Edit a video", "Build a website", "Create an app"].map(
+                (text) => (
+                  <button
+                    type="button"
+                    key={text}
+                    className="sky-suggestion-pill"
+                    onClick={() => setPrompt(`Make a ${text.toLowerCase()}`)}
+                  >
+                    {text}
+                  </button>
+                ),
+              )}
+            </div>
+
+            <p className="sky-hero-footnote">
+              One workspace. Every kind of idea.
+            </p>
+          </div>
         </section>
 
         <section id="product" className="cat-meet">
-          <h2>
+          {/* <h2>
             Meet your curious
             <br />
             little collaborator.
@@ -370,7 +456,7 @@ export function LandingPage({
           <p>
             A space to work through an idea, try a change,
             <br className="cat-desktop-break" /> and see where it takes you.
-          </p>
+          </p> */}
           <div className="cat-watcher" ref={watcher}>
             <Image
               className="cat-sitting"
