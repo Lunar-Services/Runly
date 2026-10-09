@@ -1,13 +1,18 @@
 .site-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   width: 100%;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 20px 32px;
+  padding: 24px 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: transparent;
-  position: relative;
+  background: rgb(226, 226, 226) !important;
+  border: none;
+  box-shadow: none;
   z-index: 50;
 }
 
@@ -80,7 +85,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px 80px;
+  padding: 60px 20px 100px;
   text-align: center;
   background: url(../../public/imgForLP.png);
 }
@@ -244,4 +249,37 @@
   font-size: 12px;
   color: #718096;
   margin-top: 32px;
+}
+.product-section .workbench {
+  max-width: 1100px;
+  margin: -160px auto 70px;
+  padding: 0 20px;
+  position: relative;
+  z-index: 20;
+}
+.product-hero-image-wrapper {
+  /* Shrinkwrap tightly around the image */
+  width: min(100%, 1050px);
+  margin: -140px auto 70px;
+  padding: 0;
+  display: block;
+  border-radius: 20px;
+  border: 1px solid red;
+  overflow: hidden;
+  box-shadow:
+    0 20px 40px -10px rgba(0, 0, 0, 0.2),
+    0 30px 60px -12px rgba(0, 0, 0, 0.25);
+}
+
+.product-hero-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+@media (max-width: 850px) {
+  .product-hero-image-wrapper {
+    margin-top: -80px;
+    margin-bottom: 48px;
+  }
 }

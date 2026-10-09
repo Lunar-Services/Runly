@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowUp,
+  Check,
   ChevronDown,
   LayoutDashboard,
   LogOut,
@@ -293,76 +294,6 @@ export function LandingPage({
       </header>
 
       <main>
-        {/* <section className="cat-hero">
-          <div className="cat-hero-copy">
-            <h1>
-              A little idea.
-              <br />A place to
-              <br />
-              make it real.
-            </h1>
-            <p>Tell Runly what you want to build.</p>
-            <form
-              className="cat-composer"
-              noValidate
-              onSubmit={(event) => {
-                event.preventDefault();
-                startBuilding();
-              }}
-            >
-              <label htmlFor="hero-prompt" className="cat-sr-only">
-                What would you like to build?
-              </label>
-              <textarea
-                className="resize-none"
-                id="hero-prompt"
-                rows={3}
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                placeholder="A website, a tool, something you've been thinking about…"
-              />
-              <div className="cat-composer-actions">
-                <div className="cat-suggestions">
-                  {suggestions.map((text) => (
-                    <button
-                      type="button"
-                      key={text}
-                      onClick={() => setPrompt(text)}
-                    >
-                      {text}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  className="cat-send"
-                  type="submit"
-                  disabled={!prompt.trim() || startingProject}
-                  aria-busy={startingProject}
-                  aria-label="Start building"
-                >
-                  <ArrowUp size={19} />
-                </button>
-              </div>
-            </form>
-            {message && (
-              <p role="alert" className="cat-error">
-                {message}
-              </p>
-            )}
-          </div>
-          <div className="cat-hero-art">
-            <Image
-              className="cat-standing"
-              src="/cats/standing.png"
-              alt="A curious hand-drawn black cat with white eyes"
-              width={1280}
-              height={1280}
-              sizes="(max-width: 800px) 85vw, 40vw"
-              priority
-            />
-          </div>
-        </section> */}
-
         <section className="sky-hero-section">
           <div className="sky-hero-container">
             <h1 className="sky-hero-title">
@@ -447,16 +378,8 @@ export function LandingPage({
           </div>
         </section>
 
-        <section id="product" className="cat-meet">
-          {/* <h2>
-            Meet your curious
-            <br />
-            little collaborator.
-          </h2>
-          <p>
-            A space to work through an idea, try a change,
-            <br className="cat-desktop-break" /> and see where it takes you.
-          </p> */}
+        {/* <section id="product" className="cat-meet">
+          
           <div className="cat-watcher" ref={watcher}>
             <Image
               className="cat-sitting"
@@ -497,6 +420,47 @@ export function LandingPage({
                 changing.
               </p>
               <CodeCard />
+            </div>
+          </div>
+        </section> */}
+
+        <section id="product" className="product-section">
+          <div className="product-hero-image-wrapper">
+            <Image
+              src="/e.png"
+              alt="Runly workspace preview"
+              width={1050}
+              height={100}
+              className="product-hero-image"
+              priority
+            />
+          </div>
+          <div className="product-container">
+            <div className="product-header">
+              <h2>
+                Meet your curious
+                <br />
+                little collaborator.
+              </h2>
+              <p>
+                A space to work through an idea, try a change,
+                <br />
+                and see where it takes you.
+              </p>
+            </div>
+            <div className="product-notes">
+              <article className="note-card">
+                <h3>Start with a thought.</h3>
+                <p>A rough sentence is enough. Add the details as you go.</p>
+              </article>
+              <article className="note-card">
+                <h3>Make it your own.</h3>
+                <p>Keep the conversation and your project in the same place.</p>
+              </article>
+              <article className="note-card">
+                <h3>Take another look.</h3>
+                <p>Review the work, change your mind, and keep going.</p>
+              </article>
             </div>
           </div>
         </section>
