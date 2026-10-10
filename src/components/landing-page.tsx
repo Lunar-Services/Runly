@@ -6,9 +6,12 @@ import Link from "next/link";
 import {
   ArrowUp,
   ChevronDown,
+  Film,
+  Globe,
   LayoutDashboard,
   LogOut,
   Paperclip,
+  Smartphone,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Brand } from "./brand";
@@ -309,17 +312,198 @@ export function LandingPage({
             />
           </div>
         </section>
+
+        {/* Big Ideas / Features Section */}
+        <section className="features-section">
+          <div className="features-container">
+            {/* Left Content */}
+            <div className="features-left">
+              <h2 className="features-title">
+                <span className="title-desktop">
+                  Big ideas.
+                  <br />
+                  No blank-page feeling.
+                </span>
+                <span className="title-mobile">
+                  Big ideas.
+                  <br />A place to begin.
+                </span>
+              </h2>
+
+              <p className="features-subtitle">
+                <span className="subtitle-desktop">
+                  Start anywhere. Keep creating in the same conversation.
+                </span>
+                <span className="subtitle-mobile">
+                  Edit a video, build your website, or bring an app to life.
+                  Runly follows your lead.
+                </span>
+              </p>
+
+              {/* Desktop 3 Features List (Image 1) */}
+              <div className="features-list features-list-desktop">
+                <div className="feature-item">
+                  <div className="feature-icon">
+                    <Film size={20} strokeWidth={2} />
+                  </div>
+                  <div className="feature-text">
+                    <h3>Videos with your vision.</h3>
+                    <p>Trim, caption, and shape your story.</p>
+                  </div>
+                </div>
+
+                <div className="feature-item">
+                  <div className="feature-icon">
+                    <Globe size={20} strokeWidth={2} />
+                  </div>
+                  <div className="feature-text">
+                    <h3>Websites with your signature.</h3>
+                    <p>Go from a prompt to your own corner of the web.</p>
+                  </div>
+                </div>
+
+                <div className="feature-item">
+                  <div className="feature-icon">
+                    <Smartphone size={20} strokeWidth={2} />
+                  </div>
+                  <div className="feature-text">
+                    <h3>Apps with a purpose.</h3>
+                    <p>Turn a useful idea into something people can use.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile Numbered 01, 02, 03 List (Image 2) */}
+              <div className="mobile-steps-list">
+                <div className="mobile-step-item">
+                  <span className="mobile-step-num">01</span>
+                  <div className="mobile-step-content">
+                    <h3>Bring the idea</h3>
+                    <p>Start with a prompt or your own files.</p>
+                  </div>
+                </div>
+
+                <div className="mobile-step-item">
+                  <span className="mobile-step-num">02</span>
+                  <div className="mobile-step-content">
+                    <h3>Make it yours</h3>
+                    <p>Keep refining through conversation.</p>
+                  </div>
+                </div>
+
+                <div className="mobile-step-item">
+                  <span className="mobile-step-num">03</span>
+                  <div className="mobile-step-content">
+                    <h3>Put it out there</h3>
+                    <p>Review, publish, or export your work.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Sky Card with imgForLP.png (Image 1) */}
+            <div className="features-right">
+              <div className="sky-card">
+                <div className="sky-card-overlay">
+                  <p className="sky-card-headline">
+                    a little closer
+                    <br />
+                    to the sky.
+                  </p>
+                  <span className="sky-card-tag">Offline Weekends</span>
+                </div>
+              </div>
+              <div className="sky-card-caption">
+                <p className="sky-card-quote">
+                  “Make this feel like a weekend away.”
+                </p>
+                <p className="sky-card-sub">
+                  A sample edit, created through conversation.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Process Section: A thought. A conversation. A creation. (Image 3) */}
+        <section className="creation-section">
+          <div className="creation-container">
+            <h2 className="creation-title">
+              A thought. A conversation. A creation.
+            </h2>
+
+            <div className="creation-grid">
+              <div className="creation-col">
+                <span className="creation-num">01</span>
+                <h3 className="creation-heading">Bring the idea</h3>
+                <p className="creation-desc">
+                  Describe it, upload your files,
+                  <br className="desktop-break" />
+                  or share something that inspires you.
+                </p>
+              </div>
+
+              <div className="creation-col">
+                <span className="creation-num">02</span>
+                <h3 className="creation-heading">Make it yours</h3>
+                <p className="creation-desc">
+                  Give feedback in plain language.
+                  <br className="desktop-break" />
+                  See the result take shape beside your chat.
+                </p>
+              </div>
+
+              <div className="creation-col">
+                <span className="creation-num">03</span>
+                <h3 className="creation-heading">Put it out there</h3>
+                <p className="creation-desc">
+                  Review the details, then publish
+                  <br className="desktop-break" />
+                  your site or app, or export your video.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
-      <footer>
-        <Brand />
-        <p>A place for your next idea.</p>
-        <div>
-          <Link href="/privacy">Privacy</Link>
-          <Link href="/terms">Terms</Link>
-          <Link href="/pricing">Pricing</Link>
+      <footer className="site-footer">
+        <div className="footer-container">
+          {/* Top CTA Row */}
+          <div className="footer-cta-row">
+            <h2 className="footer-cta-title">
+              <span className="footer-title-desktop">
+                Your next idea starts here.
+              </span>
+              <span className="footer-title-mobile">
+                Make your next idea real.
+              </span>
+            </h2>
+
+            <Link href="#create" className="footer-cta-button">
+              Start creating
+            </Link>
+          </div>
+
+          <div className="footer-divider" />
+
+          {/* Bottom Nav Row */}
+          <div className="footer-bottom-row">
+            <div className="footer-brand-group">
+              <Brand />
+              <span className="footer-tagline">Made for what comes next.</span>
+            </div>
+
+            <div className="footer-links">
+              <Link href="/" className="footer-mobile-brand-link">
+                Runly
+              </Link>
+              <Link href="/privacy">Privacy</Link>
+              <Link href="/terms">Terms</Link>
+              <Link href="/contact">Contact</Link>
+            </div>
+          </div>
         </div>
-        <small>© 2026 Runly</small>
       </footer>
     </div>
   );

@@ -1,34 +1,49 @@
+/* ==========================================================================
+   Runly Landing Page & Sticky Header Styles
+   ========================================================================== */
+
+/* Sticky Header */
 .cat-site .site-header,
 .site-header {
-  position: sticky !important;
+  position: fixed !important;
   top: 0;
   left: 0;
   right: 0;
   width: 100%;
-  margin: 0;
+  margin: 0 auto;
   padding: 0;
   height: auto;
   min-height: 72px;
   background: transparent !important;
-  border: none !important;
-  border-bottom: 1px solid transparent !important;
+  border: 1px solid transparent !important;
   box-shadow: none !important;
   z-index: 100;
   transition:
-    background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-    backdrop-filter 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-    -webkit-backdrop-filter 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    top 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    width 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    border-radius 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    backdrop-filter 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    -webkit-backdrop-filter 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* When scrolled / in sticky position: center the navbar as a floating pill! */
 .cat-site .site-header.is-scrolled,
 .site-header.is-scrolled {
-  background: rgba(255, 255, 255, 0.8) !important;
-  backdrop-filter: blur(16px) saturate(140%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.6) !important;
+  top: 14px !important;
+  width: min(calc(100% - 32px), 880px) !important;
+  margin: 0 auto !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  border-radius: 9999px !important;
 }
 
 .site-header-inner {
@@ -40,8 +55,14 @@
   align-items: center;
   justify-content: space-between;
   position: relative;
+  transition: padding 0.3s ease;
 }
 
+.site-header.is-scrolled .site-header-inner {
+  padding: 8px 22px;
+}
+
+/* Brand inside header */
 .brand-wrapper {
   display: flex;
   align-items: center;
@@ -56,6 +77,11 @@
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.03em;
+  transition: font-size 0.3s ease;
+}
+
+.site-header.is-scrolled .brand {
+  font-size: 18.5px;
 }
 
 .site-header .brand-mark {
@@ -68,6 +94,15 @@
   border-radius: 8px;
   overflow: hidden;
   flex-shrink: 0;
+  transition:
+    width 0.3s ease,
+    height 0.3s ease;
+}
+
+.site-header.is-scrolled .brand-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
 }
 
 .site-header .brand-mark img {
@@ -75,6 +110,14 @@
   height: 22px;
   object-fit: contain;
   filter: invert(1);
+  transition:
+    width 0.3s ease,
+    height 0.3s ease;
+}
+
+.site-header.is-scrolled .brand-mark img {
+  width: 19px;
+  height: 19px;
 }
 
 .site-header .brand-name {
@@ -84,6 +127,11 @@
   letter-spacing: -0.03em;
 }
 
+.site-header.is-scrolled .brand-name {
+  font-size: 19px;
+}
+
+/* Floating Center Pill (Desktop) */
 .nav-pill {
   position: absolute;
   left: 50%;
@@ -99,6 +147,18 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.4);
   white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+/* When the parent is a floating scrolled pill, simplify the inner pill */
+.site-header.is-scrolled .nav-pill {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  gap: 22px;
 }
 
 .nav-pill a {
@@ -113,6 +173,7 @@
   color: #11151c;
 }
 
+/* Right Nav Actions */
 .nav-actions {
   display: flex;
   align-items: center;
@@ -142,7 +203,8 @@
   text-decoration: none;
   transition:
     background-color 0.2s ease,
-    transform 0.15s ease;
+    transform 0.15s ease,
+    padding 0.3s ease;
   white-space: nowrap;
 }
 
@@ -150,10 +212,19 @@
   background-color: #2d3748;
 }
 
+.site-header.is-scrolled .nav-cta-pill {
+  padding: 7px 18px;
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   Hero Section
+   ========================================================================== */
+
 .sky-hero-section {
   width: 100%;
   min-height: 100vh;
-  margin-top: -72px;
+  margin-top: 0;
   padding-top: 140px;
   padding-bottom: 90px;
   padding-inline: 20px;
@@ -211,6 +282,7 @@
   display: none;
 }
 
+/* Composer / Input Card */
 .sky-composer {
   width: 100%;
   max-width: 580px;
@@ -308,6 +380,7 @@
   opacity: 0.65;
 }
 
+/* Suggestion Pills */
 .sky-suggestions {
   display: flex;
   align-items: center;
@@ -356,15 +429,19 @@
   margin-top: 32px;
 }
 
+/* ==========================================================================
+   Product Section (Workspace Preview)
+   ========================================================================== */
+
 .product-section {
   width: 100%;
   position: relative;
-  padding-bottom: 90px;
+  padding-bottom: 70px;
 }
 
 .product-hero-image-wrapper {
   width: min(92%, 1060px);
-  margin: -80px auto 70px;
+  margin: -80px auto 30px;
   padding: 0;
   display: block;
   border-radius: 20px;
@@ -387,66 +464,250 @@
   display: none;
 }
 
-.product-container {
-  max-width: 1060px;
-  margin: 0 auto;
-  padding: 0 24px;
-}
+/* ==========================================================================
+   Features Section: Big Ideas (Image 1 Desktop / Image 2 Mobile)
+   ========================================================================== */
 
-.product-header {
-  text-align: center;
-  margin-bottom: 56px;
-}
-
-.product-header h2 {
-  font-size: clamp(34px, 4.5vw, 50px);
-  line-height: 1.15;
-  letter-spacing: -0.03em;
-  color: #11151c;
-  margin: 0 0 16px;
-  font-weight: 600;
-}
-
-.product-header p {
-  font-size: 16px;
-  line-height: 1.5;
-  color: #4a5568;
-  margin: 0;
-}
-
-.product-notes {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 28px;
-}
-
-.note-card {
+.features-section {
+  width: 100%;
+  padding: 60px 24px 90px;
   background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 16px;
-  padding: 28px 24px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
 }
 
-.note-card h3 {
-  font-size: 18px;
+.features-container {
+  max-width: 1140px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: clamp(40px, 6vw, 84px);
+  align-items: center;
+}
+
+.features-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.features-title {
+  font-size: clamp(34px, 4.2vw, 48px);
+  font-weight: 600;
+  line-height: 1.12;
+  color: #11151c;
+  letter-spacing: -0.03em;
+  margin: 0 0 16px;
+}
+
+.features-title .title-desktop {
+  display: inline;
+}
+
+.features-title .title-mobile {
+  display: none;
+}
+
+.features-subtitle {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #64748b;
+  margin: 0 0 44px;
+  max-width: 440px;
+}
+
+.features-subtitle .subtitle-desktop {
+  display: inline;
+}
+
+.features-subtitle .subtitle-mobile {
+  display: none;
+}
+
+/* Feature List (Desktop) */
+.features-list-desktop {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.feature-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #334155;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.feature-text h3 {
+  font-size: 16.5px;
   font-weight: 600;
   color: #11151c;
-  margin: 0 0 10px;
+  margin: 0 0 3px;
+  letter-spacing: -0.01em;
 }
 
-.note-card p {
-  font-size: 14px;
-  line-height: 1.5;
+.feature-text p {
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* Mobile Steps List (Hidden on desktop, shown on mobile) */
+.mobile-steps-list {
+  display: none;
+}
+
+/* Right: Sky Image Card */
+.features-right {
+  display: flex;
+  flex-direction: column;
+}
+
+.sky-card {
+  width: 100%;
+  aspect-ratio: 16 / 10.5;
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+  background-image: url("/imgForLP.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.08);
+}
+
+.sky-card-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+}
+
+.sky-card-headline {
+  font-family: Georgia, "Playfair Display", Cambria, serif;
+  font-style: italic;
+  font-size: clamp(28px, 3.4vw, 42px);
+  font-weight: 400;
+  line-height: 1.16;
+  color: #1e293b;
+  letter-spacing: -0.01em;
+  margin: 0 0 36px;
+}
+
+.sky-card-tag {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #334155;
+}
+
+.sky-card-caption {
+  margin-top: 16px;
+}
+
+.sky-card-quote {
+  font-size: 14.5px;
+  font-weight: 500;
+  color: #11151c;
+  margin: 0 0 3px;
+}
+
+.sky-card-sub {
+  font-size: 12.5px;
   color: #64748b;
   margin: 0;
 }
 
+/* ==========================================================================
+   Creation Section: A thought. A conversation. A creation. (Image 3)
+   ========================================================================== */
+
+.creation-section {
+  width: 100%;
+  padding: 80px 24px 130px;
+  background: #ffffff;
+}
+
+.creation-container {
+  max-width: 1140px;
+  margin: 0 auto;
+}
+
+.creation-title {
+  font-size: clamp(30px, 3.6vw, 42px);
+  font-weight: 600;
+  color: #11151c;
+  letter-spacing: -0.025em;
+  margin: 0 0 54px;
+}
+
+.creation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(32px, 5vw, 64px);
+}
+
+.creation-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.creation-num {
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 14px;
+}
+
+.creation-heading {
+  font-size: 18px;
+  font-weight: 600;
+  color: #11151c;
+  letter-spacing: -0.01em;
+  margin: 0 0 10px;
+}
+
+.creation-desc {
+  font-size: 14px;
+  line-height: 1.55;
+  color: #64748b;
+  margin: 0;
+}
+
+.desktop-break {
+  display: inline;
+}
+
+/* ==========================================================================
+   Mobile Responsiveness (Matching mobile design screenshot)
+   ========================================================================== */
+
 @media (max-width: 768px) {
+  /* Center the navbar on mobile when scrolled / sticky */
+  .cat-site .site-header.is-scrolled,
+  .site-header.is-scrolled {
+    width: min(calc(100% - 24px), 420px) !important;
+    top: 10px !important;
+  }
+
   .site-header-inner {
     padding: 14px 20px;
   }
 
+  /* Hide center pill and CTA button on mobile as shown in design */
   .nav-pill {
     display: none !important;
   }
@@ -529,8 +790,270 @@
     border-radius: 20px;
   }
 
-  .product-notes {
-    grid-template-columns: 1fr;
-    gap: 16px;
+  /* Mobile Features section (Image 2) */
+  .features-section {
+    padding: 48px 20px 60px;
   }
+
+  .features-container {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+
+  .features-title {
+    font-size: 32px;
+    margin-bottom: 12px;
+  }
+
+  .features-title .title-desktop {
+    display: none;
+  }
+
+  .features-title .title-mobile {
+    display: inline;
+  }
+
+  .features-subtitle {
+    font-size: 14px;
+    margin-bottom: 28px;
+  }
+
+  .features-subtitle .subtitle-desktop {
+    display: none;
+  }
+
+  .features-subtitle .subtitle-mobile {
+    display: inline;
+  }
+
+  .features-list-desktop {
+    display: none;
+  }
+
+  /* Mobile numbered 01, 02, 03 list with dividers (Image 2) */
+  .mobile-steps-list {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid #edf2f7;
+  }
+
+  .mobile-step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    padding: 22px 0;
+    border-bottom: 1px solid #edf2f7;
+  }
+
+  .mobile-step-num {
+    font-size: 14px;
+    font-weight: 500;
+    color: #64748b;
+    min-width: 24px;
+    margin-top: 1px;
+  }
+
+  .mobile-step-content h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #11151c;
+    margin: 0 0 5px;
+  }
+
+  .mobile-step-content p {
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: #64748b;
+    margin: 0;
+  }
+
+  .sky-card {
+    aspect-ratio: 16 / 11;
+    border-radius: 16px;
+  }
+
+  .sky-card-headline {
+    font-size: 26px;
+    margin-bottom: 22px;
+  }
+
+  /* Creation Section on mobile */
+  .creation-section {
+    padding: 50px 20px 70px;
+    border-top: 1px solid #edf2f7;
+  }
+
+  .creation-title {
+    font-size: 28px;
+    margin-bottom: 32px;
+  }
+
+  .creation-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .desktop-break {
+    display: none;
+  }
+
+  /* Footer on mobile */
+  .site-footer {
+    padding: 56px 20px 40px;
+  }
+
+  .footer-cta-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .footer-cta-title {
+    font-size: 30px;
+    line-height: 1.15;
+  }
+
+  .footer-title-desktop {
+    display: none;
+  }
+
+  .footer-title-mobile {
+    display: inline;
+  }
+
+  .footer-cta-button {
+    width: 100%;
+    padding: 16px;
+    font-size: 15px;
+  }
+
+  .footer-divider {
+    display: none;
+  }
+
+  .footer-bottom-row {
+    justify-content: center;
+    width: 100%;
+    margin-top: 36px;
+  }
+
+  .footer-brand-group {
+    display: none;
+  }
+
+  .footer-links {
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+  }
+
+  .footer-mobile-brand-link {
+    display: inline;
+  }
+}
+
+/* ==========================================================================
+   Footer Section (Matching exact desktop and mobile designs)
+   ========================================================================== */
+
+.site-footer {
+  width: 100%;
+  background: #eaf2fc;
+  padding: 80px 32px 48px;
+}
+
+.footer-container {
+  max-width: 1140px;
+  margin: 0 auto;
+}
+
+.footer-cta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.footer-cta-title {
+  font-size: clamp(34px, 4vw, 48px);
+  font-weight: 600;
+  line-height: 1.15;
+  color: #11151c;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+
+.footer-title-desktop {
+  display: inline;
+}
+
+.footer-title-mobile {
+  display: none;
+}
+
+.footer-cta-button {
+  background: #11151c;
+  color: #ffffff;
+  padding: 13px 32px;
+  border-radius: 9999px;
+  font-size: 14.5px;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.2s ease,
+    transform 0.15s ease;
+  white-space: nowrap;
+}
+
+.footer-cta-button:hover {
+  background-color: #232b38;
+  transform: translateY(-1px);
+}
+
+.footer-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.08);
+  margin: 60px 0 36px;
+}
+
+.footer-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.footer-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.footer-tagline {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.footer-links a {
+  font-size: 13.5px;
+  color: #64748b;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.footer-links a:hover {
+  color: #11151c;
+}
+
+.footer-mobile-brand-link {
+  display: none;
 }
