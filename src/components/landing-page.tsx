@@ -312,11 +312,8 @@ export function LandingPage({
             />
           </div>
         </section>
-
-        {/* Big Ideas / Features Section */}
         <section className="features-section">
           <div className="features-container">
-            {/* Left Content */}
             <div className="features-left">
               <h2 className="features-title">
                 <span className="title-desktop">
@@ -339,8 +336,6 @@ export function LandingPage({
                   Runly follows your lead.
                 </span>
               </p>
-
-              {/* Desktop 3 Features List (Image 1) */}
               <div className="features-list features-list-desktop">
                 <div className="feature-item">
                   <div className="feature-icon">
@@ -372,8 +367,6 @@ export function LandingPage({
                   </div>
                 </div>
               </div>
-
-              {/* Mobile Numbered 01, 02, 03 List (Image 2) */}
               <div className="mobile-steps-list">
                 <div className="mobile-step-item">
                   <span className="mobile-step-num">01</span>
@@ -400,8 +393,6 @@ export function LandingPage({
                 </div>
               </div>
             </div>
-
-            {/* Right: Sky Card with imgForLP.png (Image 1) */}
             <div className="features-right">
               <div className="sky-card">
                 <div className="sky-card-overlay">
@@ -424,8 +415,6 @@ export function LandingPage({
             </div>
           </div>
         </section>
-
-        {/* Process Section: A thought. A conversation. A creation. (Image 3) */}
         <section className="creation-section">
           <div className="creation-container">
             <h2 className="creation-title">
@@ -469,7 +458,6 @@ export function LandingPage({
 
       <footer className="site-footer">
         <div className="footer-container">
-          {/* Top CTA Row */}
           <div className="footer-cta-row">
             <h2 className="footer-cta-title">
               <span className="footer-title-desktop">
@@ -486,8 +474,6 @@ export function LandingPage({
           </div>
 
           <div className="footer-divider" />
-
-          {/* Bottom Nav Row */}
           <div className="footer-bottom-row">
             <div className="footer-brand-group">
               <Brand />
