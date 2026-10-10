@@ -1,32 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ThemeToggle, useTheme } from "./theme-provider";
 import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowUp,
-  Check,
   ChevronDown,
   LayoutDashboard,
   LogOut,
-  Menu,
   Paperclip,
-  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Brand } from "./brand";
-import { BusinessMotion, PlanComparison } from "./business-motion";
-import { SubscriptionComparison } from "./subscription-comparison";
-import { CodeCard } from "./code-card";
-import art from "./landing-art.module.css";
 import "./landing.css";
-
-const suggestions = [
-  "A personal website",
-  "A client portal",
-  "A small online shop",
-];
 
 export function LandingPage({
   account,
@@ -34,98 +20,25 @@ export function LandingPage({
   account: { email: string; displayName: string; avatarUrl: string } | null;
 }) {
   const [prompt, setPrompt] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [startingProject, setStartingProject] = useState(false);
-  const { darkTheme } = useTheme();
   const router = useRouter();
-  const watcher = useRef<HTMLDivElement>(null);
   const header = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const update = () =>
-      header.current?.classList.toggle("is-scrolled", window.scrollY > 16);
+    const update = () => {
+      header.current?.classList.toggle("is-scrolled", window.scrollY > 20);
+    };
     update();
     window.addEventListener("scroll", update, { passive: true });
     return () => window.removeEventListener("scroll", update);
   }, []);
 
-  useEffect(() => {
-    const element = watcher.current;
-    if (
-      !element ||
-      matchMedia("(prefers-reduced-motion: reduce)").matches ||
-      !matchMedia("(pointer: fine)").matches
-    )
-      return;
-    let frame = 0;
-    let lastTime = 0;
-    let targetX = 0,
-      targetY = 0,
-      currentX = 0,
-      currentY = 0;
-    const track = (event: PointerEvent) => {
-      const bounds = element.getBoundingClientRect();
-      targetX = Math.max(
-        -1,
-        Math.min(
-          1,
-          (event.clientX - bounds.left - bounds.width * 0.42) /
-            Math.max(bounds.width, 240),
-        ),
-      );
-      targetY = Math.max(
-        -1,
-        Math.min(
-          1,
-          (event.clientY - bounds.top - bounds.height * 0.5) /
-            Math.max(bounds.height, 240),
-        ),
-      );
-      start();
-    };
-    const reset = () => {
-      targetX = 0;
-      targetY = 0;
-      start();
-    };
-    const animate = (time: number) => {
-      const dt = lastTime ? Math.min(time - lastTime, 50) : 16;
-      lastTime = time;
-      const easing = 1 - Math.exp(-dt / 140);
-      currentX += (targetX - currentX) * easing;
-      currentY += (targetY - currentY) * easing;
-      // Percent-based travel remains inside the eye rings at every viewport size.
-      element.style.setProperty("--look-x", `${currentX * 70}%`);
-      element.style.setProperty("--look-y", `${currentY * 55}%`);
-      if (Math.abs(targetX - currentX) + Math.abs(targetY - currentY) > 0.001)
-        frame = requestAnimationFrame(animate);
-      else {
-        frame = 0;
-        lastTime = 0;
-      }
-    };
-    function start() {
-      if (!frame) frame = requestAnimationFrame(animate);
-    }
-    window.addEventListener("pointermove", track, { passive: true });
-    document.addEventListener("pointerleave", reset);
-    window.addEventListener("blur", reset);
-    window.addEventListener("scroll", reset, { passive: true });
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("pointermove", track);
-      document.removeEventListener("pointerleave", reset);
-      window.removeEventListener("blur", reset);
-      window.removeEventListener("scroll", reset);
-    };
-  }, []);
-
-  async function startBuilding() {
-    if (!prompt.trim()) return;
-    const firstMessage = prompt.trim();
+  async function startBuilding(customPrompt?: string) {
+    const textToSubmit = (customPrompt ?? prompt).trim();
+    if (!textToSubmit) return;
     if (account) {
       setStartingProject(true);
       setMessage("");
@@ -133,7 +46,7 @@ export function LandingPage({
         const response = await fetch("/api/projects", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: firstMessage }),
+          body: JSON.stringify({ prompt: textToSubmit }),
           signal: AbortSignal.timeout(20_000),
         });
         const result = await response.json();
@@ -150,7 +63,7 @@ export function LandingPage({
       return;
     }
     try {
-      sessionStorage.setItem("runly:draft-prompt", firstMessage);
+      sessionStorage.setItem("runly:draft-prompt", textToSubmit);
       router.push("/signup?intent=build");
     } catch {
       setMessage(
@@ -189,36 +102,21 @@ export function LandingPage({
     "R";
 
   return (
-    //
-    <div className={`marketing-shell cat-site${darkTheme ? " is-dark" : ""}`}>
+    <div className="marketing-shell cat-site">
       <header className="site-header" ref={header}>
-        <div className="brand-wrapper">
-          <Brand />
-        </div>
-
-        <nav
-          id="main-navigation"
-          className={menuOpen ? "nav-links is-open" : "nav-links"}
-          aria-label="Main navigation"
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              setMenuOpen(false);
-              document.getElementById("navigation-toggle")?.focus();
-            }
-          }}
-        >
-          <div className="nav-pill">
-            <a href="#create" onClick={() => setMenuOpen(false)}>
-              Create
-            </a>
-            <a href="#how-it-works" onClick={() => setMenuOpen(false)}>
-              How it works
-            </a>
-            <a href="#explore" onClick={() => setMenuOpen(false)}>
-              Explore
-            </a>
+        <div className="site-header-inner">
+          <div className="brand-wrapper">
+            <Brand />
           </div>
-
+          <nav
+            id="main-navigation"
+            className="nav-pill"
+            aria-label="Main navigation"
+          >
+            <a href="#create">Create</a>
+            <a href="#how-it-works">How it works</a>
+            <a href="#explore">Explore</a>
+          </nav>
           <div className="nav-actions">
             {account ? (
               <div className="account-menu">
@@ -253,8 +151,8 @@ export function LandingPage({
                       role="menuitem"
                       onClick={() => setAccountMenuOpen(false)}
                     >
-                      <LayoutDashboard size={16} />
-                      Dashboard
+                      <LayoutDashboard size={15} aria-hidden="true" />
+                      <span>Workspace</span>
                     </Link>
                     <button
                       type="button"
@@ -262,8 +160,8 @@ export function LandingPage({
                       onClick={signOut}
                       disabled={signingOut}
                     >
-                      <LogOut size={16} />
-                      {signingOut ? "Logging out…" : "Logout"}
+                      <LogOut size={15} aria-hidden="true" />
+                      <span>{signingOut ? "Signing out…" : "Sign out"}</span>
                     </button>
                   </div>
                 )}
@@ -279,22 +177,11 @@ export function LandingPage({
               </>
             )}
           </div>
-        </nav>
-
-        <button
-          id="navigation-toggle"
-          className="menu-button"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-controls="main-navigation"
-          aria-expanded={menuOpen}
-          aria-label={menuOpen ? "Close navigation" : "Open navigation"}
-        >
-          {menuOpen ? <X /> : <Menu />}
-        </button>
+        </div>
       </header>
 
       <main>
-        <section className="sky-hero-section">
+        <section className="sky-hero-section" id="create">
           <div className="sky-hero-container">
             <h1 className="sky-hero-title">
               From what if
@@ -303,39 +190,48 @@ export function LandingPage({
             </h1>
 
             <p className="sky-hero-subtitle">
-              Edit a video. Build a website. Bring an app to life.
-              <br />
-              Your ideas, made real through a conversation.
+              <span className="subtitle-desktop">
+                Edit a video. Build a website. Bring an app to life.
+                <br />
+                Your ideas, made real through a conversation.
+              </span>
+              <span className="subtitle-mobile">
+                Videos, websites, and apps.
+                <br />
+                Made through a conversation.
+              </span>
             </p>
 
             <form
               className="sky-composer"
-              noValidate
               onSubmit={(event) => {
                 event.preventDefault();
                 startBuilding();
               }}
             >
-              <label htmlFor="hero-prompt" className="cat-sr-only">
-                What would you like to create?
-              </label>
               <textarea
                 className="sky-textarea"
-                id="hero-prompt"
                 rows={2}
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    startBuilding();
+                  }
+                }}
                 placeholder="What would you like to create?"
+                aria-label="What would you like to create?"
               />
 
               <div className="sky-composer-footer">
-                <button type="button" className="sky-attach-btn">
-                  <span
-                    style={{ width: 15, height: 15, display: "inline-flex" }}
-                  >
-                    <Paperclip />
-                  </span>
-                  <span>Add files or inspiration</span>
+                <button
+                  type="button"
+                  className="sky-attach-btn"
+                  aria-label="Add files or inspiration"
+                >
+                  <Paperclip size={16} strokeWidth={2.2} />
+                  <span className="attach-label">Add files or inspiration</span>
                 </button>
 
                 <button
@@ -345,7 +241,7 @@ export function LandingPage({
                   aria-busy={startingProject}
                   aria-label="Start building"
                 >
-                  <ArrowUp size={18} />
+                  <ArrowUp size={18} strokeWidth={2.5} />
                 </button>
               </div>
             </form>
@@ -355,21 +251,37 @@ export function LandingPage({
                 {message}
               </p>
             )}
-
-            {/* Suggestion Pills */}
             <div className="sky-suggestions">
-              {["Edit a video", "Build a website", "Create an app"].map(
-                (text) => (
-                  <button
-                    type="button"
-                    key={text}
-                    className="sky-suggestion-pill"
-                    onClick={() => setPrompt(`Make a ${text.toLowerCase()}`)}
-                  >
-                    {text}
-                  </button>
-                ),
-              )}
+              <button
+                type="button"
+                className="sky-suggestion-pill"
+                onClick={() => {
+                  setPrompt("Edit a video");
+                }}
+              >
+                <span className="pill-desktop">Edit a video</span>
+                <span className="pill-mobile">Video</span>
+              </button>
+              <button
+                type="button"
+                className="sky-suggestion-pill"
+                onClick={() => {
+                  setPrompt("Build a website");
+                }}
+              >
+                <span className="pill-desktop">Build a website</span>
+                <span className="pill-mobile">Website</span>
+              </button>
+              <button
+                type="button"
+                className="sky-suggestion-pill"
+                onClick={() => {
+                  setPrompt("Create an app");
+                }}
+              >
+                <span className="pill-desktop">Create an app</span>
+                <span className="pill-mobile">App</span>
+              </button>
             </div>
 
             <p className="sky-hero-footnote">
@@ -377,176 +289,28 @@ export function LandingPage({
             </p>
           </div>
         </section>
-
-        {/* <section id="product" className="cat-meet">
-          
-          <div className="cat-watcher" ref={watcher}>
-            <Image
-              className="cat-sitting"
-              src="/cats/sitting.png"
-              alt="A seated black kitten with golden eyes following your pointer"
-              width={1280}
-              height={1280}
-              sizes="(max-width: 800px) 90vw, 520px"
-            />
-            <span
-              aria-hidden="true"
-              className="cat-eye-glint cat-eye-glint-left"
-            />
-            <span
-              aria-hidden="true"
-              className="cat-eye-glint cat-eye-glint-right"
-            />
-          </div>
-          <div className="cat-notes">
-            <article>
-              <h3>Start with a thought.</h3>
-              <p>A rough sentence is enough. Add the details as you go.</p>
-            </article>
-            <article>
-              <h3>Make it your own.</h3>
-              <p>Keep the conversation and your project in the same place.</p>
-            </article>
-            <article>
-              <h3>Take another look.</h3>
-              <p>Review the work, change your mind, and keep going.</p>
-            </article>
-          </div>
-          <div className={art.workbench}>
-            <div className={art.workbenchCopy}>
-              <h3>See the idea take shape.</h3>
-              <p>
-                Start with a sentence, inspect the work, then change what needs
-                changing.
-              </p>
-              <CodeCard />
-            </div>
-          </div>
-        </section> */}
-
-        <section id="product" className="product-section">
+        <section id="how-it-works" className="product-section">
           <div className="product-hero-image-wrapper">
             <Image
               src="/e.png"
               alt="Runly workspace preview"
-              width={1050}
-              height={100}
-              className="product-hero-image"
+              width={1024}
+              height={499}
+              className="product-hero-image product-hero-image-desktop"
+              priority
+            />
+            <Image
+              src="/e-mobile.png"
+              alt="Runly workspace preview on mobile"
+              width={700}
+              height={752}
+              className="product-hero-image product-hero-image-mobile"
               priority
             />
           </div>
-          <div className="product-container">
-            <div className="product-header">
-              <h2>
-                Meet your curious
-                <br />
-                little collaborator.
-              </h2>
-              <p>
-                A space to work through an idea, try a change,
-                <br />
-                and see where it takes you.
-              </p>
-            </div>
-            <div className="product-notes">
-              <article className="note-card">
-                <h3>Start with a thought.</h3>
-                <p>A rough sentence is enough. Add the details as you go.</p>
-              </article>
-              <article className="note-card">
-                <h3>Make it your own.</h3>
-                <p>Keep the conversation and your project in the same place.</p>
-              </article>
-              <article className="note-card">
-                <h3>Take another look.</h3>
-                <p>Review the work, change your mind, and keep going.</p>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section id="cowork" className="cat-team">
-          <div>
-            <span className="cat-label">Runly Cowork</span>
-            <h2>
-              A little company
-              <br />
-              for your next idea.
-            </h2>
-            <p>Bring the people you build with into one shared workspace.</p>
-            <Link className="cat-text-link" href="/cowork">
-              Explore Cowork <span aria-hidden="true">↗</span>
-            </Link>
-          </div>
-          <Image
-            className="cat-working"
-            src="/cats/working.png"
-            alt="A black cat working at a laptop"
-            width={1024}
-            height={1024}
-            sizes="(max-width: 800px) 90vw, 500px"
-          />
-        </section>
-
-        <section id="pricing" className={`cat-pricing ${art.pricing}`}>
-          <div className="cat-pricing-head">
-            <h2>A plan for your pace.</h2>
-            <p>Start on your own. Bring a team when you’re ready.</p>
-          </div>
-          <Image
-            className={art.hangingCat}
-            src="/inspiration/hanging-cat.jpg"
-            alt="A black cat hanging playfully from above"
-            width={736}
-            height={736}
-            sizes="(max-width: 800px) 150px, 185px"
-          />
-          <PlanComparison />
-          <div className="cat-plans">
-            {[
-              [
-                "Standard",
-                "$3",
-                "For personal projects",
-                "100k tokens / 3 hours",
-              ],
-              ["Pro", "$9", "For your everyday work", "350k tokens / 3 hours"],
-              [
-                "Cowork",
-                "$19",
-                "For up to five people",
-                "1m shared tokens / 3 hours",
-              ],
-            ].map(([name, price, note, allowance]) => (
-              <article key={name}>
-                <h3>{name}</h3>
-                <p>{note}</p>
-                <div className="cat-price">
-                  {price}
-                  <span>/ month</span>
-                </div>
-                <p className="cat-allowance">{allowance}</p>
-                <Link className="button button-outline" href="/signup">
-                  Choose {name}
-                </Link>
-              </article>
-            ))}
-          </div>
-          <SubscriptionComparison />
-        </section>
-
-        <BusinessMotion />
-        <section className={`cat-close ${art.close}`}>
-          <div className={art.reachingHands} aria-hidden="true">
-            <span className={art.leftHand} />
-            <span className={art.rightHand} />
-          </div>
-          <h2>What are you thinking?</h2>
-          <a className="button button-dark" href="#hero-prompt">
-            Let’s start
-          </a>
         </section>
       </main>
+
       <footer>
         <Brand />
         <p>A place for your next idea.</p>

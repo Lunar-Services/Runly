@@ -49,3 +49,9 @@ supabase/.temp/
 __pycache__/
 *.pyc
 .supabase-local/
+
+# MD
+./AGENTS.md
+./UX-CONTRACT.md
+./CLAUDE.md
+./DESIGN.md
