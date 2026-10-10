@@ -4,6 +4,7 @@ import { AppShell } from "./app-shell";
 import { Plus, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { clearPendingBuild, getPendingBuild } from "@/lib/pending-build";
 
 type Project = { id: string; name: string; status: string; updated_at: string };
 export function ProjectsDashboard() {
@@ -41,27 +42,34 @@ export function ProjectsDashboard() {
   useEffect(() => {
     if (resumedDraft.current) return;
     resumedDraft.current = true;
-    const prompt = sessionStorage.getItem("runly:draft-prompt");
-    if (!prompt) return;
-    fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
-      signal: AbortSignal.timeout(20_000),
-    })
-      .then(async (response) => {
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.message);
-        sessionStorage.removeItem("runly:draft-prompt");
-        router.replace(`/project/${result.project.id}`);
-      })
-      .catch((reason) => {
-        setError(
-          reason instanceof Error
-            ? reason.message
-            : "Couldn't create the project.",
-        );
+    async function resumeDraft() {
+      const prompt = sessionStorage.getItem("runly:draft-prompt");
+      if (!prompt) return;
+      const pending = await getPendingBuild();
+      const form = new FormData();
+      form.set("prompt", pending?.prompt || prompt);
+      pending?.files.forEach((file) => form.append("files", file, file.name));
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        body: pending?.files.length ? form : JSON.stringify({ prompt }),
+        headers: pending?.files.length
+          ? undefined
+          : { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(120_000),
       });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message);
+      await clearPendingBuild();
+      sessionStorage.removeItem("runly:draft-prompt");
+      router.replace(`/project/${result.project.id}`);
+    }
+    void resumeDraft().catch((reason) => {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Couldn't create the project.",
+      );
+    });
   }, [router]);
   async function create(event: React.FormEvent) {
     event.preventDefault();

@@ -12,9 +12,11 @@ import {
   LogOut,
   Paperclip,
   Smartphone,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Brand } from "./brand";
+import { savePendingBuild } from "@/lib/pending-build";
 import "./landing.css";
 
 export function LandingPage({
@@ -27,8 +29,10 @@ export function LandingPage({
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [startingProject, setStartingProject] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
   const router = useRouter();
   const header = useRef<HTMLElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const update = () => {
@@ -40,17 +44,23 @@ export function LandingPage({
   }, []);
 
   async function startBuilding(customPrompt?: string) {
-    const textToSubmit = (customPrompt ?? prompt).trim();
+    const textToSubmit =
+      (customPrompt ?? prompt).trim() ||
+      (attachments.length
+        ? "Use the attached files as inspiration for a new project."
+        : "");
     if (!textToSubmit) return;
     if (account) {
       setStartingProject(true);
       setMessage("");
       try {
+        const form = new FormData();
+        form.set("prompt", textToSubmit);
+        attachments.forEach((file) => form.append("files", file, file.name));
         const response = await fetch("/api/projects", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: textToSubmit }),
-          signal: AbortSignal.timeout(20_000),
+          body: form,
+          signal: AbortSignal.timeout(120_000),
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.message);
@@ -66,6 +76,7 @@ export function LandingPage({
       return;
     }
     try {
+      await savePendingBuild({ prompt: textToSubmit, files: attachments });
       sessionStorage.setItem("runly:draft-prompt", textToSubmit);
       router.push("/signup?intent=build");
     } catch {
@@ -91,6 +102,27 @@ export function LandingPage({
     } finally {
       setSigningOut(false);
     }
+  }
+
+  function chooseFiles(event: React.ChangeEvent<HTMLInputElement>) {
+    const added = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (!added.length) return;
+    const next = [...attachments, ...added];
+    if (next.length > 5) {
+      setMessage("Add up to five files.");
+      return;
+    }
+    if (next.some((file) => file.size > 8 * 1024 * 1024)) {
+      setMessage("Each file must be 8 MB or smaller.");
+      return;
+    }
+    if (next.reduce((total, file) => total + file.size, 0) > 20 * 1024 * 1024) {
+      setMessage("Keep the total upload size under 20 MB.");
+      return;
+    }
+    setAttachments(next);
+    setMessage("");
   }
 
   const initials =
@@ -232,10 +264,22 @@ export function LandingPage({
                   type="button"
                   className="sky-attach-btn"
                   aria-label="Add files or inspiration"
+                  aria-controls="landing-file-input"
+                  disabled={startingProject}
+                  onClick={() => fileInput.current?.click()}
                 >
                   <Paperclip size={16} strokeWidth={2.2} />
                   <span className="attach-label">Add files or inspiration</span>
                 </button>
+                <input
+                  ref={fileInput}
+                  id="landing-file-input"
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,application/pdf,text/plain,text/markdown,text/csv,application/json"
+                  onChange={chooseFiles}
+                  hidden
+                />
 
                 <button
                   className="sky-send-btn"
@@ -248,6 +292,34 @@ export function LandingPage({
                 </button>
               </div>
             </form>
+
+            {attachments.length > 0 && (
+              <ul
+                className="landing-attachment-list"
+                aria-label="Attached files"
+              >
+                {attachments.map((file, index) => (
+                  <li
+                    className="landing-attachment"
+                    key={`${file.name}-${file.lastModified}-${index}`}
+                  >
+                    <span title={file.name}>{file.name}</span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${file.name}`}
+                      disabled={startingProject}
+                      onClick={() =>
+                        setAttachments((current) =>
+                          current.filter((_, fileIndex) => fileIndex !== index),
+                        )
+                      }
+                    >
+                      <X size={14} aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
 
             {message && (
               <p role="alert" className="cat-error">
@@ -460,6 +532,7 @@ export function LandingPage({
         <div className="footer-container">
           <div className="footer-cta-row">
             <h2 className="footer-cta-title">
+              {/* font-family:  Georgia, "Playfair Display", Cambria, serif; */}
               <span className="footer-title-desktop">
                 Your next idea starts here.
               </span>

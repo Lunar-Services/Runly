@@ -1,8 +1,3 @@
-/* ==========================================================================
-   Runly Landing Page & Sticky Header Styles
-   ========================================================================== */
-
-/* Sticky Header */
 .cat-site .site-header,
 .site-header {
   position: fixed !important;
@@ -349,6 +344,56 @@
   color: #11151c;
 }
 
+.landing-attachment-list {
+  width: min(100%, 580px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.landing-attachment {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px 5px 10px;
+  border: 1px solid rgba(17, 21, 28, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+  color: #4a5568;
+  font-size: 12px;
+}
+
+.landing-attachment span {
+  overflow: hidden;
+  max-width: 220px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.landing-attachment button {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.landing-attachment button:hover:not(:disabled) {
+  background: rgba(17, 21, 28, 0.08);
+  color: #11151c;
+}
+
 .sky-send-btn {
   width: 38px;
   height: 38px;
@@ -632,8 +677,8 @@
 }
 
 /* ==========================================================================
-   Creation Section: A thought. A conversation. A creation. (Image 3)
-   ========================================================================== */
+    Creation Section: A thought. A conversation. A creation. (Image 3)
+    ========================================================================== */
 
 .creation-section {
   width: 100%;
@@ -692,8 +737,8 @@
 }
 
 /* ==========================================================================
-   Mobile Responsiveness (Matching mobile design screenshot)
-   ========================================================================== */
+    Mobile Responsiveness (Matching mobile design screenshot)
+    ========================================================================== */
 
 @media (max-width: 768px) {
   /* Center the navbar on mobile when scrolled / sticky */
@@ -896,107 +941,60 @@
   .desktop-break {
     display: none;
   }
-
-  /* Footer on mobile */
-  .site-footer {
-    padding: 56px 20px 40px;
-  }
-
-  .footer-cta-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 20px;
-  }
-
-  .footer-cta-title {
-    font-size: 30px;
-    line-height: 1.15;
-  }
-
-  .footer-title-desktop {
-    display: none;
-  }
-
-  .footer-title-mobile {
-    display: inline;
-  }
-
-  .footer-cta-button {
-    width: 100%;
-    padding: 16px;
-    font-size: 15px;
-  }
-
-  .footer-divider {
-    display: none;
-  }
-
-  .footer-bottom-row {
-    justify-content: center;
-    width: 100%;
-    margin-top: 36px;
-  }
-
-  .footer-brand-group {
-    display: none;
-  }
-
-  .footer-links {
-    justify-content: center;
-    gap: 20px;
-    width: 100%;
-  }
-
-  .footer-mobile-brand-link {
-    display: inline;
-  }
 }
 
 /* ==========================================================================
-   Footer Section (Matching exact desktop and mobile designs)
-   ========================================================================== */
+    Footer Section (Matching exact desktop and mobile designs)
+    ========================================================================== */
 
-.site-footer {
+.marketing-shell .site-footer {
   width: 100%;
-  background: #eaf2fc;
-  padding: 80px 32px 48px;
+  background: #e0ecfa;
+  padding: 40px clamp(24px, 7.2vw, 96px) 32px;
+  display: block;
+  border: 0;
 }
 
-.footer-container {
-  max-width: 1140px;
+.site-footer .footer-container {
+  max-width: 1320px;
   margin: 0 auto;
+  display: block;
 }
 
-.footer-cta-row {
+.site-footer .footer-cta-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 32px;
 }
 
-.footer-cta-title {
-  font-size: clamp(34px, 4vw, 48px);
+.cat-site .site-footer .footer-cta-title {
+  font-size: 28px;
   font-weight: 600;
   line-height: 1.15;
   color: #11151c;
-  letter-spacing: -0.025em;
+  letter-spacing: 0;
   margin: 0;
 }
 
 .footer-title-desktop {
   display: inline;
+  font-family: Georgia, "Playfair Display", Cambria, serif;
 }
 
 .footer-title-mobile {
   display: none;
+  font-family: serif;
 }
 
 .footer-cta-button {
   background: #11151c;
   color: #ffffff;
-  padding: 13px 32px;
+  min-width: 126px;
+  min-height: 30px;
+  padding: 8px 18px;
   border-radius: 9999px;
-  font-size: 14.5px;
+  font-size: 9px;
   font-weight: 500;
   text-decoration: none;
   display: inline-flex;
@@ -1013,38 +1011,39 @@
   transform: translateY(-1px);
 }
 
-.footer-divider {
+.site-footer .footer-divider {
+  display: block;
   width: 100%;
   height: 1px;
   background: rgba(0, 0, 0, 0.08);
-  margin: 60px 0 36px;
+  margin: 36px 0 24px;
 }
 
-.footer-bottom-row {
+.site-footer .footer-bottom-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.footer-brand-group {
+.site-footer .footer-brand-group {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 26px;
 }
 
 .footer-tagline {
-  font-size: 13px;
+  font-size: 8px;
   color: #64748b;
 }
 
-.footer-links {
+.site-footer .footer-links {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 14px;
 }
 
 .footer-links a {
-  font-size: 13.5px;
+  font-size: 8px;
   color: #64748b;
   text-decoration: none;
   transition: color 0.15s ease;
@@ -1056,4 +1055,60 @@
 
 .footer-mobile-brand-link {
   display: none;
+}
+
+@media (max-width: 768px) {
+  .marketing-shell .site-footer {
+    padding: 18px 15px 12px;
+  }
+
+  .site-footer .footer-cta-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .cat-site .site-footer .footer-cta-title {
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .footer-title-desktop {
+    display: none;
+  }
+
+  .footer-title-mobile {
+    display: inline;
+  }
+
+  .footer-cta-button {
+    width: 100%;
+    min-height: 28px;
+    padding: 7px 12px;
+  }
+
+  .site-footer .footer-divider,
+  .site-footer .footer-brand-group {
+    display: none;
+  }
+
+  .site-footer .footer-bottom-row {
+    justify-content: center;
+    width: 100%;
+    margin-top: 22px;
+  }
+
+  .site-footer .footer-links {
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+  }
+
+  .footer-links a {
+    font-size: 7px;
+  }
+
+  .footer-mobile-brand-link {
+    display: inline;
+  }
 }
