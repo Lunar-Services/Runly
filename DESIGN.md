@@ -62,6 +62,91 @@ The supplied Viskey & Vida screenshot and saved site are compositional reference
 
 ## Colors
 
+### Customer offer copy
+
+Keep the established layouts while describing the ready-to-use project workspace
+and upcoming uncensored open-model access. Mark future capabilities accurately;
+GitHub requires setup. The public Plans page uses AI Workspace Hours with AI,
+code execution, and live previews included. One workspace and development sandbox
+per user. Preserve the Figma card styling, feature Plus in blue, and keep PAYG
+in a separate section below the three subscription cards. No credit or token
+pricing in marketing copy. Account billing and checkout retain their actual
+backend configuration until the separate billing migration.
+See `deploy/customer-offer.md` for proposals and cost guardrails.
+
+Standard is $9/month with 3 hours/week and 2 GB storage, Plus $19 with 10 hours
+and 5 GB, Pro $49 with 30 hours and 20 GB. PAYG is $10 for 5 hours, valid 30 days.
+Keep cards concise. Explain runtime readiness, sleeping, provisioning waits,
+fair-use limits, four grants per billing cycle, and expiry in collapsed FAQs.
+These are marketing terms; billing enforcement is not implemented in this phase.
+
+### Customer pages (October 2026)
+
+The landing and full scrolling Create page follow the supplied Runly
+cloud composition: a sky image, black display text, an italic Georgia second
+line, and a white composer. The shared customer navbar uses the imported Figma
+R mark (black on light surfaces), Create/Plans/Support destinations, and an
+Workspace/Account/Logout menu. Support uses calm open sections and readable help articles.
+Navigation and promotional actions open routes; only the accessibility skip
+link jumps within a page. The central navigation capsule follows the supplied
+Figma reference; supporting content avoids additional pill or glass treatments.
+
+Home and Create use a fixed sky backdrop with two slowly drifting cloud layers.
+The client's local clock selects dawn (05–07), day (07–17), sunset (17–20),
+or night (20–05), refreshing every minute and when the tab becomes visible.
+Night uses navy clouds, quiet stars, and light hero text; content sections scroll
+over the sky on opaque surfaces. The white composer and compact navbar retain
+their contrast. This is clock-based ambiance without location access. Reduced
+motion disables cloud drift.
+
+The showcase below the full-height hero reveals when it enters view:
+a rise from 56px below its resting point to 72px above the section boundary,
+overlapping the fixed sky, a slight scale correction, and a one-second fade.
+Reduced motion
+shows the frame immediately; keyboard focus also reveals it.
+Hero copy, composer, and suggestions stay opaque until scrolling past 18% of
+the hero height (capped at 160px), then fade completely over 450ms before the
+showcase enters. Fully faded controls become inert;
+The showcase is hidden in the initial markup and its reveal is enabled only
+after the hero's 450ms fade completes. Returning to the top hides it again.
+a focused composer stays visible. Reduced motion keeps the hero static.
+
+The remaining editorial sections use once-only entrances: feature rows settle
+in a short stagger, the sky illustration unveils upward, workflow steps follow
+in sequence, and the final invitation settles gently. Motion is limited to
+20–24px travel and 550–750ms durations, with reduced-motion and keyboard-focus
+fallbacks. Section spacing is more generous across desktop and phone layouts;
+critique refinements trim the gap between related sections and shorten stagger
+delays so readers can continue without waiting.
+
+Text selection uses a pale blue highlight with dark ink on light surfaces.
+Dark account/workspace surfaces retain the signal highlight. Landing selection
+always follows the light palette, including when its clock-based sky is night.
+Night clouds remain visible against navy. Two cloud tracks travel continuously
+left over 160/220-second cycles. Each track repeats a mirrored image pair so
+edge pixels match and the wrap returns to an identical frame without reversing.
+
+Profile, Security, Notifications, and Billing & plan use that same top navbar
+plus a dedicated account sidebar. `src/components/account.css` owns scoped
+customer tokens: light canvas `#FAFBFD`, card `#F0F3F7`, ink `#151B26`, and
+selected surface `#E4EDF8`; dark canvas `#101316`, card `#1E242C`, and muted
+text `#AEB8C8`. Controls are at least 44px high. Sections use quiet dividers,
+with flat surfaces for grouped actions, and notification preferences stay in
+open rows. The account navbar stays at the top and the desktop sidebar is fixed
+below it, with Appearance and Sign out anchored at the bottom. Mobile account
+destinations form a two-column grid; Appearance and Sign out remain in a fixed
+bottom bar. The workspace project dashboard uses the shared customer header,
+an open project grid, and no sidebar. Dashboard and project creation headers
+show only the brand and account actions, without the center marketing links.
+Create new includes a plain idea composer
+above its searchable template catalog. Decide for me recommends an available
+template and language with an explanation; the selection remains editable.
+The shared footer spans the viewport, with its contents centered to the page
+width. The template catalog sits beside project name and language controls. Unavailable editors are
+clearly marked Coming soon. The landing showcase uses native text and vector
+shapes so it stays sharp at any display density. Individual project editor
+styles are maintained separately.
+
 Ink and paper create the primary contrast. White separates functional surfaces. Signal is reserved for healthy/live state, never large decorative fills. Danger is reserved for destructive or publication-blocking states. The global focus ring uses a darker signal-derived green to meet contrast on white.
 
 The light appearance uses a soft cool-gray canvas and lighter neutral card surfaces, without a warm or yellow cast. Text, button, and action colors remain unchanged when the canvas is recalibrated. Dark appearance retains its near-black palette.
@@ -72,7 +157,7 @@ Georgia carries only brand-scale headlines and key numeric values. Arial/Helveti
 
 ## Layout
 
-Public sections cap at 1380px and use generous vertical rhythm. Product routes use a fixed desktop sidebar and sticky toolbar; below 900px the sidebar becomes a drawer and app grids collapse. Builder panes become stacked on mobile, with chat first and preview second. Media and async regions reserve their geometry.
+Public sections cap at 1380px and use generous vertical rhythm. The workspace dashboard has no sidebar; project and template grids collapse on smaller screens. Individual project editor routes retain their existing toolbar and navigation. Builder panes become stacked on mobile, with chat first and preview second. Media and async regions reserve their geometry.
 
 ## Elevation & Depth
 
@@ -104,7 +189,7 @@ Theme ownership: `ThemeProvider` in the root layout owns the persisted cookie an
 
 Labels stay visible. Product forms use `noValidate` and inline status regions. Secrets remain masked. Browser alerts, confirms, and prompts are forbidden.
 
-Signed-in identity is visible in the workspace sidebar. Account settings own display-name and profile-picture URL editing; an initials avatar is the fallback.
+Signed-in identity is available from the shared header account menu. Account settings own display-name and profile-picture URL editing; an initials avatar is the fallback.
 
 ### Iconography
 

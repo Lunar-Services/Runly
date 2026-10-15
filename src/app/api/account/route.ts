@@ -10,6 +10,7 @@ import {
 
 const profileInput = z.object({
   displayName: z.string().trim().min(1).max(120),
+  fullName: z.string().trim().max(120).optional(),
 });
 
 async function avatarUrl(
@@ -28,7 +29,7 @@ export async function GET() {
     const { db, user } = await session();
     const { data, error } = await db
       .from("profiles")
-      .select("display_name,avatar_url,avatar_path")
+      .select("display_name,full_name,avatar_url,avatar_path")
       .eq("id", user.id)
       .single();
     if (error)
@@ -46,6 +47,7 @@ export async function GET() {
       {
         email: user.email,
         displayName: data.display_name || "",
+        fullName: data.full_name || "",
         avatarUrl: await avatarUrl(data.avatar_path, data.avatar_url),
         role: role?.role === "admin" ? "admin" : "user",
         githubLinked: Boolean(
@@ -75,6 +77,9 @@ export async function PATCH(request: Request) {
       .from("profiles")
       .update({
         display_name: input.data.displayName,
+        ...(input.data.fullName === undefined
+          ? {}
+          : { full_name: input.data.fullName }),
         updated_at: new Date().toISOString(),
       })
       .eq("id", user.id);

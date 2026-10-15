@@ -19,7 +19,7 @@ export function adminClient() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
-export async function session() {
+export async function session(options: { allowMfaPending?: boolean } = {}) {
   const db = await createServerSupabaseClient();
   if (!db) {
     console.error(
@@ -34,6 +34,20 @@ export async function session() {
   if (error || !data.user) throw new ApiError(401, "Sign in to continue.");
   if (!data.user.email_confirmed_at)
     throw new ApiError(403, "Verify your email before continuing.");
+  if (!options.allowMfaPending) {
+    const { data: assurance, error: assuranceError } =
+      await db.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (assuranceError)
+      throw new ApiError(
+        503,
+        "We couldn't verify your sign-in security. Please try again.",
+      );
+    if (assurance?.nextLevel === "aal2" && assurance.currentLevel !== "aal2")
+      throw new ApiError(
+        403,
+        "Complete two-step verification before continuing.",
+      );
+  }
   return { db, user: data.user };
 }
 export async function adminSession() {
@@ -68,6 +82,32 @@ export function appOrigin(request: Request) {
   if (!["localhost", "127.0.0.1"].includes(url.hostname))
     throw new ApiError(503, "This service is temporarily unavailable.");
   return url.origin;
+}
+export function safeAppPath(value: unknown, fallback = "/dashboard/projects") {
+  if (
+    typeof value !== "string" ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\")
+  )
+    return fallback;
+  try {
+    const url = new URL(value, "https://runly.invalid");
+    if (url.origin !== "https://runly.invalid") return fallback;
+    const path = url.pathname;
+    const allowed =
+      path === "/dashboard/projects" ||
+      path === "/cowork" ||
+      path === "/reset-password" ||
+      path === "/settings" ||
+      path.startsWith("/settings/") ||
+      path === "/admin" ||
+      path.startsWith("/admin/") ||
+      /^\/project\/[0-9a-f-]{36}$/i.test(path);
+    return allowed ? `${path}${url.search}` : fallback;
+  } catch {
+    return fallback;
+  }
 }
 export async function body(request: Request, max = 250_000) {
   if (!request.headers.get("content-type")?.includes("application/json"))

@@ -108,6 +108,9 @@ const previewSockets = new Map<
 const previewDomain = process.env.RUNLY_PREVIEW_DOMAIN?.toLowerCase() || "";
 const sandboxDomains = [
   new URL(gateway!.url).hostname.toLowerCase(),
+  // Reference attachments live in this project's private Supabase bucket.
+  // Signed object URLs can be fetched without exposing a platform credential.
+  new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.toLowerCase(),
   "registry.npmjs.org",
   "api.openai.com",
   "codex-cloud-environments.chatgpt.com",
@@ -1466,6 +1469,8 @@ sockets.on("connection", (socket, request) => {
       }
       if (++received > (role === "bridge" ? 1000 : 100))
         throw new Error("Connection rate limit exceeded");
+      if (!authenticated && Buffer.byteLength(raw as Buffer) > 4096)
+        throw new Error("Authentication frame is too large");
       const frame = JSON.parse(raw.toString()) as Frame;
       if (!authenticated) {
         if (authenticating) throw new Error("Authentication in progress");

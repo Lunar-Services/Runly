@@ -15,6 +15,7 @@
     "dev:mock": "node scripts/dev-runtime-mock.mjs",
     "runtime": "node --import tsx runtime/gateway.ts",
     "runtime:local-env": "node --env-file=.env.local --import tsx runtime/gateway.ts",
+    "build:worker": "node scripts/build-worker.mjs",
     "test:runtime": "tsx --test runtime/*.test.ts",
     "test:mock": "node runtime/mock-smoke.mjs",
     "build": "next build",
@@ -36,15 +37,13 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@next/env": "16.3.6",
-    "@number-flow/react": "0.6.2",
+    "@next/env": "16.3.8",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
-    "gsap": "^3.15.0",
     "lucide-react": "^1.47.0",
-    "next": "16.3.6",
+    "next": "16.3.8",
     "openai": "^7.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -59,7 +58,8 @@
     "@types/react-dom": "^19",
     "@types/ws": "^8.18.1",
     "eslint": "^9",
-    "eslint-config-next": "16.3.6",
+    "esbuild": "0.28.2",
+    "eslint-config-next": "16.3.8",
     "husky": "9.1.7",
     "lint-staged": "16.2.6",
     "prettier": "3.6.2",
@@ -67,6 +67,12 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"
+  },
+  "pnpm": {
+    "overrides": {
+      "sharp": "0.35.5",
+      "source-map-js": "1.2.2"
+    }
   },
   "lint-staged": {
     "*.{js,cjs,mjs,ts,tsx,json,css,md,yml,yaml}": "prettier --write"

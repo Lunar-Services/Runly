@@ -9,7 +9,6 @@ import {
   CreditCard,
   FolderKanban,
   KeyRound,
-  LayoutDashboard,
   LogOut,
   Menu,
   Scale,
@@ -26,7 +25,6 @@ import { Brand } from "./brand";
 type NavigationItem = readonly [href: string, label: string, Icon: LucideIcon];
 
 const items: readonly NavigationItem[] = [
-  ["/dashboard", "Overview", LayoutDashboard],
   ["/dashboard/projects", "Projects", FolderKanban],
   ["/cowork", "Cowork", Users],
   ["/settings/billing", "Billing", CreditCard],
@@ -196,7 +194,7 @@ export function AppShell({
           <ThemeToggle />
           <Link
             className="icon-action"
-            href="/project/new"
+            href="/dashboard/projects"
             aria-label="Open AI builder"
           >
             <Bot size={19} />

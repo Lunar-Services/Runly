@@ -1,0 +1,95 @@
+:global(html[data-theme] body) .footer {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 34px 28px;
+  background: var(--account-page, #fafbfd);
+  border-top: 1px solid #d7dfe8;
+  color: #536070;
+  font-size: 13px;
+}
+.footer .inner {
+  order: 0;
+  width: 100%;
+  max-width: 1176px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+}
+.footer .identity {
+  order: 0;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-shrink: 0;
+}
+.tagline {
+  white-space: nowrap;
+}
+.footer .brand {
+  color: #151b26;
+  font-size: 19px;
+}
+.footer .brand :global(.brand-mark) {
+  background: transparent;
+}
+.footer .brand :global(.brand-mark img) {
+  filter: brightness(0);
+  object-fit: contain;
+}
+.footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.footer a:hover {
+  text-decoration: underline;
+}
+:global(html[data-theme] .marketing-site) .footer {
+  background: #1b1c1a;
+  color: #d8dce1;
+  border-color: #343735;
+}
+:global(html[data-theme] .marketing-site) .footer .brand {
+  color: #fff;
+}
+:global(html[data-theme] .marketing-site)
+  .footer
+  .brand
+  :global(.brand-mark img) {
+  filter: brightness(0) invert(1);
+}
+:global(html[data-theme="dark"] .customer-account) .footer {
+  background: var(--account-page);
+  color: #aeb8c8;
+  border-color: #303944;
+}
+:global(html[data-theme="dark"] .customer-account) .footer .brand {
+  color: #f5f6f8;
+}
+:global(html[data-theme="dark"] .customer-account)
+  .footer
+  .brand
+  :global(.brand-mark img) {
+  filter: brightness(0) invert(1);
+}
+@media (max-width: 800px) {
+  :global(html[data-theme] body) .footer {
+    padding: 28px 22px;
+  }
+  .footer .inner {
+    flex-wrap: wrap;
+  }
+  .footer .identity {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+}
+@media (max-width: 480px) {
+  .footer .identity {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

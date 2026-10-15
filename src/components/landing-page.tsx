@@ -3,44 +3,111 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  ArrowUp,
-  ChevronDown,
-  Film,
-  Globe,
-  LayoutDashboard,
-  LogOut,
-  Paperclip,
-  Smartphone,
-  X,
-} from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Brand } from "./brand";
+import { X } from "lucide-react";
+import { CustomerFooter } from "./customer-footer";
+import { CustomerHeader } from "./customer-header";
+import { LandingShowcase } from "./landing-showcase";
+import { LandingMotion } from "./landing-motion";
+import { SkyBackground, useLocalSky, type SkyPhase } from "./sky-background";
 import { savePendingBuild } from "@/lib/pending-build";
 import "./landing.css";
 
+type Account = { email: string; displayName: string; avatarUrl: string } | null;
+
+const suggestions = [
+  {
+    href: "/create?idea=video",
+    icon: "/figma/landing/video.svg",
+    label: "Plan a video",
+  },
+  {
+    href: "/create?idea=website",
+    icon: "/figma/landing/globe.svg",
+    label: "Build a website",
+  },
+  {
+    href: "/create?idea=app",
+    icon: "/figma/landing/app.svg",
+    label: "Create an app",
+  },
+] as const;
+
 export function LandingPage({
   account,
+  createOnly = false,
+  initialPrompt = "",
+  skyPreview,
 }: {
-  account: { email: string; displayName: string; avatarUrl: string } | null;
+  account: Account;
+  createOnly?: boolean;
+  initialPrompt?: string;
+  skyPreview?: SkyPhase;
 }) {
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(initialPrompt);
+  const skyPhase = useLocalSky(skyPreview);
   const [message, setMessage] = useState("");
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
   const [startingProject, setStartingProject] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const router = useRouter();
-  const header = useRef<HTMLElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-
+  const submissionLock = useRef(false);
+  const heroContent = useRef<HTMLDivElement>(null);
+  const [heroExited, setHeroExited] = useState(false);
   useEffect(() => {
-    const update = () => {
-      header.current?.classList.toggle("is-scrolled", window.scrollY > 20);
-    };
+    const content = heroContent.current;
+    if (!content) return;
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let frame = 0;
+    let exitTimer = 0;
+    let wasExited = false;
+    function update() {
+      frame = 0;
+      const hero = content!.parentElement;
+      const threshold = Math.min(
+        160,
+        (hero?.offsetHeight || window.innerHeight) * 0.18,
+      );
+      const progress = motion.matches
+        ? 0
+        : window.scrollY - (hero?.offsetTop || 0) > threshold
+          ? 1
+          : 0;
+      // Keep a focused composer visible and usable for keyboard users.
+      const visibleProgress = content!.contains(document.activeElement)
+        ? 0
+        : progress;
+      content!.style.setProperty("--hero-exit", String(visibleProgress));
+      content!.inert = visibleProgress === 1;
+      const exited = visibleProgress === 1;
+      if (exited !== wasExited) {
+        wasExited = exited;
+        window.clearTimeout(exitTimer);
+        if (exited)
+          exitTimer = window.setTimeout(() => setHeroExited(true), 450);
+        else setHeroExited(false);
+      }
+    }
+    function schedule() {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    }
     update();
-    window.addEventListener("scroll", update, { passive: true });
-    return () => window.removeEventListener("scroll", update);
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    motion.addEventListener("change", schedule);
+    content.addEventListener("focusin", schedule);
+    content.addEventListener("focusout", schedule);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(exitTimer);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      motion.removeEventListener("change", schedule);
+      content.removeEventListener("focusin", schedule);
+      content.removeEventListener("focusout", schedule);
+      content.style.removeProperty("--hero-exit");
+      content.inert = false;
+    };
   }, []);
 
   async function startBuilding(customPrompt?: string) {
@@ -49,9 +116,10 @@ export function LandingPage({
       (attachments.length
         ? "Use the attached files as inspiration for a new project."
         : "");
-    if (!textToSubmit) return;
+    if (!textToSubmit || submissionLock.current) return;
+    submissionLock.current = true;
+    setStartingProject(true);
     if (account) {
-      setStartingProject(true);
       setMessage("");
       try {
         const form = new FormData();
@@ -72,6 +140,7 @@ export function LandingPage({
             : "Couldn't create the project.",
         );
         setStartingProject(false);
+        submissionLock.current = false;
       }
       return;
     }
@@ -80,27 +149,11 @@ export function LandingPage({
       sessionStorage.setItem("runly:draft-prompt", textToSubmit);
       router.push("/signup?intent=build");
     } catch {
+      submissionLock.current = false;
+      setStartingProject(false);
       setMessage(
         "Your browser couldn't save the idea. Allow site storage and try again.",
       );
-    }
-  }
-
-  async function signOut() {
-    setSigningOut(true);
-    try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!response.ok) throw new Error("Couldn't sign out.");
-      setAccountMenuOpen(false);
-      router.replace("/");
-      router.refresh();
-    } catch {
-      setMessage("Couldn't sign out. Please try again.");
-    } finally {
-      setSigningOut(false);
     }
   }
 
@@ -125,99 +178,31 @@ export function LandingPage({
     setMessage("");
   }
 
-  const initials =
-    account?.displayName
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase() ||
-    account?.email.slice(0, 1).toUpperCase() ||
-    "R";
-
   return (
-    <div className="marketing-shell cat-site">
-      <header className="site-header" ref={header}>
-        <div className="site-header-inner">
-          <div className="brand-wrapper">
-            <Brand />
-          </div>
-          <nav
-            id="main-navigation"
-            className="nav-pill"
-            aria-label="Main navigation"
-          >
-            <a href="#create">Create</a>
-            <a href="#how-it-works">How it works</a>
-            <a href="#explore">Explore</a>
-          </nav>
-          <div className="nav-actions">
-            {account ? (
-              <div className="account-menu">
-                <button
-                  className="account-menu-trigger"
-                  type="button"
-                  onClick={() => setAccountMenuOpen((open) => !open)}
-                  aria-expanded={accountMenuOpen}
-                  aria-controls="account-menu-options"
-                  aria-label="Open account menu"
-                >
-                  <span
-                    className="account-menu-avatar"
-                    style={
-                      account.avatarUrl
-                        ? { backgroundImage: `url(${account.avatarUrl})` }
-                        : undefined
-                    }
-                  >
-                    {!account.avatarUrl && initials}
-                  </span>
-                  <ChevronDown size={15} aria-hidden="true" />
-                </button>
-                {accountMenuOpen && (
-                  <div
-                    className="account-menu-panel"
-                    id="account-menu-options"
-                    role="menu"
-                  >
-                    <Link
-                      href="/dashboard"
-                      role="menuitem"
-                      onClick={() => setAccountMenuOpen(false)}
-                    >
-                      <LayoutDashboard size={15} aria-hidden="true" />
-                      <span>Workspace</span>
-                    </Link>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={signOut}
-                      disabled={signingOut}
-                    >
-                      <LogOut size={15} aria-hidden="true" />
-                      <span>{signingOut ? "Signing out…" : "Sign out"}</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                <Link href="/login" className="nav-login-link">
-                  Log in
-                </Link>
-                <Link href="/signup" className="nav-cta-pill">
-                  Get started
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <main>
-        <section className="sky-hero-section" id="create">
-          <div className="sky-hero-container">
+    <div className="marketing-shell marketing-site" data-sky={skyPhase}>
+      <SkyBackground phase={skyPhase} />
+      {skyPreview && (
+        <nav className="sky-preview-controls" aria-label="Sky time preview">
+          <span>Sky preview</span>
+          {(["dawn", "day", "sunset", "night"] as const).map((phase) => (
+            <Link
+              key={phase}
+              href={`/?sky=${phase}`}
+              aria-current={skyPreview === phase ? "page" : undefined}
+            >
+              {phase}
+            </Link>
+          ))}
+          <Link href="/">Live time</Link>
+        </nav>
+      )}
+      <CustomerHeader account={account} showAccount morphOnScroll />
+      <main id="customer-content">
+        <section
+          id="create"
+          className={`sky-hero-section${createOnly ? " sky-hero-create-only" : ""}`}
+        >
+          <div ref={heroContent} className="sky-hero-container">
             <h1 className="sky-hero-title">
               From what if
               <br />
@@ -226,14 +211,13 @@ export function LandingPage({
 
             <p className="sky-hero-subtitle">
               <span className="subtitle-desktop">
-                Edit a video. Build a website. Bring an app to life.
-                <br />
-                Your ideas, made real through a conversation.
+                Uncensored AI is coming to Runly.
+                <br />A ready-to-use workspace. Built-in project previews.
               </span>
               <span className="subtitle-mobile">
-                Videos, websites, and apps.
+                Uncensored AI is coming.
                 <br />
-                Made through a conversation.
+                Your workspace, ready to create.
               </span>
             </p>
 
@@ -248,6 +232,8 @@ export function LandingPage({
                 className="sky-textarea"
                 rows={2}
                 value={prompt}
+                maxLength={12_000}
+                disabled={startingProject}
                 onChange={(event) => setPrompt(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
@@ -268,7 +254,13 @@ export function LandingPage({
                   disabled={startingProject}
                   onClick={() => fileInput.current?.click()}
                 >
-                  <Paperclip size={16} strokeWidth={2.2} />
+                  <Image
+                    src="/figma/landing/attach.svg"
+                    width={20}
+                    height={20}
+                    alt=""
+                    aria-hidden="true"
+                  />
                   <span className="attach-label">Add files or inspiration</span>
                 </button>
                 <input
@@ -284,11 +276,19 @@ export function LandingPage({
                 <button
                   className="sky-send-btn"
                   type="submit"
-                  disabled={!prompt.trim() || startingProject}
+                  disabled={
+                    (!prompt.trim() && !attachments.length) || startingProject
+                  }
                   aria-busy={startingProject}
                   aria-label="Start building"
                 >
-                  <ArrowUp size={18} strokeWidth={2.5} />
+                  <Image
+                    src="/figma/landing/up.svg"
+                    width={20}
+                    height={20}
+                    alt=""
+                    aria-hidden="true"
+                  />
                 </button>
               </div>
             </form>
@@ -326,244 +326,192 @@ export function LandingPage({
                 {message}
               </p>
             )}
-            <div className="sky-suggestions">
-              <button
-                type="button"
-                className="sky-suggestion-pill"
-                onClick={() => {
-                  setPrompt("Edit a video");
-                }}
-              >
-                <span className="pill-desktop">Edit a video</span>
-                <span className="pill-mobile">Video</span>
-              </button>
-              <button
-                type="button"
-                className="sky-suggestion-pill"
-                onClick={() => {
-                  setPrompt("Build a website");
-                }}
-              >
-                <span className="pill-desktop">Build a website</span>
-                <span className="pill-mobile">Website</span>
-              </button>
-              <button
-                type="button"
-                className="sky-suggestion-pill"
-                onClick={() => {
-                  setPrompt("Create an app");
-                }}
-              >
-                <span className="pill-desktop">Create an app</span>
-                <span className="pill-mobile">App</span>
-              </button>
-            </div>
+            <nav className="sky-suggestions" aria-label="Start with an idea">
+              {suggestions.map(({ href, icon, label }) => (
+                <Link className="sky-suggestion-link" href={href} key={href}>
+                  <Image
+                    src={icon}
+                    width={24}
+                    height={24}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                  <span>{label}</span>
+                </Link>
+              ))}
+            </nav>
 
             <p className="sky-hero-footnote">
               One workspace. Every kind of idea.
             </p>
           </div>
         </section>
-        <section id="how-it-works" className="product-section">
-          <div className="product-hero-image-wrapper">
-            <Image
-              src="/e.png"
-              alt="Runly workspace preview"
-              width={1024}
-              height={499}
-              className="product-hero-image product-hero-image-desktop"
-              priority
-            />
-            <Image
-              src="/e-mobile.png"
-              alt="Runly workspace preview on mobile"
-              width={700}
-              height={752}
-              className="product-hero-image product-hero-image-mobile"
-              priority
-            />
-          </div>
-        </section>
-        <section className="features-section">
-          <div className="features-container">
-            <div className="features-left">
-              <h2 className="features-title">
-                <span className="title-desktop">
-                  Big ideas.
-                  <br />
-                  No blank-page feeling.
-                </span>
-                <span className="title-mobile">
-                  Big ideas.
-                  <br />A place to begin.
-                </span>
-              </h2>
+        {!createOnly && (
+          <>
+            <LandingShowcase revealReady={heroExited} />
 
-              <p className="features-subtitle">
-                <span className="subtitle-desktop">
-                  Start anywhere. Keep creating in the same conversation.
-                </span>
-                <span className="subtitle-mobile">
-                  Edit a video, build your website, or bring an app to life.
-                  Runly follows your lead.
-                </span>
-              </p>
-              <div className="features-list features-list-desktop">
-                <div className="feature-item">
-                  <div className="feature-icon">
-                    <Film size={20} strokeWidth={2} />
-                  </div>
-                  <div className="feature-text">
-                    <h3>Videos with your vision.</h3>
-                    <p>Trim, caption, and shape your story.</p>
-                  </div>
-                </div>
-
-                <div className="feature-item">
-                  <div className="feature-icon">
-                    <Globe size={20} strokeWidth={2} />
-                  </div>
-                  <div className="feature-text">
-                    <h3>Websites with your signature.</h3>
-                    <p>Go from a prompt to your own corner of the web.</p>
-                  </div>
-                </div>
-
-                <div className="feature-item">
-                  <div className="feature-icon">
-                    <Smartphone size={20} strokeWidth={2} />
-                  </div>
-                  <div className="feature-text">
-                    <h3>Apps with a purpose.</h3>
-                    <p>Turn a useful idea into something people can use.</p>
-                  </div>
-                </div>
-              </div>
-              <div className="mobile-steps-list">
-                <div className="mobile-step-item">
-                  <span className="mobile-step-num">01</span>
-                  <div className="mobile-step-content">
-                    <h3>Bring the idea</h3>
-                    <p>Start with a prompt or your own files.</p>
-                  </div>
-                </div>
-
-                <div className="mobile-step-item">
-                  <span className="mobile-step-num">02</span>
-                  <div className="mobile-step-content">
-                    <h3>Make it yours</h3>
-                    <p>Keep refining through conversation.</p>
-                  </div>
-                </div>
-
-                <div className="mobile-step-item">
-                  <span className="mobile-step-num">03</span>
-                  <div className="mobile-step-content">
-                    <h3>Put it out there</h3>
-                    <p>Review, publish, or export your work.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="features-right">
-              <div className="sky-card">
-                <div className="sky-card-overlay">
-                  <p className="sky-card-headline">
-                    a little closer
+            <section className="features-section" id="explore">
+              <LandingMotion className="features-container" variant="features">
+                <div className="features-left">
+                  <h2 className="features-title">
+                    Big ideas.
                     <br />
-                    to the sky.
+                    <span>No blank-page feeling.</span>
+                  </h2>
+                  <p className="features-subtitle">
+                    Build in one workspace. More model freedom is coming.
                   </p>
-                  <span className="sky-card-tag">Offline Weekends</span>
+                  <div className="features-list">
+                    <div className="feature-item">
+                      <Image
+                        src="/figma/landing/video.svg"
+                        width={24}
+                        height={24}
+                        alt=""
+                        aria-hidden="true"
+                      />
+                      <div className="feature-text">
+                        <h3>Uncensored models, coming soon.</h3>
+                        <p>Open models designed for fewer restrictions.</p>
+                      </div>
+                    </div>
+                    <div className="feature-item">
+                      <Image
+                        src="/figma/landing/globe.svg"
+                        width={24}
+                        height={24}
+                        alt=""
+                        aria-hidden="true"
+                      />
+                      <div className="feature-text">
+                        <h3>A workspace, ready to build.</h3>
+                        <p>
+                          Start from a template or an empty project. No local
+                          setup.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="feature-item">
+                      <Image
+                        src="/figma/landing/app.svg"
+                        width={24}
+                        height={24}
+                        alt=""
+                        aria-hidden="true"
+                      />
+                      <div className="feature-text">
+                        <h3>Your code, your repository.</h3>
+                        <p>
+                          Keep projects in Runly. GitHub connection requires
+                          setup.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <Link className="text-link" href="/create#create">
+                    Start with your idea
+                    <Image
+                      src="/figma/landing/up-small.svg"
+                      width={18}
+                      height={18}
+                      alt=""
+                      aria-hidden="true"
+                    />
+                  </Link>
                 </div>
+                <figure className="features-right">
+                  <div className="sky-card">
+                    <div className="sky-card-overlay">
+                      <p className="sky-card-headline">
+                        a little closer
+                        <br />
+                        to the sky.
+                      </p>
+                      <span className="sky-card-tag">Offline Weekends</span>
+                    </div>
+                  </div>
+                  <figcaption className="sky-card-caption">
+                    <span className="sky-card-quote">
+                      “Make this feel like a weekend away.”
+                    </span>
+                    <span className="sky-card-sub">
+                      A visual direction for your next project.
+                    </span>
+                  </figcaption>
+                </figure>
+              </LandingMotion>
+            </section>
+
+            <section className="creation-section" id="how-it-works">
+              <LandingMotion className="creation-container" variant="steps">
+                <p className="section-eyebrow">A simple way to begin</p>
+                <h2 className="creation-title">
+                  A thought. A conversation. A creation.
+                </h2>
+                <div className="creation-grid">
+                  <div className="creation-col">
+                    <span className="creation-num">01</span>
+                    <h3 className="creation-heading">Bring the idea</h3>
+                    <p className="creation-desc">
+                      Describe your idea, choose a template, or start with an
+                      empty project.
+                    </p>
+                  </div>
+                  <div className="creation-col">
+                    <span className="creation-num">02</span>
+                    <h3 className="creation-heading">Make it yours</h3>
+                    <p className="creation-desc">
+                      Give feedback in plain language. See the result take shape
+                      beside your chat.
+                    </p>
+                  </div>
+                  <div className="creation-col">
+                    <span className="creation-num">03</span>
+                    <h3 className="creation-heading">
+                      Review and keep refining
+                    </h3>
+                    <p className="creation-desc">
+                      Review what you have so far and decide what to change
+                      next.
+                    </p>
+                  </div>
+                </div>
+                <Link className="text-link creation-link" href="/support">
+                  Need a hand? Get support
+                  <Image
+                    src="/figma/landing/up-small.svg"
+                    width={18}
+                    height={18}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                </Link>
+              </LandingMotion>
+            </section>
+          </>
+        )}
+        {!createOnly && (
+          <section className="landing-closing">
+            <LandingMotion className="landing-closing-layout" variant="closing">
+              <div>
+                <p className="section-eyebrow">Have something in mind?</p>
+                <h2>Your next idea starts here.</h2>
               </div>
-              <div className="sky-card-caption">
-                <p className="sky-card-quote">
-                  “Make this feel like a weekend away.”
-                </p>
-                <p className="sky-card-sub">
-                  A sample edit, created through conversation.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-        <section className="creation-section">
-          <div className="creation-container">
-            <h2 className="creation-title">
-              A thought. A conversation. A creation.
-            </h2>
-
-            <div className="creation-grid">
-              <div className="creation-col">
-                <span className="creation-num">01</span>
-                <h3 className="creation-heading">Bring the idea</h3>
-                <p className="creation-desc">
-                  Describe it, upload your files,
-                  <br className="desktop-break" />
-                  or share something that inspires you.
-                </p>
-              </div>
-
-              <div className="creation-col">
-                <span className="creation-num">02</span>
-                <h3 className="creation-heading">Make it yours</h3>
-                <p className="creation-desc">
-                  Give feedback in plain language.
-                  <br className="desktop-break" />
-                  See the result take shape beside your chat.
-                </p>
-              </div>
-
-              <div className="creation-col">
-                <span className="creation-num">03</span>
-                <h3 className="creation-heading">Put it out there</h3>
-                <p className="creation-desc">
-                  Review the details, then publish
-                  <br className="desktop-break" />
-                  your site or app, or export your video.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <footer className="site-footer">
-        <div className="footer-container">
-          <div className="footer-cta-row">
-            <h2 className="footer-cta-title">
-              {/* font-family:  Georgia, "Playfair Display", Cambria, serif; */}
-              <span className="footer-title-desktop">
-                Your next idea starts here.
-              </span>
-              <span className="footer-title-mobile">
-                Make your next idea real.
-              </span>
-            </h2>
-
-            <Link href="#create" className="footer-cta-button">
-              Start creating
-            </Link>
-          </div>
-
-          <div className="footer-divider" />
-          <div className="footer-bottom-row">
-            <div className="footer-brand-group">
-              <Brand />
-              <span className="footer-tagline">Made for what comes next.</span>
-            </div>
-
-            <div className="footer-links">
-              <Link href="/" className="footer-mobile-brand-link">
-                Runly
+              <Link className="text-link" href="/create#create">
+                Start creating
+                <Image
+                  src="/figma/landing/up-small.svg"
+                  width={18}
+                  height={18}
+                  alt=""
+                  aria-hidden="true"
+                />
               </Link>
-              <Link href="/privacy">Privacy</Link>
-              <Link href="/terms">Terms</Link>
-              <Link href="/contact">Contact</Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+            </LandingMotion>
+          </section>
+        )}
+      </main>
+      <CustomerFooter />
     </div>
   );
 }

@@ -45,6 +45,33 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run verify
       - run: pnpm test:runtime
+      - run: pnpm build:worker
+      - run: pnpm exec tsx --test runtime/gateway.test.ts
+        env:
+          RUNLY_TEST_GATEWAY_ENTRYPOINT: dist/runtime/gateway.mjs
       - run: python3 -m unittest discover -s runtime -p 'test_bridge.py'
       - run: pnpm audit --prod
       - run: node scripts/check-staged-secrets.mjs --tracked
+      - run: node scripts/check-staged-secrets.mjs --browser
+
+  docker:
+    name: Production Docker builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose --env-file deploy/docker.env.example config --quiet
+      - run: docker build --target web -t runly-web:ci .
+      - run: docker build --target worker -t runly-worker:ci .
+      - run: docker build --target proxy -t runly-proxy:ci .
+      - name: Scan production images
+        run: |
+          mkdir -p "$RUNNER_TEMP/runly-images"
+          for image in web worker proxy; do
+            docker save -o "$RUNNER_TEMP/runly-images/$image.tar" "runly-$image:ci"
+          done
+          docker run --rm \
+            --mount "type=bind,source=$RUNNER_TEMP/runly-images,target=/images" \
+            --entrypoint sh \
+            aquasec/trivy@sha256:2416d1f74045b57274df1a340eee6b510cacd73c66a6ccb8da092b117eb7d222 \
+            -c 'for image in web worker proxy; do trivy image --cache-dir /images/cache --input /images/$image.tar --scanners vuln --severity HIGH,CRITICAL --exit-code 1 || exit; done'

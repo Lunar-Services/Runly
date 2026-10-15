@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createHash } from "node:crypto";
 import {
   adminClient,
   ApiError,
@@ -11,6 +12,10 @@ import {
 } from "@/lib/api";
 import { projectNameFromPrompt } from "@/lib/project-name";
 import { enqueueRuntime } from "@/lib/runtime/server";
+import {
+  projectTemplateFiles,
+  supportsProjectTemplate,
+} from "@/lib/project-templates";
 
 const attachmentBucket = "project-attachments";
 const maxAttachmentCount = 5;
@@ -37,8 +42,31 @@ function projectInput(value: unknown) {
     .object({
       name: z.string().trim().min(1).max(160).optional(),
       prompt: z.string().trim().min(1).max(12_000).optional(),
+      template: z.enum(["empty", "web"]).optional(),
+      language: z
+        .enum(["javascript", "typescript", "html", "python"])
+        .optional(),
     })
-    .refine((input) => input.name || input.prompt)
+    .strict()
+    .refine(
+      (input) => input.name || input.prompt,
+      "Enter a project name or describe what you want to build.",
+    )
+    .refine(
+      (input) => Boolean(input.template) === Boolean(input.language),
+      "Choose both a template and language.",
+    )
+    .refine(
+      (input) =>
+        !input.template ||
+        (input.language &&
+          supportsProjectTemplate(input.template, input.language)),
+      "Choose a supported language for this template.",
+    )
+    .refine(
+      (input) => !input.template || !input.prompt,
+      "Create a template project without an AI prompt.",
+    )
     .safeParse(value);
 }
 
@@ -57,7 +85,9 @@ export async function GET() {
     const { db, user } = await session();
     const { data, error } = await db
       .from("projects")
-      .select("id,name,status,created_at,updated_at")
+      .select(
+        "id,name,status,created_at,updated_at,template_id,programming_language",
+      )
       .eq("owner_id", user.id)
       .neq("status", "archived")
       .order("updated_at", { ascending: false })
@@ -105,9 +135,19 @@ export async function POST(request: Request) {
         );
       const prompt = form.get("prompt");
       const name = form.get("name");
+      const template = form.get("template");
+      const language = form.get("language");
+      if (
+        [name, prompt, template, language].some(
+          (value) => value !== null && typeof value !== "string",
+        )
+      )
+        throw new ApiError(400, "Use text values for project details.");
       input = projectInput({
         prompt: typeof prompt === "string" ? prompt : undefined,
         name: typeof name === "string" ? name : undefined,
+        template: typeof template === "string" ? template : undefined,
+        language: typeof language === "string" ? language : undefined,
       });
     } else {
       input = projectInput(await body(request, 16_384));
@@ -115,7 +155,13 @@ export async function POST(request: Request) {
     if (!input.success)
       throw new ApiError(
         400,
-        "Enter a project name or describe what you want to build.",
+        input.error.issues[0]?.message ||
+          "Enter a project name or describe what you want to build.",
+      );
+    if (input.data.template && files.length)
+      throw new ApiError(
+        400,
+        "Create a template project without attached reference files.",
       );
     const prompt =
       input.data.prompt ||
@@ -132,6 +178,12 @@ export async function POST(request: Request) {
       status: "draft",
       created_at: now,
       updated_at: now,
+      ...(input.data.template
+        ? {
+            template_id: input.data.template,
+            programming_language: input.data.language,
+          }
+        : {}),
     };
     const { error } = await adminClient().from("projects").insert(project);
     if (error) {
@@ -140,6 +192,32 @@ export async function POST(request: Request) {
     }
     const uploadedPaths: string[] = [];
     try {
+      if (input.data.template && input.data.language) {
+        // Seed the durable file snapshot before returning the new project.
+        // The gateway restores this table directly; no agent or compute is started.
+        const starter = projectTemplateFiles(
+          input.data.template,
+          input.data.language,
+        );
+        const { error: seedError } = await adminClient()
+          .from("runtime_files")
+          .insert(
+            starter.map((file) => ({
+              project_id: project.id,
+              path: file.path,
+              kind: "file",
+              content: file.content,
+              hash: createHash("sha256")
+                .update(file.content, "utf8")
+                .digest("hex"),
+            })),
+          );
+        if (seedError)
+          throw new ApiError(
+            502,
+            "Couldn't prepare the template files. Please try again.",
+          );
+      }
       const fileReferences: string[] = [];
       for (const file of files) {
         const path = `${user.id}/${project.id}/${crypto.randomUUID()}-${safeAttachmentName(file.name)}`;
@@ -173,6 +251,11 @@ export async function POST(request: Request) {
       const agentInput = files.length
         ? `${prompt}\n\nThe user attached these reference files. Download or inspect them as needed:\n${fileReferences.join("\n")}`
         : prompt;
+      if (agentInput.length > 12_000)
+        throw new ApiError(
+          400,
+          "Shorten the prompt to leave room for the attached file references.",
+        );
       let conversationId: string | null = null;
       if (agentInput) {
         conversationId = crypto.randomUUID();
@@ -193,6 +276,8 @@ export async function POST(request: Request) {
             status: project.status,
             created_at: project.created_at,
             updated_at: project.updated_at,
+            template_id: input.data.template || null,
+            programming_language: input.data.language || null,
           },
           conversationId,
         },

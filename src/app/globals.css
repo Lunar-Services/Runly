@@ -50,6 +50,10 @@ a {
   text-decoration: none;
 }
 ::selection {
+  background: #b7d4f4;
+  color: #151b26;
+}
+html[data-theme="dark"] ::selection {
   background: var(--signal);
   color: var(--ink);
 }
