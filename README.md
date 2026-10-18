@@ -1,8 +1,14 @@
 # Runly AI
 
+**Docker deployment:** see [deploy/README.md](deploy/README.md) for the web app,
+runtime worker, TLS proxy, required environment, and production commands.
+See [REVIEW.md](REVIEW.md) for the frontend refactor coverage and repository review.
+
 Runly is a production-oriented foundation for an AI website and app builder. This repository includes the public experience, account UI, project workspace, Cowork/admin/legal surfaces, Supabase SSR wiring, a deny-by-default schema, and a quota-gated server AI endpoint.
 
-The UI uses the supplied Vida screenshot as a composition reference—editorial headline, monochrome canvas, restrained controls, and one characterful visual—while using Runly’s own mark, content, product structure, and motion.
+The `frontend-design` branch introduces a cloud-backed public landing page,
+conversation composer and feature showcases. Authenticated pages retain the
+existing monochrome workspace design with the updated shared Runly wordmark.
 
 ## Onboarding
 
@@ -20,18 +26,19 @@ Keep server secrets in `.env.local` only. Normal local development intentionally
 
 ### 2. Everyday commands
 
-| Command             | Use it when                                                                                                 |
-| ------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `pnpm dev`          | Start the app with an isolated local Supabase database. Recommended for UI and auth work.                   |
-| `pnpm dev:stripe`   | Start local development with Stripe test-mode keys enabled. Use for Checkout, billing, and webhook testing. |
-| `pnpm build`        | Create a production build and catch build-time errors.                                                      |
-| `pnpm start`        | Serve the last production build locally. Run `pnpm build` first.                                            |
-| `pnpm lint`         | Check ESLint rules.                                                                                         |
-| `pnpm typecheck`    | Check TypeScript types.                                                                                     |
-| `pnpm verify`       | Run lint, typecheck, and build together. Use before opening a PR.                                           |
-| `pnpm check`        | Run staged formatting/lint/security checks locally. Used by the pre-commit hook.                            |
-| `pnpm format`       | Auto-format the repository with Prettier.                                                                   |
-| `pnpm format:check` | Verify formatting without changing files.                                                                   |
+| Command                   | Use it when                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `pnpm dev:frontend` (new) | Start the app to only work on frontend.                                                                     |
+| `pnpm dev`                | Start the app with an isolated local Supabase database. Recommended for UI and auth work.                   |
+| `pnpm dev:stripe`         | Start local development with Stripe test-mode keys enabled. Use for Checkout, billing, and webhook testing. |
+| `pnpm build`              | Create a production build and catch build-time errors.                                                      |
+| `pnpm start`              | Serve the last production build locally. Run `pnpm build` first.                                            |
+| `pnpm lint`               | Check ESLint rules.                                                                                         |
+| `pnpm typecheck`          | Check TypeScript types.                                                                                     |
+| `pnpm verify`             | Run lint, typecheck, and build together. Use before opening a PR.                                           |
+| `pnpm check`              | Run staged formatting/lint/security checks locally. Used by the pre-commit hook.                            |
+| `pnpm format`             | Auto-format the repository with Prettier.                                                                   |
+| `pnpm format:check`       | Verify formatting without changing files.                                                                   |
 
 ### 3. Local database commands
 
@@ -105,7 +112,9 @@ Open `http://localhost:3000`. The design and static product surfaces work withou
 
 The migration explicitly revokes table privileges before granting a narrow authenticated set. RLS is enabled on every public table. Authorization helpers that must inspect protected rows live in a non-exposed `private` schema.
 
-The Supabase CLI could not install its Windows binary in this workspace, so the migrations have **not** been executed or advisor-tested here.
+Local migrations and transactional runtime authorization/quota checks have been
+executed through Docker on Windows. Production advisor checks and live acceptance
+must still run against the intended deployment.
 
 ### Apply migrations
 
@@ -187,20 +196,24 @@ migration deliberately does not revoke those ambiguous historical grants.
 
 ## Configure OpenAI later
 
-Add `OPENAI_API_KEY` and an account-accessible `OPENAI_MODEL` to `.env.local`. The `/api/ai/chat` route refuses requests until both exist, validates the authenticated Supabase user, validates input with Zod, atomically reserves usage, calls the provider from the server, and settles or releases the reservation.
+Configure the provider and gateway as described in [runtime/README.md](runtime/README.md).
+The legacy `/api/ai/chat` route authenticates and validates requests, then queues
+durable sandbox work. The separate worker calls the provider, streams events,
+backs up source files, and settles usage. Production Docker runs the compiled
+worker bundle; `pnpm dev:mock` exercises the local flow without paid provider calls.
 
 Before enabling it in production:
 
 - deploy and test the migration under simultaneous last-token requests;
-- add project-context retrieval and structured file-operation validation;
-- add provider cost ceilings, streaming reconciliation, cancellation, and stuck-reservation cleanup;
+- verify workspace file guards, cancellation, snapshot restoration, and uncertain-turn reconciliation;
+- configure provider cost ceilings and alert on held reservations or stalled jobs;
 - confirm the selected model with the actual OpenAI project;
 - never put `OPENAI_API_KEY` in a `NEXT_PUBLIC_` variable.
 
 ## External systems still required
 
 - A GitHub App with selected-repository access, CSRF-safe callback state, conditional expected-SHA writes, and revocation checks.
-- An isolated build worker on a separate origin with non-root containers, resource/time limits, egress restrictions, dependency controls, and no production credentials.
+- Configuration and live validation of OpenAI-hosted project sandboxes, the runtime gateway, isolated preview DNS/TLS, network allowlists and provider spending controls.
 - Server-side encryption/KMS for admin-pasted provider credentials plus step-up authentication and audit alerts.
 - Email delivery for invitations and account flows.
 - Hosting, monitoring, backup/restore, retention, export, and deletion operations.
@@ -217,22 +230,22 @@ npx -p @google/design.md designmd lint DESIGN.md
 
 ## Implementation status
 
-| Capability                              | Status                              | Evidence / limitation                                                                                           |
-| --------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Vida-referenced responsive landing page | Implemented                         | Real Runly assets, prompt persistence, reduced-motion handling                                                  |
-| Signup/login UI                         | Implemented, setup-gated            | Supabase email + GitHub OAuth client wiring; needs project credentials                                          |
-| Profile settings                        | Implemented, setup-gated            | Display name + private JPEG/PNG/WebP avatar upload, replacement, removal, and persistence via Supabase          |
-| Responsive project workspace            | UI foundation                       | Chat/files/preview surfaces; Monaco and sandbox worker not connected                                            |
-| Cowork                                  | UI foundation                       | Realtime, invitations, roles, and billing require integration                                                   |
-| Admin provider manager                  | UI foundation                       | Secret controls deliberately disabled until KMS/step-up auth exists                                             |
-| Legal pages                             | Implemented as drafts               | Full supplied draft text rendered; publication blockers retained                                                |
-| Supabase schema and RLS                 | Implemented, not executed           | All required core tables included; must run migration/advisor/RLS tests                                         |
-| Atomic quota reservation                | Implemented, not integration-tested | Dual 3h/7d checks and idempotent reservation function                                                           |
-| OpenAI route                            | Implemented, not live-tested        | Server-only, auth + quota-gated; no API key was supplied                                                        |
-| GitHub repository flow                  | Not implemented                     | Requires GitHub App credentials and callback configuration                                                      |
-| Stripe billing                          | Implemented, requires Stripe setup  | Server-selected monthly Prices, Checkout, Portal, verified idempotent webhooks, and persisted entitlement state |
-| Isolated preview worker                 | Not implemented                     | Must be a separate hardened execution service                                                                   |
-| Security headers                        | Implemented                         | CSP, frame denial, nosniff, referrer and permissions policy; HSTS in production                                 |
-| Production security review              | Not performed                       | Threat model, dependency scanning, penetration testing, and independent review required                         |
+| Capability                   | Status                                                  | Evidence / limitation                                                                                           |
+| ---------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Responsive landing page      | Refactored on `frontend-design`                         | Cloud hero, prompt composer, references, feature sections, and new shared wordmark                              |
+| Signup/login UI              | Implemented, setup-gated                                | Supabase email + GitHub OAuth client wiring; needs project credentials                                          |
+| Profile settings             | Implemented, setup-gated                                | Display name + private JPEG/PNG/WebP avatar upload, replacement, removal, and persistence via Supabase          |
+| Responsive project workspace | Implemented; local mock tested                          | Shared files, text editor, agent chat, terminal, logs, preview and restore; hosted acceptance still required    |
+| Cowork                       | UI foundation                                           | Realtime, invitations, roles, and billing require integration                                                   |
+| Admin provider manager       | UI foundation                                           | Secret controls deliberately disabled until KMS/step-up auth exists                                             |
+| Legal pages                  | Implemented as drafts                                   | Full supplied draft text rendered; publication blockers retained                                                |
+| Supabase schema and RLS      | Local migrations and runtime assertions tested          | Production database advisors and complete policy review remain required                                         |
+| Atomic quota reservation     | Local control-plane tests pass                          | Dual rolling windows, idempotent admission/settlement and browser grant restrictions                            |
+| OpenAI runtime               | Implemented; scripted provider tested                   | Durable jobs, hosted sessions, cancellation and recovery; real provider acceptance remains required             |
+| GitHub repository flow       | Broker implemented; live setup required                 | Repository tokens remain in the Next.js server; source snapshots move through HMAC-protected internal transport |
+| Stripe billing               | Implemented, requires Stripe setup                      | Server-selected monthly Prices, Checkout, Portal, verified idempotent webhooks, and persisted entitlement state |
+| Isolated preview runtime     | Implemented; mock HTTP and gateway WebSocket tests pass | Requires isolated domain, DNS/TLS and live hosted validation                                                    |
+| Security headers             | Implemented                                             | CSP, frame denial, nosniff, referrer and permissions policy; HSTS in production                                 |
+| Repository security review   | Static/dependency/local runtime checks performed        | See REVIEW.md; this does not replace production penetration testing or live provider validation                 |
 
 No feature in this table should be treated as production-verified unless its row explicitly says it was tested.

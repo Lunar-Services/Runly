@@ -1,0 +1,113 @@
+name: runly
+
+x-runtime-environment: &runtime-environment
+  NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?Set the Supabase URL}
+  SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?Set the server-only Supabase key}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:?Set the OpenAI key}
+  OPENAI_MODEL: ${OPENAI_MODEL:?Set the Agents API model}
+  RUNLY_SITE_URL: ${RUNLY_SITE_URL:?Set the HTTPS application URL}
+  RUNLY_RUNTIME_SECRET: ${RUNLY_RUNTIME_SECRET:?Set a random secret of at least 32 characters}
+  RUNLY_RUNTIME_GATEWAYS: ${RUNLY_RUNTIME_GATEWAYS:?Set the public WSS gateway list}
+  RUNLY_PREVIEW_DOMAIN: ${RUNLY_PREVIEW_DOMAIN:?Set the isolated preview domain}
+
+x-service: &service
+  init: true
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: ["/tmp:size=128m,mode=1777"]
+  pids_limit: 256
+  stop_grace_period: 45s
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  # This service owns the private network namespace. Only the proxy listens on
+  # published ports; Next.js and the worker keep their loopback-only listeners.
+  web:
+    <<: *service
+    image: runly-web:${RUNLY_IMAGE_TAG:-local}
+    build:
+      context: .
+      target: web
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?Set the browser-safe Supabase key}
+        RUNLY_RUNTIME_GATEWAYS: ${RUNLY_RUNTIME_GATEWAYS}
+        RUNLY_PREVIEW_DOMAIN: ${RUNLY_PREVIEW_DOMAIN}
+    environment:
+      <<: *runtime-environment
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+      RUNLY_RUNTIME_INTERNAL_URL: http://127.0.0.1:4001
+      RUNLY_SUPPORT_EMAIL: ${RUNLY_SUPPORT_EMAIL:-}
+      RUNLY_STACK_RECOMMENDER_ENABLED: ${RUNLY_STACK_RECOMMENDER_ENABLED:-false}
+      RUNLY_STACK_RECOMMENDER_MODEL: ${RUNLY_STACK_RECOMMENDER_MODEL:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      RUNLY_BILLING_RECONCILIATION_SECRET: ${RUNLY_BILLING_RECONCILIATION_SECRET:-}
+      GITHUB_APP_ID: ${GITHUB_APP_ID:-}
+      GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-}
+      GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
+    ports:
+      - "${RUNLY_BIND_IP:-0.0.0.0}:80:8080"
+      - "${RUNLY_BIND_IP:-0.0.0.0}:443:8443"
+    volumes:
+      - web-cache:/app/.next/cache
+    mem_limit: 1g
+    cpus: 2
+
+  worker:
+    <<: *service
+    image: runly-worker:${RUNLY_IMAGE_TAG:-local}
+    build:
+      context: .
+      target: worker
+    network_mode: service:web
+    depends_on:
+      web:
+        condition: service_healthy
+        restart: true
+    environment:
+      <<: *runtime-environment
+      RUNLY_RUNTIME_GATEWAY_ID: ${RUNLY_RUNTIME_GATEWAY_ID:-primary}
+      RUNLY_RUNTIME_PORT: "4001"
+      RUNLY_SANDBOX_ALLOWED_DOMAINS: ${RUNLY_SANDBOX_ALLOWED_DOMAINS:-}
+      RUNLY_RUNTIME_MAX_ACTIVE: ${RUNLY_RUNTIME_MAX_ACTIVE:-10}
+      RUNLY_RUNTIME_CONTAINER_SIZE: ${RUNLY_RUNTIME_CONTAINER_SIZE:-small}
+      RUNLY_RUNTIME_IDLE_MINUTES: ${RUNLY_RUNTIME_IDLE_MINUTES:-5}
+      RUNLY_RUNTIME_DISCONNECT_GRACE_MINUTES: ${RUNLY_RUNTIME_DISCONNECT_GRACE_MINUTES:-5}
+      RUNLY_AGENT_TIMEOUT_MINUTES: ${RUNLY_AGENT_TIMEOUT_MINUTES:-10}
+    mem_limit: 1g
+    cpus: 2
+
+  proxy:
+    <<: *service
+    image: runly-proxy:${RUNLY_IMAGE_TAG:-local}
+    build:
+      context: .
+      target: proxy
+    network_mode: service:web
+    depends_on:
+      web:
+        condition: service_healthy
+        restart: true
+    environment:
+      RUNLY_APP_DOMAIN: ${RUNLY_APP_DOMAIN:?Set the app hostname without a scheme}
+      RUNLY_RUNTIME_DOMAIN: ${RUNLY_RUNTIME_DOMAIN:?Set the runtime hostname without a scheme}
+      RUNLY_PREVIEW_DOMAIN: ${RUNLY_PREVIEW_DOMAIN}
+    volumes:
+      - type: bind
+        source: ./deploy/tls
+        target: /etc/nginx/tls
+        read_only: true
+        bind:
+          create_host_path: false
+    mem_limit: 128m
+    cpus: 1
+
+volumes:
+  web-cache:

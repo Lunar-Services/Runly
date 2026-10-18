@@ -1,0 +1,127 @@
+.main {
+  max-width: 1232px;
+  margin: 0 auto;
+  padding: 48px 28px 88px;
+}
+.heading {
+  padding: 24px 0 64px;
+  max-width: 760px;
+}
+.heading > p:first-child {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 20px;
+}
+.heading h1 {
+  font-size: clamp(40px, 5vw, 68px);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  margin: 0 0 24px;
+}
+.heading h1 em {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+}
+.heading p,
+.topicGrid p,
+.answers p,
+.contact p {
+  color: var(--account-muted);
+  font-size: 15px;
+  line-height: 1.65;
+}
+.topics {
+  border-top: 1px solid var(--account-line);
+  padding: 36px 0 48px;
+}
+.main h2 {
+  font-size: 25px;
+  letter-spacing: -0.025em;
+  margin: 0 0 30px;
+}
+.topicGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 40px;
+}
+.topicGrid article {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.topicGrid h3 {
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+.topicGrid p {
+  margin: 0 0 16px;
+}
+.main a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.topicGrid a {
+  margin-top: auto;
+}
+.answers {
+  border-top: 1px solid var(--account-line);
+  padding-top: 36px;
+}
+.answers details {
+  border-bottom: 1px solid var(--account-line);
+  padding: 22px 0;
+}
+.answers summary {
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1.5;
+}
+.answers p {
+  max-width: 750px;
+  margin: 16px 0 10px;
+}
+.contact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 36px 0 0;
+  margin-top: 32px;
+}
+.contact h2 {
+  margin-bottom: 12px;
+}
+.contact p {
+  max-width: 620px;
+  margin: 0;
+}
+.contact a {
+  flex-shrink: 0;
+}
+@media (max-width: 700px) {
+  .main {
+    padding: 20px 22px 54px;
+  }
+  .heading {
+    padding-bottom: 40px;
+  }
+  .topicGrid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .contact {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .main h2 {
+    font-size: 23px;
+  }
+}

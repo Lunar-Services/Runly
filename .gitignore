@@ -20,6 +20,7 @@ package-lock.json
 
 # production
 /build
+/dist/
 
 # misc
 .DS_Store
@@ -49,3 +50,10 @@ supabase/.temp/
 __pycache__/
 *.pyc
 .supabase-local/
+/deploy/tls/
+
+# MD
+./AGENTS.md
+./UX-CONTRACT.md
+./CLAUDE.md
+./DESIGN.md

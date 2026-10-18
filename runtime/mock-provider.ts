@@ -252,7 +252,7 @@ async function execute(state: State, text: string, requestId: string) {
             private: true,
             scripts: { dev: "next dev" },
             dependencies: {
-              next: "16.3.6",
+              next: "16.3.8",
               react: "19.2.8",
               "react-dom": "19.2.8",
             },

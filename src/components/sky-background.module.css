@@ -1,0 +1,98 @@
+.sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #cfe3f4;
+}
+.clouds,
+.foregroundClouds {
+  position: absolute;
+  top: -4%;
+  left: 0;
+  width: 400%;
+  height: 108%;
+  display: flex;
+  animation: cloud-drift 160s linear infinite;
+}
+.cloudPanel {
+  flex: 0 0 25%;
+  height: 100%;
+  background: url("/imgForLP.webp") center 48% / cover no-repeat;
+}
+/* Mirrored neighbors share their edge pixels; the second pair repeats the first. */
+.cloudPanel:nth-child(even) {
+  transform: scaleX(-1);
+}
+.foregroundClouds {
+  opacity: 0.18;
+  mask-image: linear-gradient(to bottom, transparent 35%, #000 100%);
+  animation: cloud-drift 220s linear infinite;
+}
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #252348 0%, #a66980 60%, #f4ac79 100%);
+  opacity: 0;
+  mix-blend-mode: multiply;
+}
+.dawn .atmosphere {
+  opacity: 0.38;
+}
+.sunset .atmosphere {
+  opacity: 0.72;
+}
+.sunset .clouds,
+.sunset .foregroundClouds {
+  filter: sepia(0.25) saturate(1.15);
+}
+.night .atmosphere {
+  background: linear-gradient(180deg, #04091b 0%, #0d1a36 60%, #253451 100%);
+  opacity: 0.95;
+}
+.night .clouds,
+.night .foregroundClouds {
+  filter: brightness(0.8) saturate(0.65);
+}
+.night .foregroundClouds {
+  opacity: 0.16;
+  filter: brightness(0.55) saturate(0.65);
+}
+.stars {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background-image:
+    radial-gradient(circle at 12% 16%, #fff 0 1px, transparent 1.6px),
+    radial-gradient(circle at 26% 29%, #e6edff 0 0.7px, transparent 1.4px),
+    radial-gradient(circle at 38% 11%, #fff 0 1px, transparent 1.7px),
+    radial-gradient(circle at 55% 23%, #fff 0 0.8px, transparent 1.5px),
+    radial-gradient(circle at 69% 9%, #fff 0 1px, transparent 1.7px),
+    radial-gradient(circle at 82% 28%, #e6edff 0 0.7px, transparent 1.5px),
+    radial-gradient(circle at 93% 14%, #fff 0 1px, transparent 1.6px),
+    radial-gradient(circle at 8% 42%, #fff 0 0.8px, transparent 1.4px),
+    radial-gradient(circle at 76% 46%, #fff 0 0.8px, transparent 1.5px);
+}
+.night .stars {
+  opacity: 0.75;
+}
+@keyframes cloud-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .clouds,
+  .foregroundClouds {
+    animation: none;
+    transition: none;
+  }
+  .atmosphere,
+  .stars {
+    transition: none;
+  }
+}

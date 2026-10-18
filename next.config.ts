@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  outputFileTracingIncludes: {
+    "/terms": ["./content/legal/terms-draft.txt"],
+    "/privacy": ["./content/legal/privacy-draft.txt"],
+  },
   poweredByHeader: false,
   devIndicators: false,
   async headers() {

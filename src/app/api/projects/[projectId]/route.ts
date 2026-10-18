@@ -39,14 +39,14 @@ export async function GET(
       : conversations?.[0];
     if (requestedChat && !conversation)
       throw new ApiError(404, "Chat not found in this project.");
-    const chatMessages = conversations?.length
+    const untitledChats = (conversations || [])
+      .filter((item) => !item.title?.trim())
+      .map((item) => item.id);
+    const chatMessages = untitledChats.length
       ? await db
           .from("messages")
           .select("conversation_id,role,body,created_at")
-          .in(
-            "conversation_id",
-            conversations.map((item) => item.id),
-          )
+          .in("conversation_id", untitledChats)
           .eq("role", "user")
           .order("created_at", { ascending: true })
       : { data: [], error: null };
@@ -65,7 +65,7 @@ export async function GET(
           .from("messages")
           .select("id,role,body,created_at")
           .eq("conversation_id", conversation.id)
-          .order("created_at", { ascending: true })
+          .order("created_at", { ascending: false })
           .limit(200)
       : { data: [], error: null };
     if (messagesError)
@@ -80,7 +80,7 @@ export async function GET(
           id: item.id,
           title: titles.get(item.id) || "New chat",
         })),
-        messages: messages || [],
+        messages: (messages || []).reverse(),
       },
       { headers: { "Cache-Control": "no-store" } },
     );

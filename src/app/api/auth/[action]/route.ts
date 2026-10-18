@@ -5,6 +5,7 @@ import {
   body,
   failure,
   rateLimit,
+  safeAppPath,
   sameOrigin,
   session,
 } from "@/lib/api";
@@ -14,6 +15,7 @@ const credentials = z.object({
   email: z.email().max(254),
   password: z.string().min(8).max(128),
   accepted: z.boolean().optional(),
+  next: z.string().max(2048).optional(),
 });
 export async function POST(
   request: Request,
@@ -29,6 +31,7 @@ export async function POST(
         "verify",
         "resend",
         "logout",
+        "mfa",
         "forgot",
         "reset",
         "github",
@@ -77,6 +80,49 @@ export async function POST(
       return Response.json({ url: data.url });
     }
     const input = await body(request, 4096);
+    if (action === "mfa") {
+      const { db: authDb, user } = await session({ allowMfaPending: true });
+      await rateLimit(request, "auth-mfa", user.id, 8);
+      const parsed = z
+        .object({
+          factorId: z.string().uuid(),
+          code: z
+            .string()
+            .trim()
+            .regex(/^\d{6}$/),
+          next: z.string().max(2048).optional(),
+        })
+        .strict()
+        .safeParse(input);
+      if (!parsed.success)
+        throw new ApiError(400, "Enter the six-digit authenticator code.");
+      const { data: factors, error: factorsError } =
+        await authDb.auth.mfa.listFactors();
+      const factor = factors?.all.find(
+        (entry) =>
+          entry.id === parsed.data.factorId &&
+          entry.factor_type === "totp" &&
+          entry.status === "verified",
+      );
+      if (factorsError || !factor)
+        throw new ApiError(400, "That authenticator is no longer available.");
+      const { error } = await authDb.auth.mfa.challengeAndVerify({
+        factorId: factor.id,
+        code: parsed.data.code,
+      });
+      if (error)
+        throw new ApiError(
+          400,
+          "That code couldn't be verified. Check it and try again.",
+        );
+      return Response.json(
+        {
+          message: "Two-step verification complete.",
+          redirect: safeAppPath(parsed.data.next),
+        },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    }
     // A tiny shared anonymous bucket let one caller lock everyone out. Keep a
     // coarse global ceiling, then limit expensive email flows by subject.
     if (typeof input?.email === "string")
@@ -115,9 +161,20 @@ export async function POST(
           400,
           "That code is invalid or has expired. Request a new code and try again.",
         );
+      const { data: assurance, error: assuranceError } =
+        await db.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (assuranceError)
+        throw new ApiError(
+          503,
+          "We couldn't verify your sign-in security. Please try again.",
+        );
+      const needsMfa =
+        assurance?.nextLevel === "aal2" && assurance.currentLevel !== "aal2";
       return Response.json({
         message: "Email verified.",
-        redirect: "/dashboard",
+        redirect: needsMfa
+          ? `/verify-mfa?next=${encodeURIComponent("/dashboard/projects")}`
+          : "/dashboard/projects",
       });
     }
     if (action === "resend") {
@@ -164,14 +221,14 @@ export async function POST(
       });
     }
     if (action === "reset") {
-      const { user } = await session();
+      const { db: resetDb, user } = await session();
       await rateLimit(request, "auth-reset", user.id, 5);
       const parsed = z
         .object({ password: z.string().min(8).max(128) })
         .safeParse(input);
       if (!parsed.success)
         throw new ApiError(400, "Use a password between 8 and 128 characters.");
-      const { error } = await db.auth.updateUser({
+      const { error } = await resetDb.auth.updateUser({
         password: parsed.data.password,
       });
       if (error)
@@ -179,7 +236,7 @@ export async function POST(
           400,
           "Couldn't update the password. Request a new reset link and try again.",
         );
-      await db.auth.signOut({ scope: "global" });
+      await resetDb.auth.signOut({ scope: "global" });
       return Response.json({
         message: "Password updated. Sign in with your new password.",
         redirect: "/login",
@@ -240,13 +297,62 @@ export async function POST(
         "Email verification is temporarily unavailable. Please enable Supabase email confirmations and try again.",
       );
     }
+    if (action === "login") {
+      const next = safeAppPath(parsed.data.next);
+      const { data: assurance, error: assuranceError } =
+        await db.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (assuranceError)
+        throw new ApiError(
+          503,
+          "We couldn't verify your sign-in security. Please try again.",
+        );
+      const needsMfa =
+        assurance?.nextLevel === "aal2" && assurance.currentLevel !== "aal2";
+      return Response.json({
+        redirect: needsMfa
+          ? `/verify-mfa?next=${encodeURIComponent(next)}`
+          : next,
+        message: needsMfa
+          ? "Verify your authenticator to continue."
+          : "Signed in.",
+      });
+    }
+    return Response.json({
+      message: "We emailed you a six-digit verification code.",
+      redirect: "/verify-email",
+    });
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ action: string }> },
+) {
+  try {
+    const { action } = await context.params;
+    if (action !== "mfa") throw new ApiError(404, "Unknown action.");
+    const { db } = await session({ allowMfaPending: true });
+    const { data, error } = await db.auth.mfa.listFactors();
+    if (error) throw new ApiError(502, "Couldn't load authenticator options.");
+    const factors = (data?.all ?? [])
+      .filter(
+        (factor) =>
+          factor.factor_type === "totp" && factor.status === "verified",
+      )
+      .map((factor) => ({
+        id: factor.id,
+        name: factor.friendly_name || "Authenticator app",
+      }));
+    if (!factors.length)
+      throw new ApiError(
+        403,
+        "No verified authenticator is available for this account.",
+      );
     return Response.json(
-      action === "login"
-        ? { redirect: "/dashboard", message: "Signed in." }
-        : {
-            message: "We emailed you a six-digit verification code.",
-            redirect: "/verify-email",
-          },
+      { factors },
+      { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
     return failure(error);

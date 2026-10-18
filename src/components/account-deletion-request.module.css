@@ -1,0 +1,51 @@
+.form {
+  display: grid;
+  gap: 22px;
+  max-width: 680px;
+}
+
+.emailField {
+  display: grid;
+  gap: 9px;
+  font-size: 13px;
+}
+
+.emailField small {
+  color: var(--account-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.acknowledgment {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  max-width: 640px;
+  color: var(--account-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.acknowledgment input {
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  flex: 0 0 auto;
+  accent-color: var(--account-accent);
+}
+
+.acknowledgment input:focus-visible {
+  outline: 2px solid var(--account-ink);
+  outline-offset: 3px;
+}
+
+@media (max-width: 700px) {
+  .form :global(.account-form-actions) {
+    justify-content: stretch;
+  }
+
+  .form :global(.account-form-actions .account-button) {
+    width: 100%;
+    white-space: normal;
+  }
+}

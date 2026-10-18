@@ -1,97 +1,32 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
-  AlertTriangle,
-  ArrowRight,
   Bot,
   CheckCircle2,
   Clock3,
-  FileCode2,
   Plus,
-  Search,
   ShieldCheck,
   Users,
 } from "lucide-react";
-import { ThemeToggle } from "./theme-provider";
 import { AppShell } from "./app-shell";
-import { Brand } from "./brand";
-import { BillingSettings, PricingPlans, UpgradePlans } from "./billing";
 import { AdminBillingPlans } from "./admin-billing-plans";
-import { ProjectWorkspace as InteractiveProjectWorkspace } from "./project-workspace";
-import { SettingsTabs } from "./settings-tabs";
+import { CustomerHeader } from "./customer-header";
+import { CustomerFooter } from "./customer-footer";
+import { CreditPricingPreview } from "./credit-pricing-preview";
+const InteractiveProjectWorkspace = dynamic(() =>
+  import("./project-workspace").then((module) => module.ProjectWorkspace),
+);
 
 export function ProductScreen({ slug }: { slug: string[] }) {
   const route = `/${slug.join("/")}`;
-  if (route === "/terms" || route === "/privacy")
-    return <LegalPage kind={route.slice(1) as "terms" | "privacy"} />;
   if (route === "/pricing") return <PricingPage />;
   if (route.startsWith("/project/"))
     return <InteractiveProjectWorkspace projectId={slug[1] || ""} />;
-  if (route.startsWith("/cowork/workspace/")) return <CoworkWorkspace />;
   if (route.startsWith("/cowork")) return <CoworkHome />;
   if (route.startsWith("/admin")) return <AdminScreen route={route} />;
-  if (route.startsWith("/settings")) return <SettingsScreen route={route} />;
-  return <Dashboard route={route} />;
-}
-
-function Dashboard({ route }: { route: string }) {
-  const projects = route.endsWith("projects");
-  return (
-    <AppShell title={projects ? "Projects" : "Good morning."}>
-      <div className="page-actions">
-        <p className="muted">
-          {projects
-            ? "Search and manage everything you build."
-            : "Your workspace is ready when the services are."}
-        </p>
-        <Link className="button button-dark" href="/dashboard/projects">
-          <Plus size={16} /> New project
-        </Link>
-      </div>
-      {!projects && (
-        <div className="metric-grid">
-          <Metric label="Projects" value="—" note="Connect Supabase" />
-          <Metric
-            label="3-hour allowance"
-            value="—"
-            note="No entitlement loaded"
-          />
-          <Metric label="GitHub" value="Off" note="Not connected" />
-        </div>
-      )}
-      <section className="panel">
-        <div className="panel-head">
-          <div>
-            <h2>{projects ? "All projects" : "Recent projects"}</h2>
-            <p>Real project data will appear after Supabase setup.</p>
-          </div>
-          {projects && (
-            <label className="search-field">
-              <Search size={16} />
-              <input
-                placeholder="Search projects"
-                aria-label="Search projects"
-              />
-            </label>
-          )}
-        </div>
-        <div className="empty-state">
-          <div className="empty-icon">
-            <FileCode2 />
-          </div>
-          <h3>No projects yet</h3>
-          <p>
-            Start with a sentence. Runly will create project files and a
-            recoverable checkpoint.
-          </p>
-          <Link className="button button-dark" href="/dashboard/projects">
-            Create your first project <ArrowRight size={16} />
-          </Link>
-        </div>
-      </section>
-    </AppShell>
-  );
+  return null;
 }
 
 function Metric({
@@ -145,69 +80,6 @@ function CoworkHome() {
             Create workspace
           </button>
         </div>
-      </section>
-    </AppShell>
-  );
-}
-function CoworkWorkspace() {
-  return (
-    <AppShell title="Design Studio" eyebrow="Cowork / Workspace">
-      <div className="notice">
-        <AlertTriangle />
-        Demo surface only—connect Supabase Realtime before inviting members.
-      </div>
-      <div className="two-col">
-        <section className="panel">
-          <div className="panel-head">
-            <div>
-              <h2>Shared conversation</h2>
-              <p>Messages and AI actions appear with a named actor.</p>
-            </div>
-          </div>
-          <div className="empty-state compact">
-            <Users />
-            <h3>No team activity</h3>
-            <p>Invite a teammate to begin.</p>
-          </div>
-        </section>
-        <section className="panel">
-          <div className="panel-head">
-            <div>
-              <h2>Members</h2>
-              <p>0 of 5 seats used</p>
-            </div>
-          </div>
-          <button
-            className="button button-dark full"
-            disabled
-            title="Connect Supabase Realtime before inviting members"
-          >
-            Invite member
-          </button>
-        </section>
-      </div>
-    </AppShell>
-  );
-}
-
-function SettingsScreen({ route }: { route: string }) {
-  if (route === "/settings/billing/upgrade") return <UpgradePlans />;
-  if (route.includes("billing")) return <BillingSettings />;
-  return (
-    <AppShell title="Settings">
-      <SettingsTabs active="settings" />
-      <section className="panel form-panel preferences-panel">
-        <div>
-          <h2>Appearance</h2>
-          <p className="muted">Choose how Runly looks on this device.</p>
-        </div>
-        <label className="preference-row">
-          <span>
-            <strong>Dark theme</strong>
-            <small>Use the dark color theme across Runly.</small>
-          </span>
-          <ThemeToggle />
-        </label>
       </section>
     </AppShell>
   );
@@ -352,119 +224,21 @@ function LegalAdmin() {
 
 function PricingPage() {
   return (
-    <div className="standalone">
-      <div className="standalone-nav">
-        <Brand />
-        <Link className="button button-dark" href="/signup">
-          Start building
-        </Link>
-      </div>
-      <section className="standalone-head">
-        <p className="eyebrow">Pricing</p>
-        <h1>
-          Pay for momentum,
-          <br />
-          not complexity.
-        </h1>
-        <a
-          className="stripe-payment-mark"
-          href="https://stripe.com"
-          target="_blank"
-          rel="noreferrer"
-          aria-label="Payments securely processed by Stripe"
-        >
-          <span className="stripe-payment-logo" aria-hidden="true" />
-        </a>
-      </section>
-      <PricingPlans />
-    </div>
-  );
-}
-
-function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
-  const terms = kind === "terms";
-  const sections = terms ? termsSections : privacySections;
-  return (
-    <div className="legal-page">
-      <header>
-        <Brand />
-        <Link href="/">Back home</Link>
-      </header>
-      <main>
-        <div className="draft-banner">
-          <AlertTriangle /> DRAFT FOR REVIEW — NOT YET PUBLISHED
-        </div>
-        <p className="eyebrow">Legal / {terms ? "Terms" : "Privacy"}</p>
-        <h1>{terms ? "Terms of Service" : "Privacy Policy"}</h1>
-        <p className="legal-meta">
-          Effective date: [INSERT EFFECTIVE DATE] · Version: draft-0.1
-        </p>
-        <p className="lede">
-          This document describes the planned Runly service and contains
-          unresolved legal and operational details. It must be completed and
-          reviewed before publication.
-        </p>
-        {sections.map(([title, body], i) => (
-          <section key={title}>
-            <h2>
-              {i + 1}. {title}
-            </h2>
-            <p>{body}</p>
-          </section>
-        ))}
-        <div className="legal-check">
-          <h2>Publication blockers</h2>
-          <p>
-            Legal entity, contact details, governing law, retention periods,
-            refund policy, processing regions, age requirements, and deployed
-            provider practices must be verified.
-          </p>
-        </div>
+    <div className="customer-account customer-marketing-morph">
+      <CustomerHeader morphOnScroll />
+      <main id="customer-content" className="customer-pricing-page">
+        <section className="customer-pricing-heading">
+          <p>Plans</p>
+          <h1>
+            Your ideas.
+            <br />
+            <em>More room to create.</em>
+          </h1>
+          <p>Your workspace, AI, and live previews. Priced by the hour.</p>
+        </section>
+        <CreditPricingPreview />
       </main>
+      <CustomerFooter />
     </div>
   );
 }
-const termsSections = [
-  [
-    "Acceptance and eligibility",
-    "These Terms govern access to Runly’s AI-assisted development tools, project workspaces, GitHub integration, and Cowork. Users must meet the finalized age and eligibility requirements.",
-  ],
-  [
-    "Your content and projects",
-    "You retain your rights in prompts, code, files, project materials, and conversations. You permit Runly to process that content only as needed to provide and secure the service.",
-  ],
-  [
-    "AI limitations",
-    "Generated responses can be inaccurate, insecure, or incomplete. Users are responsible for reviewing code, dependencies, licenses, and deployment suitability.",
-  ],
-  [
-    "Plans and usage",
-    "Plan allowances are enforced by backend records across independent rolling windows. Purchased Runly usage is not an OpenAI credit or cash balance.",
-  ],
-  [
-    "Availability",
-    "Runly depends on external providers. The service does not promise uninterrupted generation, preview, repository sync, or collaboration.",
-  ],
-] as const;
-const privacySections = [
-  [
-    "Information we collect",
-    "Runly may process account details, prompts, code, project files, connected-repository metadata, Cowork activity, billing references, and security logs when those features are enabled.",
-  ],
-  [
-    "How information is used",
-    "Information is used to authenticate users, fulfill requested AI and repository actions, secure the service, administer subscriptions, and provide support.",
-  ],
-  [
-    "AI provider and project content",
-    "A request may send the prompt and relevant project context to the configured AI provider. Exact provider settings and retention behavior must be verified before publication.",
-  ],
-  [
-    "Connected services",
-    "Depending on enabled features, Runly expects to use Supabase, OpenAI, Stripe, GitHub, hosting, email, and monitoring providers.",
-  ],
-  [
-    "Retention and rights",
-    "Actual retention periods, deletion workflows, export methods, processing regions, and jurisdiction-specific rights must be implemented and documented before launch.",
-  ],
-] as const;

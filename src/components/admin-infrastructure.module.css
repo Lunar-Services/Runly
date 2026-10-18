@@ -1,0 +1,487 @@
+.infrastructure {
+  min-width: 0;
+}
+.infrastructure .developmentNote {
+  margin: -8px 0 24px;
+  color: var(--admin-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.swiftletForm {
+  padding: 0;
+}
+.configurationColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.connection,
+.placement,
+.lifecycle {
+  padding: 24px;
+  min-width: 0;
+}
+.connection {
+  border-right: 1px solid var(--admin-border);
+}
+.sectionHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.sectionHeading h2 {
+  margin: 0;
+}
+.sectionHeading p,
+.dialog .dialogDescription {
+  margin: 6px 0 0;
+  color: var(--admin-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.sectionHeading > span {
+  white-space: nowrap;
+}
+.field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.field:last-child {
+  margin-bottom: 0;
+}
+.field label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--admin-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.field label > span {
+  color: var(--admin-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+:global(html[data-theme])
+  :is(.infrastructure, .dialog)
+  .field
+  :is(input, select) {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-sidebar);
+  color: var(--admin-text);
+  font: inherit;
+  box-shadow: none;
+}
+:global(html[data-theme])
+  :is(.infrastructure, .dialog)
+  .field
+  input::placeholder {
+  color: var(--admin-muted);
+  opacity: 0.75;
+}
+:global(html[data-theme])
+  :is(.infrastructure, .dialog)
+  .field
+  :is(input, select):focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 2px;
+  border-color: var(--admin-accent);
+}
+:global(html[data-theme])
+  :is(.infrastructure, .dialog)
+  .field
+  input[aria-invalid="true"] {
+  border-color: var(--danger-text);
+}
+.field > p {
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.field > .fieldError {
+  color: var(--danger-text);
+}
+:global(html[data-theme]) :is(.infrastructure, .dialog) .field input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.lifecycle {
+  border-top: 1px solid var(--admin-border);
+}
+.twoColumns,
+.threeColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.threeColumns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.twoColumns .field,
+.threeColumns .field {
+  margin-bottom: 0;
+}
+.saveBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+  border-top: 1px solid var(--admin-border);
+}
+.saveBar > div,
+.dialogActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.feedback,
+.feedbackError {
+  min-height: 20px;
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.feedbackError {
+  color: var(--danger-text);
+}
+.secondaryButton,
+.removeButton {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--admin-border);
+  border-radius: 24px;
+  background: transparent;
+  color: var(--admin-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.secondaryButton:hover:not(:disabled) {
+  background: var(--admin-sidebar);
+}
+.removeButton {
+  border-color: var(--danger-text);
+  color: var(--danger-text);
+}
+.secondaryButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.nestsPanel > div:first-child {
+  margin-bottom: 24px;
+}
+.addButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.registryEmpty {
+  padding: 64px 24px;
+  border-top: 1px solid var(--admin-border);
+  text-align: center;
+}
+.registryEmpty h3 {
+  margin: 0 0 12px;
+  color: var(--admin-text);
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 700;
+}
+.infrastructure .registryEmpty p {
+  max-width: 420px;
+  margin: 6px auto;
+  color: var(--admin-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.nestsTable th:first-child,
+.nestsTable td:first-child {
+  width: 22%;
+}
+.nestsTable {
+  min-width: 820px;
+}
+.nestsTable th:nth-child(2),
+.nestsTable td:nth-child(2) {
+  width: 76px;
+  text-align: center;
+}
+.nestsTable th:nth-child(3),
+.nestsTable td:nth-child(3) {
+  white-space: nowrap;
+}
+.nestsTable th:nth-child(4),
+.nestsTable td:nth-child(4),
+.nestsTable th:nth-child(5),
+.nestsTable td:nth-child(5) {
+  width: 15%;
+}
+.nestsTable th:last-child,
+.nestsTable td:last-child {
+  width: 88px;
+}
+.nestName {
+  font-weight: 600;
+}
+.eggCount,
+.usageMeter {
+  font-variant-numeric: tabular-nums;
+}
+.eggCount > span,
+.unavailable {
+  color: var(--admin-muted);
+}
+.usageMeter {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 88px;
+}
+.usageTrack {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--admin-border);
+}
+.usageTrack > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--admin-accent);
+}
+.usageHigh .usageTrack > span {
+  background: #e3c99e;
+}
+.countryIndicator {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  color: var(--admin-muted);
+  border-radius: 6px;
+}
+.countryFlag {
+  width: 24px;
+  height: 18px;
+  flex: 0 0 24px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 10%);
+}
+.countryTooltip {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+  visibility: hidden;
+  width: max-content;
+  max-width: 240px;
+  padding: 6px 10px;
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  background: var(--admin-sidebar);
+  color: var(--admin-text);
+  font-size: 11px;
+  pointer-events: none;
+}
+.countryIndicator:is(:hover, :focus-visible) .countryTooltip {
+  visibility: visible;
+}
+.countryIndicator:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 2px;
+}
+.countryPicker {
+  min-width: 0;
+}
+.countryInput {
+  position: relative;
+}
+.countryInput > :first-child {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--admin-muted);
+}
+:global(html[data-theme]) .dialog .field .countryInput input {
+  padding: 10px 32px 10px 46px;
+}
+.countryChevron {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--admin-muted);
+}
+.countryOptions {
+  max-height: 184px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-top: 6px;
+  padding: 4px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-sidebar);
+}
+.countryOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 8px;
+  border-radius: 4px;
+  color: var(--admin-text);
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.countryOption > span:nth-child(2) {
+  flex: 1;
+}
+.countryOption > svg:last-child {
+  flex-shrink: 0;
+}
+.countryOption:hover,
+.countryOptionActive {
+  background: var(--admin-card);
+}
+.countryOptions .countryNoResults {
+  margin: 0;
+  padding: 12px;
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+.rowActions {
+  display: flex;
+}
+.infrastructure .registryFooter {
+  margin: 18px 0;
+  color: var(--admin-muted);
+  font-size: 11px;
+}
+.dialog[open] {
+  width: min(560px, calc(100% - 32px));
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.dialog .modalHeading {
+  flex: 0 0 auto;
+  padding: 24px;
+  border-bottom: 1px solid var(--admin-border);
+}
+.dialog .modalHeading h2 {
+  margin-top: 0;
+}
+.nestForm {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  margin: 0;
+}
+.dialogBody {
+  min-height: 0;
+  padding: 24px;
+  overflow: auto;
+}
+.dialogBody > .feedbackError {
+  margin-top: 16px;
+}
+.dialogActions {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 16px 24px;
+  border-top: 1px solid var(--admin-border);
+}
+.dialog button:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 3px;
+}
+@media (max-width: 1100px) {
+  .sectionHeading {
+    flex-wrap: wrap;
+  }
+  .saveBar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .saveBar > div {
+    align-self: flex-end;
+  }
+}
+@media (max-width: 700px) {
+  .configurationColumns {
+    grid-template-columns: 1fr;
+  }
+  .connection {
+    border-right: 0;
+    border-bottom: 1px solid var(--admin-border);
+  }
+  .threeColumns {
+    grid-template-columns: 1fr;
+  }
+  .sectionHeading {
+    flex-wrap: nowrap;
+  }
+  .connection,
+  .placement,
+  .lifecycle {
+    padding: 20px;
+  }
+  .saveBar {
+    padding: 20px;
+  }
+  .saveBar > div {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .saveBar button {
+    flex: 1;
+  }
+  .nestsPanel > div:first-child {
+    flex-wrap: wrap;
+  }
+  .registryEmpty {
+    padding: 40px 0;
+    text-align: left;
+  }
+}
+@media (max-width: 420px) {
+  .twoColumns {
+    grid-template-columns: 1fr;
+  }
+  .sectionHeading {
+    flex-wrap: wrap;
+  }
+  .dialogActions {
+    gap: 8px;
+  }
+  .dialogActions button {
+    flex: 1;
+    padding-inline: 12px;
+  }
+}

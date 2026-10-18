@@ -3,7 +3,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+} from "react";
 import { Brand } from "./brand";
 import { ThemeToggle } from "./theme-provider";
 
@@ -11,10 +17,12 @@ export function AuthPanel({
   mode,
   initialEmail = "",
   initialTokenHash = "",
+  initialNext = "/dashboard/projects",
 }: {
-  mode: "login" | "signup" | "verify" | "forgot" | "reset";
+  mode: "login" | "signup" | "verify" | "forgot" | "reset" | "mfa";
   initialEmail?: string;
   initialTokenHash?: string;
+  initialNext?: string;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -34,13 +42,48 @@ export function AuthPanel({
   const sending = useRef(false);
   const codeInputs = useRef<Array<HTMLInputElement | null>>([]);
   const [verificationCode, setVerificationCode] = useState("");
+  const [mfaFactors, setMfaFactors] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [mfaFactorId, setMfaFactorId] = useState("");
+  const loadingMfaFactors =
+    mode === "mfa" && mfaFactors.length === 0 && !failed;
   const title = {
     login: "Welcome back.",
     signup: "Make room for your next idea.",
     verify: "Check your email.",
     forgot: "Reset your password.",
     reset: "Choose a new password.",
+    mfa: "Verify it’s you.",
   }[mode];
+  useEffect(() => {
+    if (mode !== "mfa") return;
+    const controller = new AbortController();
+    fetch("/api/auth/mfa", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok)
+          throw new Error(
+            result.message || "Couldn't load your authenticators.",
+          );
+        const factors = (result.factors ?? []) as Array<{
+          id: string;
+          name: string;
+        }>;
+        setMfaFactors(factors);
+        setMfaFactorId(factors[0]?.id ?? "");
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        setFailed(true);
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Couldn't load your authenticators.",
+        );
+      });
+    return () => controller.abort();
+  }, [mode]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const fields = new FormData(event.currentTarget);
@@ -49,7 +92,11 @@ export function AuthPanel({
     const code =
       mode === "verify" ? verificationCode : String(fields.get("code") || "");
     const invalid: Record<string, string> = {};
-    if (mode !== "reset" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    if (
+      mode !== "reset" &&
+      mode !== "mfa" &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    )
       invalid.email = "Enter a valid email address.";
     if (
       ["login", "signup", "reset"].includes(mode) &&
@@ -58,6 +105,10 @@ export function AuthPanel({
       invalid.password = "Use at least 8 characters.";
     if (mode === "verify" && !initialTokenHash && !/^\d{6}$/.test(code))
       invalid.code = "Enter the six-digit code from your email.";
+    if (mode === "mfa" && !/^\d{6}$/.test(code))
+      invalid.code = "Enter the six-digit code from your authenticator.";
+    if (mode === "mfa" && !mfaFactorId)
+      invalid.factorId = "No verified authenticator is available.";
     if (mode === "signup" && !accepted)
       invalid.accepted =
         "Accept the Terms and acknowledge the Privacy Policy to continue.";
@@ -70,12 +121,14 @@ export function AuthPanel({
       )?.focus();
       return;
     }
-    await run(mode, {
+    await run(mode === "mfa" ? "mfa" : mode, {
       email,
       token_hash: initialTokenHash,
       password: fields.get("password"),
       code,
       accepted,
+      factorId: mode === "mfa" ? mfaFactorId : undefined,
+      next: mode === "mfa" || mode === "login" ? initialNext : undefined,
     });
   }
   async function run(action: string, payload: Record<string, unknown>) {
@@ -128,14 +181,17 @@ export function AuthPanel({
         <p>
           {mode === "signup"
             ? "Your ideas, with a place to begin. We’ll verify your email before creating your workspace."
-            : mode === "verify"
-              ? "Enter the six-digit code we emailed you to finish creating your account."
-              : mode === "forgot"
-                ? "We’ll send a secure reset link to your email."
-                : "Continue to your Runly workspace."}
+            : mode === "mfa"
+              ? "Enter the six-digit code from your authenticator app. If you changed devices, restore it using the setup key you saved when you turned on two-step verification."
+              : mode === "verify"
+                ? "Enter the six-digit code we emailed you to finish creating your account."
+                : mode === "forgot"
+                  ? "We’ll send a secure reset link to your email."
+                  : "Continue to your Runly workspace."}
         </p>
         <form onSubmit={submit} noValidate aria-busy={pending}>
           {mode !== "reset" &&
+            mode !== "mfa" &&
             (mode === "verify" ? (
               <div className="auth-email-display">
                 <span>Email</span>
@@ -165,14 +221,35 @@ export function AuthPanel({
                 )}
               </label>
             ))}
-          {mode === "verify" && (
+          {mode === "mfa" && mfaFactors.length > 1 && (
             <label>
-              Six-digit code
+              Authenticator
+              <select
+                name="factorId"
+                value={mfaFactorId}
+                onChange={(event) => setMfaFactorId(event.target.value)}
+                disabled={pending || loadingMfaFactors}
+              >
+                {mfaFactors.map((factor) => (
+                  <option key={factor.id} value={factor.id}>
+                    {factor.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {(mode === "verify" || mode === "mfa") && (
+            <label>
+              {mode === "mfa" ? "Authenticator code" : "Six-digit code"}
               <input type="hidden" name="code" value={verificationCode} />
               <div
                 className="auth-code-slots"
                 role="group"
-                aria-label="Six-digit verification code"
+                aria-label={
+                  mode === "mfa"
+                    ? "Six-digit authenticator code"
+                    : "Six-digit verification code"
+                }
               >
                 {Array.from({ length: 6 }, (_, index) => (
                   <input
@@ -188,12 +265,18 @@ export function AuthPanel({
                     disabled={pending}
                     aria-label={`Digit ${index + 1}`}
                     onChange={(event) => {
-                      const digit = event.target.value
+                      const digits = event.target.value
                         .replace(/\D/g, "")
-                        .slice(-1);
-                      if (!digit) return;
+                        .slice(0, 6);
+                      if (!digits) return;
+                      if (digits.length > 1) {
+                        setVerificationCode(digits);
+                        setErrors((old) => ({ ...old, code: "" }));
+                        codeInputs.current[Math.min(digits.length, 5)]?.focus();
+                        return;
+                      }
                       const next =
-                        `${verificationCode.slice(0, index)}${digit}${verificationCode.slice(index + 1)}`.slice(
+                        `${verificationCode.slice(0, index)}${digits}${verificationCode.slice(index + 1)}`.slice(
                           0,
                           6,
                         );
@@ -314,6 +397,7 @@ export function AuthPanel({
                   verify: "Verify email",
                   forgot: "Send reset link",
                   reset: "Update password",
+                  mfa: "Verify and continue",
                 }[mode]
               }
             </span>

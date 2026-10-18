@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-14",
+  "scanner": "Version: 0.76.0",
+  "platform": "linux/amd64",
+  "containerScanThreshold": ["HIGH", "CRITICAL"],
+  "containerScanMethod": "Trivy scans of exported image archives; no Docker socket or credentials mounted into scanner",
+  "productionPackageAudit": {
+    "before": {
+      "high": 3,
+      "moderate": 4,
+      "low": 1
+    },
+    "after": {
+      "high": 0,
+      "moderate": 0,
+      "low": 0,
+      "critical": 0
+    }
+  },
+  "images": [
+    {
+      "image": "runly-web:review",
+      "imageId": "sha256:bc3a52024a4b406e9ce9bb0e5627069560fa2560e1a3351005214d0d0c3d7895",
+      "os": {
+        "Family": "alpine",
+        "Name": "3.24.2"
+      },
+      "highCriticalFindings": 0,
+      "uniqueCves": [],
+      "findings": [],
+      "scannedImageId": "sha256:496a9236d88029e02934b8d89141ba8308a95c362d57f27d916ca89ca5a73213"
+    },
+    {
+      "image": "runly-worker:review",
+      "imageId": "sha256:29e8df0918a05cfed676451ead979cb0b4f44d1976707f101ac4dd2e258bf8b4",
+      "os": {
+        "Family": "alpine",
+        "Name": "3.24.2"
+      },
+      "highCriticalFindings": 0,
+      "uniqueCves": [],
+      "findings": [],
+      "scannedImageId": "sha256:e0674db69c178e854fc3bb9ca753a6a294c01ca7c90e30ddd897e19e0ada036a"
+    },
+    {
+      "image": "runly-proxy:review",
+      "imageId": "sha256:6c4d6d87e80be931b886cbdca64615b42e074a075ee8b51643a71ee01720db36",
+      "os": {
+        "Family": "alpine",
+        "Name": "3.24.2"
+      },
+      "highCriticalFindings": 0,
+      "uniqueCves": [],
+      "findings": [],
+      "scannedImageId": "sha256:449a9b0891e46752df483ffe1b32fe93a383190f8a18976cadcc7af68a61ffab"
+    }
+  ],
+  "limits": [
+    "Container reports filter out lower severity issues.",
+    "Bundled worker JS dependencies are additionally covered by the pnpm production lockfile audit.",
+    "This scan does not replace live integration acceptance or penetration testing."
+  ]
+}

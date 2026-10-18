@@ -64,7 +64,9 @@ test(
     const url = `ws://127.0.0.1:${port}`;
     const child = spawn(
       process.execPath,
-      ["--import", "tsx", "runtime/gateway.ts"],
+      process.env.RUNLY_TEST_GATEWAY_ENTRYPOINT
+        ? [process.env.RUNLY_TEST_GATEWAY_ENTRYPOINT]
+        : ["--import", "tsx", "runtime/gateway.ts"],
       {
         stdio: ["ignore", "pipe", "pipe"],
         env: {
@@ -390,6 +392,11 @@ test(
       await until(
         () => badBridge.ws.readyState === WebSocket.CLOSED,
         "sandbox token rejection",
+      );
+      const oversized = await connect("browser", { ticket: "x".repeat(5000) });
+      await until(
+        () => oversized.ws.readyState === WebSocket.CLOSED,
+        "oversized authentication frame rejection",
       );
     } finally {
       for (const ws of connected) ws.terminate();

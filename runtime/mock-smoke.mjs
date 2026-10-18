@@ -48,7 +48,11 @@ if (runtime.state !== "ready")
   await api(`${base}/runtime`, { action: "start", requestId: randomUUID() });
 await until(async () => {
   runtime = await api(`${base}/runtime`);
-  if (runtime.state === "error") throw new Error(runtime.error);
+  if (
+    runtime.state === "error" &&
+    !runtime.jobs.some((job) => job.kind === "start")
+  )
+    throw new Error(runtime.error);
   return runtime.state === "ready";
 }, "workspace ready");
 console.log(

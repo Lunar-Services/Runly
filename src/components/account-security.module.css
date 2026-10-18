@@ -1,0 +1,177 @@
+.sectionIcon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line, #e4e5e1);
+  border-radius: 10px;
+  color: inherit;
+}
+
+.methodBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  color: var(--muted, #747870);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.passwordRow {
+  align-items: flex-start;
+}
+
+.passwordForm {
+  width: min(100%, 340px);
+  display: grid;
+  gap: 8px;
+}
+
+.passwordControl {
+  position: relative;
+}
+
+.passwordControl input {
+  width: 100%;
+  padding-right: 44px;
+}
+
+.revealButton {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.revealButton:hover {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.enrollmentPanel {
+  display: grid;
+  gap: 20px;
+  padding: 20px;
+  border: 1px solid var(--line, #e4e5e1);
+  border-radius: 14px;
+}
+
+.enrollmentPanel h3 {
+  margin: 0 0 5px;
+  font-size: 16px;
+}
+
+.enrollmentPanel p {
+  margin: 0;
+  color: var(--muted, #747870);
+  line-height: 1.5;
+}
+
+.qrAndSecret {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.qrCode {
+  width: 176px;
+  height: 176px;
+  padding: 8px;
+  border: 1px solid var(--line, #e4e5e1);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.secretBlock {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.secretBlock code {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.secretBlock small {
+  color: var(--muted, #747870);
+  line-height: 1.45;
+}
+
+.backupAcknowledgment {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.backupAcknowledgment input {
+  margin: 2px 0 0;
+  accent-color: currentColor;
+}
+
+.verifyForm,
+.inlineVerify {
+  width: min(100%, 360px);
+  display: grid;
+  gap: 9px;
+}
+
+.verifyForm input,
+.inlineVerify input {
+  max-width: 220px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.16em;
+}
+
+.inlineActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.unavailable {
+  flex: 0 0 auto;
+  color: var(--muted, #747870);
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .passwordRow {
+    display: grid;
+  }
+
+  .passwordForm {
+    width: 100%;
+  }
+
+  .qrAndSecret {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .qrCode {
+    width: 160px;
+    height: 160px;
+  }
+
+  .inlineActions {
+    justify-content: flex-start;
+  }
+}
