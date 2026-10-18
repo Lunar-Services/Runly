@@ -16,14 +16,14 @@
   box-shadow: 0 18px 42px rgb(23 25 22 / 16%);
   color: #171916;
   transition:
-    opacity 1000ms ease,
-    transform 1200ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 1500ms ease,
+    transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .section[data-reveal="waiting"] .frame {
   opacity: 0;
   visibility: hidden;
   transition: none;
-  transform: translateY(56px) scale(0.98);
+  transform: translateY(-48px) scale(0.99);
 }
 .section[data-reveal="visible"] .frame {
   opacity: 1;

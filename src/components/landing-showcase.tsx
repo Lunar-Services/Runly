@@ -32,7 +32,7 @@ export function LandingShowcase({
             element.dataset.reveal = "waiting";
         }
       },
-      { threshold: 0, rootMargin: "0px 0px 120px 0px" },
+      { threshold: 0, rootMargin: "0px 0px 240px 0px" },
     );
     function reveal() {
       element!.dataset.reveal = "visible";

@@ -13,6 +13,7 @@ export type CustomerAccount = {
   avatarUrl: string;
   fullName?: string;
   githubLinked?: boolean;
+  role?: "user" | "admin";
 };
 const destinations = [
   ["/create", "Create"],
@@ -179,6 +180,11 @@ export function CustomerHeader({
                   <Link href="/settings" onClick={() => setMenu(false)}>
                     Account
                   </Link>
+                  {account.role === "admin" && (
+                    <Link href="/admin" onClick={() => setMenu(false)}>
+                      Admin
+                    </Link>
+                  )}
                   <button
                     type="button"
                     onClick={logout}

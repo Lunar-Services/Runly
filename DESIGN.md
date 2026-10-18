@@ -43,6 +43,37 @@ components:
 
 # Runly Design System
 
+## Admin dashboard
+
+The admin dashboard follows Figma node `53:942`: a dark operational surface,
+224px sidebar, Manrope type, compact tables, blue actions, and green/amber status
+labels. Its scoped `.admin-surface` tokens in `src/app/globals.css` apply in either
+account theme. The responsive layout uses HTML elements and scoped CSS in
+`admin-dashboard.module.css`. Panels, fields, pills, dividers, avatar circles,
+and chart bars use CSS; the chart is driven by numeric records.
+`public/figma/admin/` contains only icons and the Runly logo. The seven dashboard tabs
+use explicitly illustrative data; the existing protected billing catalog,
+provider configuration, and legal tools remain separate live/setup tools.
+Admin routes require a verified server session, completed MFA when configured,
+and an `account_roles` administrator record. The profile menu uses the same
+database role and fails closed when a role cannot be established.
+
+Swiftlet and Nests extend the same compact admin shell. Swiftlet configures the
+Perch-to-orchestrator endpoint, Egg placement, and lifecycle defaults; Nests
+manages daemon endpoints and capacity. These two tabs use production-facing
+labels, with mock infrastructure enabled only when `NODE_ENV=development`.
+Development starts with five Nests across four countries, including Online,
+Draining, and Offline states. The fleet table shows active Eggs against capacity
+and compact CPU/RAM utilization meters; unavailable telemetry shows a dash.
+Country flags reveal their names on hover or keyboard focus, and the Nest form
+uses a searchable country selector with locally bundled SVG flags. Existing
+development records retain their settings when upgraded. Mock edits persist in a separate development-only
+browser store. Production does not load mock records or browser configurations,
+and service mutations remain unavailable until backend integration is added.
+Credentials cannot be entered and no infrastructure requests are sent. Forms
+use flat sections and existing admin tokens; Nest dialogs keep their action row
+visible while fields scroll.
+
 ## Overview
 
 ### Creative North Star

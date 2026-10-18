@@ -26,6 +26,9 @@ importers:
       "@xterm/xterm":
         specifier: ^6.0.0
         version: 6.0.0
+      flag-icons:
+        specifier: ^7.6.0
+        version: 7.6.0
       lucide-react:
         specifier: ^1.47.0
         version: 1.47.0(react@19.2.8)
@@ -2374,6 +2377,12 @@ packages:
         integrity: sha512-78/PXT1wlLLDgTzDs7sjq9hzz0vXD+zn+7wypEe4fXQxCmdmqfGsEPQxmiCSQI3ajFV91bVSsvNtrJRiW6nGng==,
       }
     engines: { node: ">=10" }
+
+  flag-icons@7.6.0:
+    resolution:
+      {
+        integrity: sha512-hir/PsXwr0EESyizKrXJzmkzpLIMf+1vlNKLqAfvdh+bsU94a7LYWTiubkHKqptGoCPzOUGcm6c4PfC9/BaGSQ==,
+      }
 
   flat-cache@4.0.1:
     resolution:
@@ -5518,6 +5527,8 @@ snapshots:
     dependencies:
       locate-path: 6.0.0
       path-exists: 4.0.0
+
+  flag-icons@7.6.0: {}
 
   flat-cache@4.0.1:
     dependencies:

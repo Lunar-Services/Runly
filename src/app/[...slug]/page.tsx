@@ -20,6 +20,7 @@ import { SupportPage } from "@/components/support-page";
 import { safeAppPath } from "@/lib/api";
 import type { Metadata } from "next";
 import { customerAccount } from "@/lib/customer-account";
+import { AdminDashboard, type AdminTab } from "@/components/admin-dashboard";
 
 export async function generateMetadata({
   params,
@@ -44,12 +45,26 @@ export async function generateMetadata({
     "settings/billing/payment": "Payment method",
     "settings/billing/details": "Billing details",
     "verify-mfa": "Verify your sign-in",
+    admin: "Admin overview",
+    "admin/users": "Admin users",
+    "admin/projects": "Admin projects",
+    "admin/usage": "Admin AI usage",
+    "admin/billing": "Admin billing",
+    "admin/activity": "Admin activity log",
+    "admin/settings": "Admin settings",
+    "admin/swiftlet": "Admin Swiftlet",
+    "admin/nests": "Admin Nests",
+    "admin/billing/catalog": "Admin billing catalog",
+    "admin/ai-providers": "Admin AI providers",
+    "admin/legal": "Admin legal documents",
   };
   const title = names[slug.join("/")];
   return title
     ? {
         title,
-        ...(slug[0] === "settings" || slug[0] === "verify-mfa"
+        ...(slug[0] === "settings" ||
+        slug[0] === "verify-mfa" ||
+        slug[0] === "admin"
           ? { robots: { index: false, follow: false } }
           : {}),
       }
@@ -82,8 +97,15 @@ const supported = new Set([
   "settings/billing/payment",
   "settings/billing/details",
   "admin",
+  "admin/users",
+  "admin/projects",
   "admin/billing",
+  "admin/billing/catalog",
   "admin/usage",
+  "admin/activity",
+  "admin/settings",
+  "admin/swiftlet",
+  "admin/nests",
   "admin/ai-providers",
   "admin/legal",
 ]);
@@ -217,6 +239,25 @@ export default async function CatchAllPage({
     }
   }
   if (route === "dashboard/projects/new") return <ProjectTemplatesPage />;
+  if (
+    slug[0] === "admin" &&
+    !["admin/billing/catalog", "admin/ai-providers", "admin/legal"].includes(
+      route,
+    )
+  ) {
+    const account = await customerAccount();
+    if (!account || account.role !== "admin") notFound();
+    const query = await searchParams;
+    return (
+      <AdminDashboard
+        key={route}
+        tab={(slug[1] || "overview") as AdminTab}
+        account={account}
+        initialQuery={typeof query.q === "string" ? query.q.slice(0, 200) : ""}
+        initialStatus={typeof query.status === "string" ? query.status : ""}
+      />
+    );
+  }
   if (slug[0] === "dashboard") return <ProjectsDashboard />;
   if (slug.length === 1 && slug[0] === "settings") return <AccountSettings />;
   if (route === "settings/security") return <AccountSecurity />;

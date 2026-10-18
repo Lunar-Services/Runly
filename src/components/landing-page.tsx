@@ -53,20 +53,18 @@ export function LandingPage({
   const fileInput = useRef<HTMLInputElement>(null);
   const submissionLock = useRef(false);
   const heroContent = useRef<HTMLDivElement>(null);
-  const [heroExited, setHeroExited] = useState(false);
+  const [heroExiting, setHeroExiting] = useState(false);
   useEffect(() => {
     const content = heroContent.current;
     if (!content) return;
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let frame = 0;
-    let exitTimer = 0;
-    let wasExited = false;
     function update() {
       frame = 0;
       const hero = content!.parentElement;
       const threshold = Math.min(
-        160,
-        (hero?.offsetHeight || window.innerHeight) * 0.18,
+        80,
+        (hero?.offsetHeight || window.innerHeight) * 0.1,
       );
       const progress = motion.matches
         ? 0
@@ -79,14 +77,8 @@ export function LandingPage({
         : progress;
       content!.style.setProperty("--hero-exit", String(visibleProgress));
       content!.inert = visibleProgress === 1;
-      const exited = visibleProgress === 1;
-      if (exited !== wasExited) {
-        wasExited = exited;
-        window.clearTimeout(exitTimer);
-        if (exited)
-          exitTimer = window.setTimeout(() => setHeroExited(true), 450);
-        else setHeroExited(false);
-      }
+      // Start the showcase as the hero fades, so fast scrolling cannot outrun it.
+      setHeroExiting(visibleProgress === 1);
     }
     function schedule() {
       if (!frame) frame = window.requestAnimationFrame(update);
@@ -99,7 +91,6 @@ export function LandingPage({
     content.addEventListener("focusout", schedule);
     return () => {
       window.cancelAnimationFrame(frame);
-      window.clearTimeout(exitTimer);
       window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
       motion.removeEventListener("change", schedule);
@@ -348,7 +339,7 @@ export function LandingPage({
         </section>
         {!createOnly && (
           <>
-            <LandingShowcase revealReady={heroExited} />
+            <LandingShowcase revealReady={heroExiting} />
 
             <section className="features-section" id="explore">
               <LandingMotion className="features-container" variant="features">

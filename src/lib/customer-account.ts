@@ -1,8 +1,9 @@
 import "server-only";
 import { adminClient } from "./api";
 import { createServerSupabaseClient } from "./supabase/server";
+import type { CustomerAccount } from "@/components/customer-header";
 
-export async function customerAccount() {
+export async function customerAccount(): Promise<CustomerAccount | null> {
   const db = await createServerSupabaseClient();
   if (!db) return null;
   const {
@@ -13,6 +14,11 @@ export async function customerAccount() {
     .from("profiles")
     .select("display_name,avatar_url,avatar_path")
     .eq("id", user.id)
+    .maybeSingle();
+  const { data: role } = await db
+    .from("account_roles")
+    .select("role")
+    .eq("user_id", user.id)
     .maybeSingle();
   let avatarUrl = profile?.avatar_url || "";
   if (profile?.avatar_path) {
@@ -29,5 +35,6 @@ export async function customerAccount() {
     email: user.email,
     displayName: profile?.display_name || "",
     avatarUrl,
+    role: role?.role === "admin" ? "admin" : "user",
   };
 }

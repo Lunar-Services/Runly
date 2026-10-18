@@ -42,6 +42,7 @@
     "@supabase/supabase-js": "^2.117.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
+    "flag-icons": "^7.6.0",
     "lucide-react": "^1.47.0",
     "next": "16.3.8",
     "openai": "^7.23.0",

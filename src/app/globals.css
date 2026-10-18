@@ -5958,6 +5958,18 @@ html[data-theme="dark"]
     font-size: 48px;
   }
 }
+/* Figma admin surfaces keep their operational dark palette in either account theme. */
+.admin-surface {
+  --admin-page: #101216;
+  --admin-sidebar: #171b21;
+  --admin-card: #1f242b;
+  --admin-raised: #272d36;
+  --admin-selected: #2b3543;
+  --admin-text: #f5f6f8;
+  --admin-muted: #aeb8c8;
+  --admin-border: #303844;
+  --admin-accent: #afcff8;
+}
 /* Accessibility override: motion preferences must win over component animation rules. */
 @media (prefers-reduced-motion: reduce) {
   * {
