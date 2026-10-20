@@ -6,8 +6,10 @@ import {
   sameOrigin,
   session,
   rateLimit,
+  adminClient,
 } from "@/lib/api";
 import { enqueueRuntime } from "@/lib/runtime/server";
+import { workspaceFailure } from "@/lib/workspace-server";
 
 export async function POST(
   request: Request,
@@ -23,6 +25,7 @@ export async function POST(
         message: z.string().trim().min(1).max(12_000),
         chatId: z.string().uuid().optional(),
         requestId: z.string().uuid(),
+        generate: z.boolean().default(false),
       })
       .safeParse(await body(request, 16_384));
     if (!input.success) throw new ApiError(400, "Write a message first.");
@@ -57,24 +60,48 @@ export async function POST(
       body: input.data.message,
       created_at: new Date().toISOString(),
     };
-    await enqueueRuntime(
-      projectId,
-      user.id,
-      "agent",
-      message.id,
-      conversation.id,
-      input.data.message,
-    );
+    if (input.data.generate) {
+      await enqueueRuntime(
+        projectId,
+        user.id,
+        "agent",
+        message.id,
+        conversation.id,
+        input.data.message,
+      );
+    } else {
+      const { error } = await adminClient().rpc("persist_workspace_message", {
+        p_project: projectId,
+        p_actor: user.id,
+        p_id: message.id,
+        p_chat: conversation.id,
+        p_input: input.data.message,
+      });
+      if (error) workspaceFailure(error.message);
+    }
+    const { data: stored, error: storedError } = await db
+      .from("messages")
+      .select("id,role,body,created_at")
+      .eq("id", message.id)
+      .eq("conversation_id", conversation.id)
+      .single();
+    if (storedError || !stored)
+      throw new ApiError(
+        502,
+        "Your message was saved but couldn't be reloaded. Refresh the conversation.",
+      );
     return Response.json(
       {
-        message: {
-          id: message.id,
-          role: message.role,
-          body: message.body,
-          created_at: message.created_at,
-        },
+        message: stored,
         conversationId: conversation.id,
-        jobId: message.id,
+        jobId: input.data.generate ? message.id : null,
+        generation: input.data.generate
+          ? { state: "queued" }
+          : {
+              state: "unavailable",
+              message:
+                "Your message is saved. Code generation needs the project runtime, which has not been configured.",
+            },
       },
       { status: 201 },
     );

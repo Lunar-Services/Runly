@@ -1,5 +1,14 @@
 import { z } from "zod";
-import { ApiError, failure, session } from "@/lib/api";
+import {
+  adminClient,
+  ApiError,
+  body,
+  failure,
+  rateLimit,
+  sameOrigin,
+  session,
+} from "@/lib/api";
+import { workspaceAccess, workspaceFailure } from "@/lib/workspace-server";
 
 export async function GET(
   request: Request,
@@ -13,7 +22,7 @@ export async function GET(
     const { data: project, error } = await db
       .from("projects")
       .select(
-        "id,name,status,github_repo_id,github_branch,created_at,updated_at",
+        "id,name,status,project_type,github_repo_id,github_branch,created_at,updated_at",
       )
       .eq("id", projectId)
       .maybeSingle();
@@ -84,6 +93,71 @@ export async function GET(
       },
       { headers: { "Cache-Control": "no-store" } },
     );
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ projectId: string }> },
+) {
+  try {
+    sameOrigin(request);
+    const { projectId } = await params;
+    const { user } = await workspaceAccess(projectId, true);
+    await rateLimit(request, "project-mutate", user.id, 20);
+    const input = z
+      .object({
+        name: z.string().trim().min(1).max(160).optional(),
+        status: z.enum(["draft", "active", "archived"]).optional(),
+        projectType: z.enum(["website", "app", "video"]).optional(),
+      })
+      .strict()
+      .refine(
+        (value) =>
+          value.name !== undefined ||
+          value.status !== undefined ||
+          value.projectType !== undefined,
+      )
+      .parse(await body(request, 2048));
+    const { data, error } = await adminClient().rpc("mutate_project", {
+      p_project: projectId,
+      p_actor: user.id,
+      p_name: input.name ?? null,
+      p_status: input.status ?? null,
+      p_type: input.projectType ?? null,
+    });
+    if (error) workspaceFailure(error.message);
+    return Response.json({ project: data });
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ projectId: string }> },
+) {
+  try {
+    sameOrigin(request);
+    const { projectId } = await params;
+    const { user } = await workspaceAccess(projectId, true);
+    await rateLimit(request, "project-mutate", user.id, 20);
+    if (new URL(request.url).searchParams.get("permanent") === "true")
+      throw new ApiError(
+        400,
+        "Archive this project to preserve its billing and usage history.",
+      );
+    const { data, error } = await adminClient().rpc("mutate_project", {
+      p_project: projectId,
+      p_actor: user.id,
+      p_name: null,
+      p_status: "archived",
+      p_type: null,
+    });
+    if (error) workspaceFailure(error.message);
+    return Response.json({ archived: true, project: data });
   } catch (error) {
     return failure(error);
   }

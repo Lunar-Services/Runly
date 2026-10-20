@@ -1,0 +1,344 @@
+@font-face {
+  font-family: "Manrope";
+  src: url("/fonts/manrope.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("/fonts/instrument-serif.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+.page {
+  --account-page: #101317;
+  --landing-nav-ink: #f5f6f8;
+  --landing-mark-filter: brightness(0) invert(1);
+  background: #101317;
+  color: #f5f6f8;
+  min-height: 100vh;
+  font-family: Manrope, Arial, sans-serif;
+}
+.page.page > header {
+  border-bottom: 1px solid #303842;
+}
+.page.page nav[aria-label="Main navigation"] {
+  background: transparent;
+  color: #aeb8c8;
+}
+.page.page > header a[href="/signup"] {
+  background: #afcff8;
+  color: #151b26;
+}
+.page.page > footer {
+  background: #101317;
+  border-color: #303842;
+  color: #aeb8c8;
+}
+.page.page > footer :global(.brand) {
+  color: #f5f6f8;
+}
+.page.page > footer :global(.brand-mark img) {
+  filter: brightness(0) invert(1);
+}
+.main {
+  max-width: 1248px;
+  margin: 0 auto;
+  padding: 56px 0 30px;
+}
+.heading {
+  text-align: center;
+  margin: 0 0 80px;
+}
+.heading h1 {
+  font-size: 52px;
+  letter-spacing: -1.6px;
+  line-height: 1.28;
+  font-weight: 700;
+  margin: 0;
+}
+.heading em {
+  display: block;
+  font-family: "Instrument Serif", Georgia, serif;
+  color: #afcff8;
+  font-size: 58px;
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: -1px;
+}
+.heading p {
+  font-size: 16px;
+  color: #aeb8c8;
+  margin: 24px 0 36px;
+}
+.cadence {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 5px;
+  background: #1e232b;
+  gap: 4px;
+}
+.cadence button {
+  border: 0;
+  background: transparent;
+  color: #aeb8c8;
+  border-radius: 999px;
+  width: 118px;
+  min-height: 38px;
+  font-size: 13px;
+}
+.cadence button[aria-pressed="true"] {
+  background: #f5f6f8;
+  color: #151b26;
+  font-weight: 700;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+.card {
+  background: #1b2027;
+  border: 1px solid #303842;
+  border-radius: 18px;
+  padding: 28px;
+  min-height: 495px;
+}
+.featured {
+  background: #202b37;
+  border-color: #53677e;
+}
+.cardHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cardHeading h2 {
+  font-size: 23px;
+  line-height: 1.4;
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+.cardHeading span {
+  font-size: 11px;
+  color: #afcff8;
+  background: #344b64;
+  padding: 5px 14px;
+  border-radius: 999px;
+}
+.description {
+  color: #aeb8c8;
+  font-size: 14px;
+  margin: 20px 0 24px;
+}
+.price {
+  display: flex;
+  align-items: baseline;
+  gap: 22px;
+  font-size: 55px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -2px;
+  margin: 0 0 28px;
+}
+.price small {
+  color: #aeb8c8;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.choose {
+  border: 0;
+  border-radius: 999px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-decoration: none;
+  background: #333c47;
+  color: #f5f6f8;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 12px 20px;
+}
+.featured .choose {
+  background: #afcff8;
+  color: #151b26;
+}
+.choose:hover {
+  filter: brightness(1.1);
+}
+.card ul {
+  list-style: none;
+  padding: 22px 0 0;
+  margin: 32px 0 0;
+  border-top: 1px solid #303842;
+  display: grid;
+  gap: 18px;
+}
+.card li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.card li img {
+  flex: none;
+}
+.annual {
+  color: #aeb8c8;
+  font-size: 12px;
+  margin: -20px 0 20px;
+}
+.faq {
+  margin: 42px 0 0;
+}
+.faq h2 {
+  font-size: 25px;
+  letter-spacing: -0.5px;
+  margin: 0 0 12px;
+}
+.faq > p {
+  font-size: 14px;
+  color: #aeb8c8;
+  margin: 0 0 34px;
+}
+.faq details {
+  border-top: 1px solid #303842;
+}
+.faq summary {
+  list-style: none;
+  padding: 26px 0;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+}
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+.faq summary:after {
+  content: "+";
+  color: #aeb8c8;
+  font-size: 20px;
+}
+.faq details[open] summary:after {
+  content: "−";
+}
+.faq details p {
+  max-width: 680px;
+  color: #aeb8c8;
+  line-height: 1.7;
+  font-size: 14px;
+  margin: 0 0 24px;
+}
+.note {
+  border-top: 1px solid #303842;
+  margin-top: 10px;
+  padding-top: 28px;
+  color: #aeb8c8;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.note a {
+  color: inherit;
+}
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #0009;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.dialog {
+  color: #f5f6f8;
+  margin: auto;
+  background: #1b2027;
+  border: 1px solid #46515f;
+  border-radius: 18px;
+  padding: 32px;
+  max-width: 440px;
+  box-shadow: 0 20px 80px #0006;
+}
+.dialog::backdrop {
+  background: #0009;
+}
+.dialog h2 {
+  font-size: 25px;
+  margin: 0 0 16px;
+}
+.dialog p {
+  color: #aeb8c8;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+.dialog .choose {
+  background: #afcff8;
+  color: #151b26;
+}
+.dismiss {
+  display: block;
+  border: 0;
+  background: transparent;
+  color: #aeb8c8;
+  margin: 18px auto 0;
+  font-size: 13px;
+}
+.page button:focus-visible,
+.page a:focus-visible,
+.page summary:focus-visible {
+  outline: 2px solid #afcff8;
+  outline-offset: 4px;
+}
+@media (max-width: 1350px) {
+  .main {
+    margin: 0 6.67%;
+  }
+}
+@media (max-width: 800px) {
+  .main {
+    margin: 0;
+    padding: 42px 24px 28px;
+  }
+  .heading {
+    margin-bottom: 40px;
+  }
+  .heading h1 {
+    font-size: 34px;
+    letter-spacing: -1px;
+  }
+  .heading em {
+    font-size: 40px;
+  }
+  .heading p {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+    max-width: 440px;
+    margin: auto;
+    gap: 20px;
+  }
+  .card {
+    min-height: 0;
+  }
+  .faq h2 {
+    font-size: 23px;
+    line-height: 1.4;
+  }
+  .note {
+    flex-direction: column;
+  }
+}

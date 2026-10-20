@@ -266,52 +266,15 @@ function PlanAllowance({ plan }: { plan: Plan }) {
 
 export function PricingPlans() {
   const plans = useRemote<{ plans: Plan[] }>("/api/billing/plans");
-  const [pending, setPending] = useState<string | null>(null);
-  const [message, setMessage] = useState("");
-  const lock = useRef(false);
-  const router = useRouter();
-  async function checkout(plan: string) {
-    if (lock.current) return;
-    lock.current = true;
-    setPending(plan);
-    setMessage("");
-    try {
-      await redirectToBilling("/api/billing/checkout", { plan });
-    } catch (error) {
-      if (error instanceof BillingRequestError && error.status === 401)
-        router.push(
-          `/login?next=${encodeURIComponent("/settings/billing/upgrade")}`,
-        );
-      else if (
-        error instanceof BillingRequestError &&
-        /^You already have/.test(error.message)
-      )
-        router.push("/settings/billing/upgrade");
-      else
-        setMessage(
-          error instanceof Error
-            ? error.message
-            : "Couldn't open checkout. Try again.",
-        );
-    } finally {
-      lock.current = false;
-      setPending(null);
-    }
-  }
   return (
     <section
       className="account-section"
       aria-label="Available plans"
-      aria-busy={plans.loading || pending !== null}
+      aria-busy={plans.loading}
     >
       {plans.loading && <p role="status">Loading available plans…</p>}
       {plans.error && (
         <ErrorNotice message={plans.error} retry={plans.reload} />
-      )}
-      {message && (
-        <p className="account-notice" role="alert">
-          {message}
-        </p>
       )}
       {plans.data &&
         (plans.data.plans.length ? (
@@ -321,16 +284,18 @@ export function PricingPlans() {
                 <h2>{plan.name}</h2>
                 <PlanPrice plan={plan} />
                 <PlanAllowance plan={plan} />
-                <button
-                  className="account-button"
-                  type="button"
-                  disabled={pending !== null || plan.price_cents === null}
-                  onClick={() => checkout(plan.id)}
-                >
-                  {pending === plan.id
-                    ? "Opening checkout…"
-                    : `Choose ${plan.name}`}
-                </button>
+                {plan.price_cents === null ? (
+                  <button className="account-button" type="button" disabled>
+                    Price unavailable
+                  </button>
+                ) : (
+                  <Link
+                    className="account-button"
+                    href={`/settings/billing/checkout?plan=${encodeURIComponent(plan.id)}`}
+                  >
+                    Choose {plan.name}
+                  </Link>
+                )}
               </article>
             ))}
           </div>
@@ -778,6 +743,7 @@ export function UpgradePlans() {
   const [pending, setPending] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const lock = useRef(false);
+  const router = useRouter();
   const current = billing.data?.subscription?.active
     ? billing.data.subscription.plan
     : null;
@@ -840,15 +806,14 @@ export function UpgradePlans() {
       }));
     }
   }
-  async function choose(plan: string) {
+  function choose(plan: string) {
     if (lock.current) return;
     lock.current = true;
     setPending(plan);
     setMessage("");
     try {
-      await redirectToBilling(
-        current ? "/api/billing/portal" : "/api/billing/checkout",
-        { plan },
+      router.push(
+        `/settings/billing/checkout?plan=${encodeURIComponent(plan)}${current ? "&change=true" : ""}`,
       );
     } catch (error) {
       setMessage(

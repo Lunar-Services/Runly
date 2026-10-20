@@ -17,6 +17,49 @@ const credentials = z.object({
   accepted: z.boolean().optional(),
   next: z.string().max(2048).optional(),
 });
+let oauthSettings: {
+  url: string;
+  expires: number;
+  providers: Record<string, boolean>;
+} | null = null;
+async function enabledOAuthProvider(provider: "google" | "github") {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key)
+    throw new ApiError(503, "Sign-in is temporarily unavailable.");
+  if (
+    !oauthSettings ||
+    oauthSettings.url !== url ||
+    oauthSettings.expires <= Date.now()
+  ) {
+    try {
+      const response = await fetch(new URL("/auth/v1/settings", url), {
+        headers: { apikey: key },
+        cache: "no-store",
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) throw new Error("Auth settings unavailable");
+      const settings = z
+        .object({ external: z.record(z.string(), z.boolean()) })
+        .parse(await response.json());
+      oauthSettings = {
+        url,
+        expires: Date.now() + 5 * 60 * 1000,
+        providers: settings.external,
+      };
+    } catch {
+      throw new ApiError(
+        503,
+        "We couldn't check sign-in availability. Please try email sign-in.",
+      );
+    }
+  }
+  if (!oauthSettings.providers[provider])
+    throw new ApiError(
+      503,
+      `${provider === "google" ? "Google" : "GitHub"} sign-in has not been configured. Please use email sign-in.`,
+    );
+}
 export async function POST(
   request: Request,
   context: { params: Promise<{ action: string }> },
@@ -35,6 +78,8 @@ export async function POST(
         "forgot",
         "reset",
         "github",
+        "google",
+        "email",
       ].includes(action)
     )
       throw new ApiError(404, "Unknown action.");
@@ -61,21 +106,31 @@ export async function POST(
         throw new ApiError(502, "Couldn't sign out. Please try again.");
       return Response.json({ message: "Signed out." });
     }
-    if (action === "github") {
-      const input = await body(request);
+    if (action === "github" || action === "google") {
+      const input = z
+        .object({
+          signup: z.boolean().optional(),
+          accepted: z.boolean().optional(),
+          next: z.string().max(2048).optional(),
+          fullName: z.string().trim().max(120).optional(),
+        })
+        .parse(await body(request, 4096));
       if (input.signup && input.accepted !== true)
         throw new ApiError(
           400,
           "Please accept the Terms and acknowledge the Privacy Policy.",
         );
+      await enabledOAuthProvider(action);
       const { data, error } = await db.auth.signInWithOAuth({
-        provider: "github",
-        options: { redirectTo: `${origin}/auth/callback` },
+        provider: action,
+        options: {
+          redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(safeAppPath(input.next))}`,
+        },
       });
       if (error || !data.url)
         throw new ApiError(
           503,
-          "GitHub sign-in is unavailable. Please try email sign-in.",
+          `${action === "google" ? "Google" : "GitHub"} sign-in is unavailable. Please try email sign-in.`,
         );
       return Response.json({ url: data.url });
     }
@@ -132,6 +187,62 @@ export async function POST(
         input.email.trim().toLowerCase(),
         action === "forgot" || action === "resend" ? 3 : 10,
       );
+    if (action === "email") {
+      const parsed = z
+        .object({
+          email: z.email().max(254),
+          signup: z.boolean().optional(),
+          accepted: z.boolean().optional(),
+          next: z.string().max(2048).optional(),
+          fullName: z.string().trim().max(120).optional(),
+        })
+        .strict()
+        .safeParse(input);
+      if (!parsed.success)
+        throw new ApiError(400, "Enter a valid email address.");
+      if (parsed.data.signup && !parsed.data.accepted)
+        throw new ApiError(
+          400,
+          "Please accept the Terms and acknowledge the Privacy Policy.",
+        );
+      const { error } = await db.auth.signInWithOtp({
+        email: parsed.data.email,
+        options: {
+          shouldCreateUser: parsed.data.signup === true,
+          emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(safeAppPath(parsed.data.next))}`,
+          ...(parsed.data.signup
+            ? {
+                data: {
+                  legal_accepted_at: new Date().toISOString(),
+                  full_name: parsed.data.fullName || "",
+                },
+              }
+            : {}),
+        },
+      });
+      if (error?.status === 429)
+        throw new ApiError(
+          429,
+          "Please wait a minute before requesting another code.",
+        );
+      if (
+        error &&
+        error.code !== "otp_disabled" &&
+        error.code !== "user_not_found"
+      )
+        throw new ApiError(
+          503,
+          "Email sign-in is temporarily unavailable. Please try again later.",
+        );
+      return Response.json(
+        {
+          message:
+            "If this address can sign in, a verification code is on its way.",
+          redirect: `/verify-email?flow=email&next=${encodeURIComponent(safeAppPath(parsed.data.next))}`,
+        },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    }
     if (action === "verify") {
       const parsed = z
         .object({
@@ -141,6 +252,7 @@ export async function POST(
             .regex(/^\d{6}$/)
             .optional(),
           token_hash: z.string().min(20).max(512).optional(),
+          next: z.string().max(2048).optional(),
         })
         .refine((value) => value.token_hash || (value.email && value.code))
         .safeParse(input);
@@ -170,11 +282,12 @@ export async function POST(
         );
       const needsMfa =
         assurance?.nextLevel === "aal2" && assurance.currentLevel !== "aal2";
+      const next = safeAppPath(parsed.data.next);
       return Response.json({
         message: "Email verified.",
         redirect: needsMfa
-          ? `/verify-mfa?next=${encodeURIComponent("/dashboard/projects")}`
-          : "/dashboard/projects",
+          ? `/verify-mfa?next=${encodeURIComponent(next)}`
+          : next,
       });
     }
     if (action === "resend") {

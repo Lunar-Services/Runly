@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   ApiError,
+  auditAction,
   body,
   failure,
   rateLimit,
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
         400,
         "Couldn't set password. If reauthentication is required, sign in again and retry.",
       );
+    await auditAction(user.id, "account.password_updated");
     return Response.json({
       message:
         "Email password is ready. You can now sign in with either method.",

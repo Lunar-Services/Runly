@@ -8,6 +8,7 @@ import {
   sameOrigin,
   session,
 } from "@/lib/api";
+import { workspaceFailure } from "@/lib/workspace-server";
 
 export async function PATCH(
   request: Request,
@@ -35,12 +36,14 @@ export async function PATCH(
       .eq("project_id", projectId)
       .maybeSingle();
     if (!chat) throw new ApiError(404, "Chat not found.");
-    const { error } = await adminClient()
-      .from("conversations")
-      .update({ title: input.data.title })
-      .eq("id", chatId)
-      .eq("project_id", projectId);
-    if (error) throw new ApiError(502, "Couldn't rename this chat.");
+    const { error } = await adminClient().rpc("mutate_workspace_chat", {
+      p_project: projectId,
+      p_actor: user.id,
+      p_chat: chatId,
+      p_title: input.data.title,
+      p_delete: false,
+    });
+    if (error) workspaceFailure(error.message);
     return Response.json({ chat: { id: chatId, title: input.data.title } });
   } catch (error) {
     return failure(error);
@@ -68,12 +71,14 @@ export async function DELETE(
       .eq("project_id", projectId)
       .maybeSingle();
     if (!chat) throw new ApiError(404, "Chat not found.");
-    const { error } = await adminClient()
-      .from("conversations")
-      .delete()
-      .eq("id", chatId)
-      .eq("project_id", projectId);
-    if (error) throw new ApiError(502, "Couldn't delete this chat.");
+    const { error } = await adminClient().rpc("mutate_workspace_chat", {
+      p_project: projectId,
+      p_actor: user.id,
+      p_chat: chatId,
+      p_title: null,
+      p_delete: true,
+    });
+    if (error) workspaceFailure(error.message);
     return Response.json({ deleted: true });
   } catch (error) {
     return failure(error);

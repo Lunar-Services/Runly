@@ -1,11 +1,10 @@
 import { AuthPanel } from "@/components/auth-panel";
+import { AuthEntryUI } from "@/components/auth-entry-ui";
 import { ProductScreen } from "@/components/product-screen";
 import { notFound, redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import {
-  ProjectsDashboard,
-  ProjectTemplatesPage,
-} from "@/components/projects-dashboard";
+import { WorkspaceClient } from "@/components/workspace-client";
+import type { WorkspaceView } from "@/lib/workspace-ui-fixtures";
 import { AccountSettings } from "@/components/account-settings";
 import { AccountSecurity } from "@/components/account-security";
 import { AccountDeletionRequest } from "@/components/account-deletion-request";
@@ -21,6 +20,10 @@ import { safeAppPath } from "@/lib/api";
 import type { Metadata } from "next";
 import { customerAccount } from "@/lib/customer-account";
 import { AdminDashboard, type AdminTab } from "@/components/admin-dashboard";
+import { PaymentSuccess } from "@/components/payment-success";
+import { CheckoutPage } from "@/components/checkout-page";
+import { PricingUI, type Plan } from "@/components/pricing-ui";
+import { adminClient } from "@/lib/api";
 
 export async function generateMetadata({
   params,
@@ -34,6 +37,12 @@ export async function generateMetadata({
     pricing: "Plans",
     "dashboard/projects": "Your workspace",
     "dashboard/projects/new": "Create a project",
+    workspace: "Your workspace",
+    "workspace/new": "New project",
+    "workspace/website": "Offscript website",
+    "workspace/app": "Daylight app",
+    "workspace/video": "Cloud nine edit",
+    "workspace/editor": "Project editor",
     settings: "Your profile",
     "settings/security": "Security",
     "settings/security/password": "Email password",
@@ -44,6 +53,8 @@ export async function generateMetadata({
     "settings/billing/manage": "Manage subscription",
     "settings/billing/payment": "Payment method",
     "settings/billing/details": "Billing details",
+    "settings/billing/success": "Payment confirmation",
+    "settings/billing/checkout": "Review your checkout",
     "verify-mfa": "Verify your sign-in",
     admin: "Admin overview",
     "admin/users": "Admin users",
@@ -64,6 +75,7 @@ export async function generateMetadata({
         title,
         ...(slug[0] === "settings" ||
         slug[0] === "verify-mfa" ||
+        slug[0] === "workspace" ||
         slug[0] === "admin"
           ? { robots: { index: false, follow: false } }
           : {}),
@@ -96,6 +108,8 @@ const supported = new Set([
   "settings/billing/manage",
   "settings/billing/payment",
   "settings/billing/details",
+  "settings/billing/success",
+  "settings/billing/checkout",
   "admin",
   "admin/users",
   "admin/projects",
@@ -119,6 +133,23 @@ export default async function CatchAllPage({
 }) {
   const { slug } = await params;
   const route = slug.join("/");
+  // Local UI fixtures contain no account or project data. Real project routes
+  // continue through the authentication and MFA checks below.
+  if (slug[0] === "workspace") {
+    const view = slug[1] || "new";
+    if (
+      slug.length > 2 ||
+      !["new", "website", "app", "video", "editor"].includes(view)
+    )
+      notFound();
+    if (
+      view !== "new" &&
+      process.env.NODE_ENV === "development" &&
+      (await searchParams).preview === "true"
+    )
+      return <WorkspaceClient key={view} initialView={view as WorkspaceView} />;
+    redirect("/dashboard/projects/new");
+  }
   const offerPreview =
     process.env.NODE_ENV === "development" &&
     (await searchParams).offer === "preview";
@@ -145,6 +176,29 @@ export default async function CatchAllPage({
   if (route === "how-it-works") redirect("/create#how-it-works");
   if (route === "explore") redirect("/create#explore");
   if (route === "support") return <SupportPage />;
+  if (route === "pricing") {
+    let plans: Plan[] = [];
+    let planError = "";
+    try {
+      const { data, error } = await adminClient()
+        .from("subscription_plans")
+        .select(
+          "id,name,price_cents,window_3h_tokens,window_7d_tokens,project_cap",
+        )
+        .eq("active", true)
+        .not("stripe_product_id", "is", null)
+        .order("price_cents", { ascending: true });
+      if (error) throw error;
+      plans = (data || []).map((plan) => ({
+        ...plan,
+        cadence: "month",
+        currency: "usd",
+      }));
+    } catch {
+      planError = "Couldn't load published plans. Please refresh to try again.";
+    }
+    return <PricingUI initialPlans={plans} initialError={planError} />;
+  }
   if (route === "create") {
     const query = await searchParams;
     const ideas: Record<string, string> = {
@@ -165,6 +219,18 @@ export default async function CatchAllPage({
   }
   if (slug[0] === "login" || slug[0] === "signup") {
     const query = await searchParams;
+    if (query.method !== "password")
+      return (
+        <AuthEntryUI
+          key={slug[0]}
+          mode={slug[0]}
+          next={
+            typeof query.next === "string"
+              ? safeAppPath(query.next)
+              : "/workspace/new"
+          }
+        />
+      );
     return (
       <AuthPanel
         key={slug[0]}
@@ -181,6 +247,8 @@ export default async function CatchAllPage({
         initialEmail={
           typeof query.email === "string" ? query.email.slice(0, 254) : ""
         }
+        initialNext={safeAppPath(query.next)}
+        emailCode={query.flow === "email"}
         initialTokenHash={
           typeof query.token_hash === "string"
             ? query.token_hash.slice(0, 512)
@@ -208,12 +276,29 @@ export default async function CatchAllPage({
   if (
     ["dashboard", "project", "cowork", "settings", "admin"].includes(slug[0])
   ) {
+    let loginPath = "/login";
+    if (
+      ["settings/billing/success", "settings/billing/checkout"].includes(route)
+    ) {
+      const query = await searchParams;
+      const returnQuery = new URLSearchParams();
+      if (typeof query.session_id === "string")
+        returnQuery.set("session_id", query.session_id.slice(0, 256));
+      if (process.env.NODE_ENV === "development" && query.preview === "true")
+        returnQuery.set("preview", "true");
+      if (route === "settings/billing/checkout") {
+        if (typeof query.plan === "string")
+          returnQuery.set("plan", query.plan.slice(0, 64));
+        if (query.change === "true") returnQuery.set("change", "true");
+      }
+      loginPath = `/login?next=${encodeURIComponent(`/${route}${returnQuery.size ? `?${returnQuery}` : ""}`)}`;
+    }
     const db = await createServerSupabaseClient();
-    if (!db) redirect("/login");
+    if (!db) redirect(loginPath);
     const {
       data: { user },
     } = await db.auth.getUser();
-    if (!user || !user.email_confirmed_at) redirect("/login");
+    if (!user || !user.email_confirmed_at) redirect(loginPath);
     const { data: assurance, error: assuranceError } =
       await db.auth.mfa.getAuthenticatorAssuranceLevel();
     if (assuranceError) redirect("/login?error=security_check_unavailable");
@@ -238,7 +323,17 @@ export default async function CatchAllPage({
       if (error || !data) notFound();
     }
   }
-  if (route === "dashboard/projects/new") return <ProjectTemplatesPage />;
+  if (route === "dashboard/projects/new") return <WorkspaceClient />;
+  if (projectRoute) {
+    const projectQuery = await searchParams;
+    return (
+      <WorkspaceClient
+        key={slug[1]}
+        initialView={projectQuery.view === "editor" ? "editor" : "website"}
+        projectId={slug[1]}
+      />
+    );
+  }
   if (
     slug[0] === "admin" &&
     !["admin/billing/catalog", "admin/ai-providers", "admin/legal"].includes(
@@ -258,15 +353,53 @@ export default async function CatchAllPage({
       />
     );
   }
-  if (slug[0] === "dashboard") return <ProjectsDashboard />;
+  if (slug[0] === "dashboard") return <WorkspaceClient />;
   if (slug.length === 1 && slug[0] === "settings") return <AccountSettings />;
   if (route === "settings/security") return <AccountSecurity />;
   if (route === "settings/security/password")
     return <AccountSecurity passwordOnly />;
   if (route === "settings/security/delete") return <AccountDeletionRequest />;
   if (route === "settings/notifications") return <AccountNotifications />;
-  if (route === "settings/billing")
+  if (route === "settings/billing/checkout") {
+    const query = await searchParams;
+    return (
+      <CheckoutPage
+        key={`${query.plan}:${query.change}:${query.preview}`}
+        planId={typeof query.plan === "string" ? query.plan.slice(0, 64) : ""}
+        changingPlan={query.change === "true"}
+        preview={
+          process.env.NODE_ENV === "development" && query.preview === "true"
+        }
+      />
+    );
+  }
+  if (route === "settings/billing/success") {
+    const query = await searchParams;
+    return (
+      <PaymentSuccess
+        key={`${typeof query.session_id === "string" ? query.session_id : ""}:${query.preview === "true"}`}
+        sessionId={
+          typeof query.session_id === "string"
+            ? query.session_id.slice(0, 256)
+            : ""
+        }
+        preview={
+          process.env.NODE_ENV === "development" && query.preview === "true"
+        }
+      />
+    );
+  }
+  if (route === "settings/billing") {
+    const query = await searchParams;
+    if (query.checkout === "success") {
+      const sessionQuery =
+        typeof query.session_id === "string"
+          ? `?session_id=${encodeURIComponent(query.session_id.slice(0, 256))}`
+          : "";
+      redirect(`/settings/billing/success${sessionQuery}`);
+    }
     return <BillingSettings offerPreview={offerPreview} />;
+  }
   if (route === "settings/billing/upgrade") return <UpgradePlans />;
   if (route === "settings/billing/manage") return <BillingManage />;
   if (route === "settings/billing/payment")

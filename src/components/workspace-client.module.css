@@ -1,0 +1,10 @@
+.loading {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  background: #111317;
+  color: #aeb8c8;
+  font:
+    14px Arial,
+    sans-serif;
+}

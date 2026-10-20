@@ -1,13 +1,18 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { z } from "zod";
-import { getCountry, legacyCountryCode } from "@/lib/countries";
+import { getCountry } from "@/lib/countries";
 
-export const isInfrastructureMock = process.env.NODE_ENV === "development";
-export const swiftletSettingsKey = "runly-admin-dev-swiftlet:v2";
-export const nestsKey = "runly-admin-dev-nests:v2";
-const eventName = "runly-admin-infrastructure";
+export const isInfrastructureMock = false;
+export const defaultSwiftlet: SwiftletSettings = {
+  endpoint: "",
+  scheduling: "least-occupied",
+  maxEggs: 8,
+  idleMinutes: 30,
+  heartbeatSeconds: 90,
+  provisioningSeconds: 180,
+};
 
 export const serviceUrl = z
   .string()
@@ -29,6 +34,7 @@ export const serviceUrl = z
     }
   }, "Use an HTTP or HTTPS base URL without credentials, a query, or a fragment.")
   .transform((value) => new URL(value).toString().replace(/\/+$/, ""));
+
 export const swiftletSchema = z.object({
   endpoint: z
     .string()
@@ -40,44 +46,18 @@ export const swiftletSchema = z.object({
     )
     .transform((value) => (value ? serviceUrl.parse(value) : "")),
   scheduling: z.enum(["least-occupied", "round-robin", "available-memory"]),
-  maxEggs: z
-    .number()
-    .int()
-    .min(1, "Use at least 1 Egg.")
-    .max(500, "Use 500 Eggs or fewer."),
-  idleMinutes: z
-    .number()
-    .int()
-    .min(1, "Use at least 1 minute.")
-    .max(1440, "Use 1,440 minutes or fewer."),
-  heartbeatSeconds: z
-    .number()
-    .int()
-    .min(10, "Use at least 10 seconds.")
-    .max(600, "Use 600 seconds or fewer."),
-  provisioningSeconds: z
-    .number()
-    .int()
-    .min(30, "Use at least 30 seconds.")
-    .max(3600, "Use 3,600 seconds or fewer."),
+  maxEggs: z.number().int().min(1).max(500),
+  idleMinutes: z.number().int().min(1).max(1440),
+  heartbeatSeconds: z.number().int().min(10).max(600),
+  provisioningSeconds: z.number().int().min(30).max(3600),
 });
+
 export type SwiftletSettings = z.infer<typeof swiftletSchema>;
-export const defaultSwiftlet: SwiftletSettings = {
-  endpoint: "",
-  scheduling: "least-occupied",
-  maxEggs: 8,
-  idleMinutes: 30,
-  heartbeatSeconds: 90,
-  provisioningSeconds: 180,
-};
+
 export const nestSchema = z
   .object({
     id: z.string().uuid(),
-    name: z
-      .string()
-      .trim()
-      .min(1, "Enter a name for this Nest.")
-      .max(80, "Use 80 characters or fewer."),
+    name: z.string().trim().min(1).max(80),
     endpoint: serviceUrl,
     countryCode: z
       .string()
@@ -86,11 +66,7 @@ export const nestSchema = z
         "Choose a country from the list.",
       )
       .default(""),
-    maxEggs: z
-      .number()
-      .int()
-      .min(1, "Use at least 1 Egg.")
-      .max(500, "Use 500 Eggs or fewer."),
+    maxEggs: z.number().int().min(1).max(500),
     status: z
       .enum(["online", "draining", "offline", "pending"])
       .default("pending"),
@@ -105,156 +81,164 @@ export const nestSchema = z
       message: "Capacity cannot be lower than the number of active Eggs.",
     },
   );
+
 export type Nest = z.infer<typeof nestSchema>;
 
-const mockSwiftlet: SwiftletSettings = {
-  ...defaultSwiftlet,
-  endpoint: "https://swiftlet.dev.runly.test",
-  maxEggs: 16,
+type Store = {
+  swiftlet: SwiftletSettings;
+  nests: Nest[];
+  loading: boolean;
+  loaded: boolean;
+  error: string;
+  tokenConfigured: boolean;
 };
-const mockNests: Nest[] = [
-  {
-    id: "4c743e23-9cc2-4c38-8f4f-36be2dd73201",
-    name: "singapore-01",
-    endpoint: "https://sg-01.nests.runly.test:9443",
-    countryCode: "SG",
-    activeEggs: 7,
-    cpuPercent: 36,
-    ramPercent: 44,
-    maxEggs: 16,
-    status: "online",
-  },
-  {
-    id: "4c743e23-9cc2-4c38-8f4f-36be2dd73202",
-    name: "singapore-02",
-    endpoint: "https://sg-02.nests.runly.test:9443",
-    countryCode: "SG",
-    activeEggs: 12,
-    cpuPercent: 72,
-    ramPercent: 81,
-    maxEggs: 16,
-    status: "online",
-  },
-  {
-    id: "4c743e23-9cc2-4c38-8f4f-36be2dd73203",
-    name: "frankfurt-01",
-    endpoint: "https://fra-01.nests.runly.test:9443",
-    countryCode: "DE",
-    activeEggs: 4,
-    cpuPercent: 18,
-    ramPercent: 27,
-    maxEggs: 24,
-    status: "draining",
-  },
-  {
-    id: "4c743e23-9cc2-4c38-8f4f-36be2dd73204",
-    name: "virginia-01",
-    endpoint: "https://iad-01.nests.runly.test:9443",
-    countryCode: "US",
-    activeEggs: 22,
-    cpuPercent: 64,
-    ramPercent: 68,
-    maxEggs: 32,
-    status: "online",
-  },
-  {
-    id: "4c743e23-9cc2-4c38-8f4f-36be2dd73205",
-    name: "sydney-01",
-    endpoint: "https://syd-01.nests.runly.test:9443",
-    countryCode: "AU",
-    activeEggs: null,
-    cpuPercent: null,
-    ramPercent: null,
-    maxEggs: 8,
-    status: "offline",
-  },
-];
+const initialStore: Store = {
+  swiftlet: defaultSwiftlet,
+  nests: [],
+  loading: false,
+  loaded: false,
+  error: "",
+  tokenConfigured: false,
+};
+let store = initialStore;
+let loadRequest: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+};
+function publish(value: Partial<Store>) {
+  store = { ...store, ...value };
+  for (const listener of listeners) listener();
+}
+const snapshot = () => store;
+const serverSnapshot = () => initialStore;
 
-function subscribe(callback: () => void) {
-  window.addEventListener("storage", callback);
-  window.addEventListener(eventName, callback);
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener(eventName, callback);
-  };
+async function api<T>(resource: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  if (init?.body && !headers.has("Content-Type"))
+    headers.set("Content-Type", "application/json");
+  const response = await fetch(`/api/admin/${resource}`, {
+    ...init,
+    cache: "no-store",
+    headers,
+  });
+  const result = (await response.json().catch(() => null)) as
+    | (T & { message?: string })
+    | null;
+  if (!response.ok)
+    throw new Error(result?.message || "Couldn't save the changes.");
+  return result as T;
 }
-function useStoredConfiguration<T>(
-  key: string,
-  fallback: T,
-  parse: (value: unknown) => T,
-) {
-  const snapshot = useSyncExternalStore(
-    subscribe,
-    () => {
-      if (!isInfrastructureMock) return "";
-      try {
-        return localStorage.getItem(key) || "";
-      } catch {
-        return "";
-      }
-    },
-    () => "",
-  );
-  return useMemo(() => {
-    if (!snapshot) return fallback;
-    try {
-      return parse(JSON.parse(snapshot));
-    } catch {
-      return fallback;
-    }
-  }, [snapshot, fallback, parse]);
+
+async function load() {
+  if (store.loaded || loadRequest) return loadRequest;
+  publish({ loading: true, error: "" });
+  loadRequest = Promise.all([
+    api<{ settings: SwiftletSettings; tokenConfigured: boolean }>("swiftlet"),
+    api<{ nests: Nest[] }>("nests"),
+  ])
+    .then(([swiftlet, nests]) => {
+      const parsedSwiftlet = swiftletSchema.safeParse(swiftlet.settings);
+      const parsedNests = z.array(nestSchema).max(1000).safeParse(nests.nests);
+      if (!parsedSwiftlet.success || !parsedNests.success)
+        throw new Error("The saved infrastructure configuration is invalid.");
+      publish({
+        swiftlet: parsedSwiftlet.data,
+        nests: parsedNests.data,
+        tokenConfigured: swiftlet.tokenConfigured,
+        loaded: true,
+        loading: false,
+      });
+    })
+    .catch((error: unknown) => {
+      publish({
+        loaded: true,
+        loading: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Couldn't load infrastructure settings.",
+      });
+    })
+    .finally(() => {
+      loadRequest = null;
+    });
+  return loadRequest;
 }
-const emptyNests: Nest[] = [];
-const initialSwiftlet = isInfrastructureMock ? mockSwiftlet : defaultSwiftlet;
-const initialNests = isInfrastructureMock ? mockNests : emptyNests;
-function parseSwiftlet(value: unknown) {
-  const result = swiftletSchema.safeParse(value);
-  return result.success ? result.data : initialSwiftlet;
+
+function useStore() {
+  const value = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
+  useEffect(() => {
+    void load();
+  }, []);
+  return value;
 }
-function parseNests(value: unknown) {
-  // Preserve existing development configurations when upgrading the list UI.
-  const migrated = Array.isArray(value)
-    ? value.map((record) => {
-        if (!record || typeof record !== "object") return record;
-        const existing = record as Record<string, unknown>;
-        const mock = isInfrastructureMock
-          ? mockNests.find((nest) => nest.id === existing.id)
-          : undefined;
-        return {
-          ...(mock || {}),
-          ...existing,
-          ...(existing.activeEggs === undefined &&
-          mock?.activeEggs != null &&
-          typeof existing.maxEggs === "number"
-            ? { activeEggs: Math.min(mock.activeEggs, existing.maxEggs) }
-            : {}),
-          countryCode:
-            existing.countryCode ??
-            (typeof existing.region === "string"
-              ? legacyCountryCode(existing.region)
-              : mock?.countryCode || ""),
-        };
-      })
-    : value;
-  const result = z.array(nestSchema).max(250).safeParse(migrated);
-  return result.success ? result.data : initialNests;
+
+export function retryInfrastructureLoad() {
+  publish({ loaded: false, loading: false, error: "" });
+  return load();
 }
+
 export function useSwiftletSettings() {
-  return useStoredConfiguration(
-    swiftletSettingsKey,
-    initialSwiftlet,
-    parseSwiftlet,
-  );
+  return useStore().swiftlet;
 }
 export function useNests() {
-  return useStoredConfiguration(nestsKey, initialNests, parseNests);
+  return useStore().nests;
 }
-export function saveConfiguration(
-  key: string,
-  value: SwiftletSettings | Nest[],
+export function useInfrastructureStatus() {
+  const { loading, loaded, error, tokenConfigured } = useStore();
+  return { loading, loaded, error, tokenConfigured };
+}
+
+export async function saveSwiftletSettings(
+  settings: SwiftletSettings,
+  apiToken?: string | null,
 ) {
-  if (!isInfrastructureMock)
-    throw new Error("Swiftlet service is not configured.");
-  localStorage.setItem(key, JSON.stringify(value));
-  window.dispatchEvent(new Event(eventName));
+  const result = await api<{
+    settings: SwiftletSettings;
+    tokenConfigured: boolean;
+  }>("swiftlet", {
+    method: "PUT",
+    body: JSON.stringify({
+      ...settings,
+      ...(apiToken === undefined ? {} : { apiToken: apiToken || null }),
+    }),
+  });
+  const parsed = swiftletSchema.parse(result.settings);
+  publish({
+    swiftlet: parsed,
+    tokenConfigured: result.tokenConfigured,
+    loaded: true,
+  });
+}
+
+export async function saveNest(nest: Nest, isNew: boolean) {
+  const result = await api<{ nest: Nest }>("nests", {
+    method: isNew ? "POST" : "PUT",
+    body: JSON.stringify({
+      ...(isNew ? {} : { id: nest.id }),
+      name: nest.name,
+      endpoint: nest.endpoint,
+      countryCode: nest.countryCode,
+      maxEggs: nest.maxEggs,
+      ...(nest.status === "online" ? {} : { status: nest.status }),
+    }),
+  });
+  const saved = nestSchema.parse(result.nest);
+  publish({
+    nests: isNew
+      ? [...store.nests, saved]
+      : store.nests.map((item) => (item.id === saved.id ? saved : item)),
+    loaded: true,
+  });
+  return saved;
+}
+
+export async function removeNest(id: string) {
+  await api<{ message: string }>("nests", {
+    method: "DELETE",
+    body: JSON.stringify({ id }),
+  });
+  publish({ nests: store.nests.filter((nest) => nest.id !== id) });
 }

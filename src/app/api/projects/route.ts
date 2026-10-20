@@ -11,37 +11,36 @@ import {
   session,
 } from "@/lib/api";
 import { projectNameFromPrompt } from "@/lib/project-name";
-import { enqueueRuntime } from "@/lib/runtime/server";
+import { enqueueRuntime, runtimeConfigured } from "@/lib/runtime/server";
 import {
   projectTemplateFiles,
   supportsProjectTemplate,
 } from "@/lib/project-templates";
+import {
+  recordWorkspaceAction,
+  snapshotVersion,
+  workspaceFailure,
+} from "@/lib/workspace-server";
 
-const attachmentBucket = "project-attachments";
-const maxAttachmentCount = 5;
-const maxAttachmentBytes = 8 * 1024 * 1024;
-const maxAttachmentTotalBytes = 20 * 1024 * 1024;
-const maxMultipartBytes = maxAttachmentTotalBytes + 1024 * 1024;
-const allowedAttachmentTypes = new Set([
-  "application/json",
-  "application/pdf",
-  "image/gif",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "text/csv",
-  "text/markdown",
-  "text/plain",
-  "video/mp4",
-  "video/quicktime",
-  "video/webm",
-]);
+import {
+  attachmentBucket,
+  maxAttachmentCount,
+  maxAttachmentBytes,
+  maxAttachmentTotalBytes,
+  maxMultipartBytes,
+  allowedAttachmentTypes,
+  safeAttachmentName,
+  attachmentStoragePath,
+  uploadProjectAttachments,
+} from "@/lib/project-attachments";
 
 function projectInput(value: unknown) {
   return z
     .object({
       name: z.string().trim().min(1).max(160).optional(),
       prompt: z.string().trim().min(1).max(12_000).optional(),
+      generate: z.boolean().default(false),
+      projectType: z.enum(["website", "app", "video"]).default("website"),
       template: z.enum(["empty", "web"]).optional(),
       language: z
         .enum(["javascript", "typescript", "html", "python"])
@@ -70,23 +69,13 @@ function projectInput(value: unknown) {
     .safeParse(value);
 }
 
-function safeAttachmentName(name: string) {
-  return (
-    name
-      .normalize("NFKC")
-      .replace(/[^a-zA-Z0-9._-]+/g, "-")
-      .replace(/^\.+/, "")
-      .slice(-120) || "attachment"
-  );
-}
-
 export async function GET() {
   try {
     const { db, user } = await session();
     const { data, error } = await db
       .from("projects")
       .select(
-        "id,name,status,created_at,updated_at,template_id,programming_language",
+        "id,name,status,project_type,created_at,updated_at,template_id,programming_language",
       )
       .eq("owner_id", user.id)
       .neq("status", "archived")
@@ -137,6 +126,10 @@ export async function POST(request: Request) {
       const name = form.get("name");
       const template = form.get("template");
       const language = form.get("language");
+      const generate = form.get("generate");
+      const projectType = form.get("projectType");
+      if (generate !== null && generate !== "true" && generate !== "false")
+        throw new ApiError(400, "Choose whether to generate code.");
       if (
         [name, prompt, template, language].some(
           (value) => value !== null && typeof value !== "string",
@@ -144,10 +137,17 @@ export async function POST(request: Request) {
       )
         throw new ApiError(400, "Use text values for project details.");
       input = projectInput({
-        prompt: typeof prompt === "string" ? prompt : undefined,
+        prompt:
+          typeof prompt === "string" && prompt.trim()
+            ? prompt
+            : files.length
+              ? "Use the attached files as inspiration for a new project."
+              : undefined,
         name: typeof name === "string" ? name : undefined,
         template: typeof template === "string" ? template : undefined,
         language: typeof language === "string" ? language : undefined,
+        generate: generate === "true",
+        projectType: projectType === null ? undefined : projectType,
       });
     } else {
       input = projectInput(await body(request, 16_384));
@@ -176,6 +176,7 @@ export async function POST(request: Request) {
       name: input.data.name || projectNameFromPrompt(prompt),
       owner_id: user.id,
       status: "draft",
+      project_type: input.data.projectType,
       created_at: now,
       updated_at: now,
       ...(input.data.template
@@ -185,10 +186,13 @@ export async function POST(request: Request) {
           }
         : {}),
     };
-    const { error } = await adminClient().from("projects").insert(project);
+    const { error } = await adminClient().rpc("create_workspace_project", {
+      p_project: project,
+      p_actor: user.id,
+    });
     if (error) {
       console.error("Runly project creation failed", error.code);
-      throw new ApiError(502, "Couldn't create the project. Please try again.");
+      workspaceFailure(error.message);
     }
     const uploadedPaths: string[] = [];
     try {
@@ -217,35 +221,34 @@ export async function POST(request: Request) {
             502,
             "Couldn't prepare the template files. Please try again.",
           );
+        await snapshotVersion(project.id, user.id, "Created from a template");
       }
       const fileReferences: string[] = [];
-      for (const file of files) {
-        const path = `${user.id}/${project.id}/${crypto.randomUUID()}-${safeAttachmentName(file.name)}`;
-        const bytes = Buffer.from(await file.arrayBuffer());
-        const { error: uploadError } = await adminClient()
-          .storage.from(attachmentBucket)
-          .upload(path, bytes, {
-            contentType: file.type,
-            cacheControl: "3600",
-            upsert: false,
-          });
-        if (uploadError)
-          throw new ApiError(
-            502,
-            `Couldn't upload ${file.name}. Please try again.`,
-          );
-        uploadedPaths.push(path);
-        const { data: signed, error: signedError } = await adminClient()
-          .storage.from(attachmentBucket)
-          .createSignedUrl(path, 60 * 60);
-        if (signedError)
-          throw new ApiError(
-            502,
-            `Couldn't prepare ${file.name} for the project.`,
-          );
-        fileReferences.push(
-          `- ${safeAttachmentName(file.name)}: ${signed.signedUrl}`,
+      if (files.length) {
+        uploadedPaths.push(
+          ...files.map(
+            (file, ordinal) =>
+              attachmentStoragePath(
+                project.id,
+                user.id,
+                project.id,
+                ordinal,
+                file.name,
+              ).path,
+          ),
         );
+        const { attachments } = await uploadProjectAttachments(
+          project.id,
+          user.id,
+          user.id,
+          project.id,
+          files,
+          60 * 60,
+        );
+        for (const file of attachments)
+          fileReferences.push(
+            `- ${safeAttachmentName(file.name)}: ${file.url}`,
+          );
       }
 
       const agentInput = files.length
@@ -256,17 +259,62 @@ export async function POST(request: Request) {
           400,
           "Shorten the prompt to leave room for the attached file references.",
         );
+      await recordWorkspaceAction(
+        user.id,
+        project.id,
+        "project.assets_prepared",
+        {
+          attachment_count: files.length,
+          template: input.data.template || null,
+        },
+      );
       let conversationId: string | null = null;
+      let generation: {
+        state: "queued" | "unavailable";
+        message?: string;
+      } | null = null;
       if (agentInput) {
         conversationId = crypto.randomUUID();
-        await enqueueRuntime(
-          project.id,
-          user.id,
-          "agent",
-          conversationId,
-          conversationId,
-          agentInput,
-        );
+        let available = input.data.generate;
+        if (available) {
+          try {
+            runtimeConfigured();
+          } catch (error) {
+            if (!(error instanceof ApiError) || error.status !== 503)
+              throw error;
+            available = false;
+          }
+        }
+        if (available) {
+          await enqueueRuntime(
+            project.id,
+            user.id,
+            "agent",
+            conversationId,
+            conversationId,
+            agentInput,
+          );
+          generation = { state: "queued" };
+        } else {
+          // A draft and its brief are useful before compute is configured.
+          // Persist them without claiming that generation has started.
+          const { error: messageError } = await adminClient().rpc(
+            "persist_workspace_message",
+            {
+              p_project: project.id,
+              p_actor: user.id,
+              p_id: conversationId,
+              p_chat: conversationId,
+              p_input: agentInput,
+            },
+          );
+          if (messageError) workspaceFailure(messageError.message);
+          generation = {
+            state: "unavailable",
+            message:
+              "Your project brief is saved. Code generation needs the project runtime, which has not been configured.",
+          };
+        }
       }
       return Response.json(
         {
@@ -274,12 +322,14 @@ export async function POST(request: Request) {
             id: project.id,
             name: project.name,
             status: project.status,
+            project_type: project.project_type,
             created_at: project.created_at,
             updated_at: project.updated_at,
             template_id: input.data.template || null,
             programming_language: input.data.language || null,
           },
           conversationId,
+          generation,
         },
         { status: 201 },
       );

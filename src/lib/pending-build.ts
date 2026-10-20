@@ -2,7 +2,11 @@ const databaseName = "runly-pending-builds";
 const storeName = "drafts";
 const draftKey = "build";
 
-export type PendingBuild = { prompt: string; files: File[] };
+export type PendingBuild = {
+  prompt: string;
+  files: File[];
+  projectType?: "website" | "app" | "video";
+};
 
 type PendingBuildRecord = PendingBuild & { id: string };
 
@@ -38,7 +42,13 @@ export async function getPendingBuild() {
       request.onsuccess = () => {
         const record = request.result as PendingBuildRecord | undefined;
         resolve(
-          record ? { prompt: record.prompt, files: record.files } : undefined,
+          record
+            ? {
+                prompt: record.prompt,
+                files: record.files,
+                projectType: record.projectType,
+              }
+            : undefined,
         );
       };
       request.onerror = () => reject(request.error);

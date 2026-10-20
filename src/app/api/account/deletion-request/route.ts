@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   adminClient,
+  auditAction,
   ApiError,
   body,
   failure,
@@ -119,6 +120,10 @@ export async function POST(request: Request) {
     if (error || !data)
       throw new ApiError(502, "Your deletion request couldn't be recorded.");
 
+    await auditAction(user.id, "account.deletion_requested", {
+      request_id: data.requested_at,
+    });
+
     return Response.json(
       {
         request: {
@@ -157,6 +162,10 @@ export async function DELETE(request: Request) {
         409,
         "There is no pending deletion request to cancel.",
       );
+
+    await auditAction(user.id, "account.deletion_cancelled", {
+      request_id: data.id,
+    });
 
     return Response.json(
       {

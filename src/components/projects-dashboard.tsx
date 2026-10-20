@@ -59,6 +59,7 @@ export function ProjectsDashboard() {
       const pending = await getPendingBuild();
       const form = new FormData();
       form.set("prompt", pending?.prompt || prompt);
+      form.set("projectType", pending?.projectType || "website");
       pending?.files.forEach((file) => form.append("files", file, file.name));
       const response = await fetch("/api/projects", {
         method: "POST",

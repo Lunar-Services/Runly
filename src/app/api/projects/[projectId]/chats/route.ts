@@ -7,6 +7,7 @@ import {
   sameOrigin,
   session,
 } from "@/lib/api";
+import { workspaceFailure } from "@/lib/workspace-server";
 
 export async function POST(
   request: Request,
@@ -21,18 +22,25 @@ export async function POST(
     await rateLimit(request, "chat-create", user.id, 20);
     const { data: project } = await db
       .from("projects")
-      .select("id")
+      .select("id,status")
       .eq("id", projectId)
       .maybeSingle();
     if (!project) throw new ApiError(404, "Project not found.");
+    if (project.status === "archived")
+      throw new ApiError(
+        409,
+        "Restore this archived project before creating a chat.",
+      );
 
     const id = crypto.randomUUID();
-    const { error } = await adminClient().from("conversations").insert({
-      id,
-      project_id: projectId,
-      title: null,
+    const { error } = await adminClient().rpc("mutate_workspace_chat", {
+      p_project: projectId,
+      p_actor: user.id,
+      p_chat: id,
+      p_title: null,
+      p_delete: false,
     });
-    if (error) throw new ApiError(502, "Couldn't create a new chat.");
+    if (error) workspaceFailure(error.message);
     return Response.json({ chat: { id, title: "New chat" } }, { status: 201 });
   } catch (error) {
     return failure(error);

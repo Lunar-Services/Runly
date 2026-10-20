@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { savePendingBuild } from "@/lib/pending-build";
 import { X } from "lucide-react";
 import { CustomerFooter } from "./customer-footer";
 import { CustomerHeader } from "./customer-header";
 import { LandingShowcase } from "./landing-showcase";
 import { LandingMotion } from "./landing-motion";
 import { SkyBackground, useLocalSky, type SkyPhase } from "./sky-background";
-import { savePendingBuild } from "@/lib/pending-build";
 import "./landing.css";
 
 type Account = { email: string; displayName: string; avatarUrl: string } | null;
@@ -110,40 +110,49 @@ export function LandingPage({
     if (!textToSubmit || submissionLock.current) return;
     submissionLock.current = true;
     setStartingProject(true);
-    if (account) {
-      setMessage("");
-      try {
+    try {
+      if (account) {
         const form = new FormData();
-        form.set("prompt", textToSubmit);
-        attachments.forEach((file) => form.append("files", file, file.name));
+        form.append("prompt", textToSubmit);
+        form.append(
+          "projectType",
+          /\b(video|film|edit|clip)\b/i.test(textToSubmit)
+            ? "video"
+            : /\b(app|habit|mobile)\b/i.test(textToSubmit)
+              ? "app"
+              : "website",
+        );
+        for (const file of attachments) form.append("files", file);
         const response = await fetch("/api/projects", {
           method: "POST",
           body: form,
-          signal: AbortSignal.timeout(120_000),
         });
         const result = await response.json();
-        if (!response.ok) throw new Error(result.message);
+        if (!response.ok)
+          throw new Error(result.message || "Couldn't create your project.");
+        if (!result.project?.id)
+          throw new Error("Project creation did not return a project ID.");
         router.push(`/project/${result.project.id}`);
-      } catch (error) {
-        setMessage(
-          error instanceof Error
-            ? error.message
-            : "Couldn't create the project.",
-        );
-        setStartingProject(false);
-        submissionLock.current = false;
+        return;
       }
-      return;
-    }
-    try {
-      await savePendingBuild({ prompt: textToSubmit, files: attachments });
+      await savePendingBuild({
+        prompt: textToSubmit,
+        files: attachments,
+        projectType: /\b(video|film|edit|clip)\b/i.test(textToSubmit)
+          ? "video"
+          : /\b(app|habit|mobile)\b/i.test(textToSubmit)
+            ? "app"
+            : "website",
+      });
       sessionStorage.setItem("runly:draft-prompt", textToSubmit);
-      router.push("/signup?intent=build");
-    } catch {
+      router.push(`/signup?next=${encodeURIComponent("/dashboard/projects")}`);
+    } catch (reason) {
       submissionLock.current = false;
       setStartingProject(false);
       setMessage(
-        "Your browser couldn't save the idea. Allow site storage and try again.",
+        reason instanceof Error
+          ? reason.message
+          : "Your idea and attachments couldn't be saved. Allow browser storage and try again.",
       );
     }
   }

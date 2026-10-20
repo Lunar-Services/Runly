@@ -238,7 +238,7 @@ export async function createCheckout(
         client_reference_id: userId,
         line_items: [{ price: price.id, quantity: 1 }],
         allow_promotion_codes: true,
-        success_url: `${origin}/settings/billing?checkout=success`,
+        success_url: `${origin}/settings/billing/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin}/pricing?checkout=cancelled`,
         subscription_data: {
           metadata: {

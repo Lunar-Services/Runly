@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   ApiError,
+  auditAction,
   body,
   failure,
   rateLimit,
@@ -112,6 +113,9 @@ export async function POST(request: Request) {
       if (error || !data?.totp)
         throw new ApiError(502, "Couldn't start authenticator setup.");
 
+      await auditAction(user.id, "account.mfa_enrollment_started", {
+        factor_id: data.id,
+      });
       return Response.json(
         {
           factor: { id: data.id, type: data.type },
@@ -150,6 +154,9 @@ export async function POST(request: Request) {
           "That code couldn't be verified. Check it and try again.",
         );
 
+      await auditAction(user.id, "account.mfa_enabled", {
+        factor_id: factorId,
+      });
       return Response.json(
         { message: "Two-step verification is on." },
         { headers: noStore },
@@ -189,6 +196,7 @@ export async function POST(request: Request) {
     if (error)
       throw new ApiError(502, "Couldn't remove that authenticator. Try again.");
 
+    await auditAction(user.id, "account.mfa_removed", { factor_id: factor.id });
     return Response.json(
       { message: "Authenticator removed." },
       { headers: noStore },

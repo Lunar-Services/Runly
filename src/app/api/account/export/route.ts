@@ -1,4 +1,4 @@
-import { ApiError, failure, rateLimit, session } from "@/lib/api";
+import { ApiError, auditAction, failure, rateLimit, session } from "@/lib/api";
 
 type ProjectMetadata = {
   id: string;
@@ -47,6 +47,9 @@ export async function GET(request: Request) {
       if (!data || data.length < pageSize) break;
     }
     const date = new Date();
+    await auditAction(user.id, "account.exported", {
+      project_count: projects.length,
+    });
     return Response.json(
       {
         version: 1,

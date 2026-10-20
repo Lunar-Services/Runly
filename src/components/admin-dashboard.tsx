@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import Image from "next/image";
@@ -14,17 +13,89 @@ import Link from "next/link";
 import { Menu, Network, Server, X, type LucideIcon } from "lucide-react";
 import { Brand } from "./brand";
 import type { CustomerAccount } from "./customer-header";
-import {
-  adminUsers,
-  adminProjects,
-  adminUsage,
-  adminInvoices,
-  adminActivity,
-  creationActivity,
-} from "./admin-sample-data";
 import styles from "./admin-dashboard.module.css";
 import { AdminSwiftlet, AdminNests } from "./admin-infrastructure";
-import { isInfrastructureMock } from "./admin-infrastructure-state";
+
+type AdminUser = {
+  id: string;
+  name: string;
+  email: string;
+  plan: string;
+  projects: number;
+  joined: string;
+  status: string;
+  avatarTone: string;
+};
+type AdminProject = {
+  id: string;
+  name: string;
+  owner: string;
+  type: string;
+  updated: string;
+  created: string;
+  status: string;
+};
+type AdminUsage = {
+  id: string;
+  project: string;
+  user: string;
+  type: string;
+  tokens: number;
+  date: string;
+  status: string;
+};
+type AdminActivity = {
+  id: string;
+  event: string;
+  actor: string;
+  subject: string;
+  date: string;
+  time: string;
+  category: string;
+};
+type CreationPoint = {
+  date: string;
+  website: number;
+  video: number;
+  app: number;
+};
+type AdminReport = {
+  users: AdminUser[];
+  projects: AdminProject[];
+  usage: AdminUsage[];
+  activity: AdminActivity[];
+  creationActivity: CreationPoint[];
+  overview: {
+    users: number;
+    activeProjects: number;
+    tokensUsed: number;
+    sandboxAvailable: boolean;
+  };
+  limit: number;
+  truncated: boolean;
+};
+type AdminInvoice = {
+  id: string;
+  user: string;
+  plan: string;
+  amount: number;
+  currency: string;
+  date: string;
+  status: string;
+};
+type BillingReport = {
+  invoices: AdminInvoice[];
+  configured: boolean;
+  hasMore?: boolean;
+};
+const emptyBilling: BillingReport = { invoices: [], configured: false };
+async function adminRequest<T>(url: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(url, { cache: "no-store", ...options });
+  const result = await response.json();
+  if (!response.ok)
+    throw new Error(result.message || "Couldn't load administration data.");
+  return result as T;
+}
 
 export type AdminTab =
   | "overview"
@@ -37,28 +108,26 @@ export type AdminTab =
   | "nests"
   | "settings";
 const asset = (file: string) => `/figma/admin/${file}`;
-function subscribeRangePreference(callback: () => void) {
-  window.addEventListener("storage", callback);
-  window.addEventListener("runly-admin-preferences", callback);
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener("runly-admin-preferences", callback);
-  };
-}
-function rangePreference() {
-  try {
-    const value = Number(localStorage.getItem("runly-admin-range"));
-    return [7, 30, 90].includes(value) ? value : 30;
-  } catch {
-    return 30;
-  }
-}
 function useRangePreference() {
-  return useSyncExternalStore(
-    subscribeRangePreference,
-    rangePreference,
-    () => 30,
-  );
+  const [range, setRange] = useState(30);
+  useEffect(() => {
+    let active = true;
+    adminRequest<{ defaultRange: number }>("/api/admin/settings")
+      .then((value) => {
+        if (active) setRange(value.defaultRange);
+      })
+      .catch(() => {
+        /* The report keeps its initial date range on a preference read failure. */
+      });
+    const changed = (event: Event) =>
+      setRange((event as CustomEvent<number>).detail);
+    window.addEventListener("runly-admin-preferences", changed);
+    return () => {
+      active = false;
+      window.removeEventListener("runly-admin-preferences", changed);
+    };
+  }, []);
+  return range;
 }
 const tabs: {
   id: AdminTab;
@@ -147,19 +216,19 @@ type DirectoryTab = Exclude<
   "overview" | "settings" | "swiftlet" | "nests"
 >;
 const dateText = (date: string) =>
-  new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", {
+  new Date(date).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
     timeZone: "UTC",
   });
-const money = (value: number) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
-    value,
-  );
+const money = (value: number, currency = "USD") =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(value);
 const dateWithin = (date: string, days: number) =>
-  Date.parse(`${date}T12:00:00Z`) >=
-  Date.parse("2026-10-02T12:00:00Z") - (days - 1) * 86400000;
+  Date.parse(date) >= Date.now() - days * 86400000;
 
 function Icon({ file, size = 18 }: { file: string; size?: number }) {
   return (
@@ -285,8 +354,8 @@ function Table({
     </div>
   );
 }
-function userRows(): Row[] {
-  return adminUsers.map((user) => ({
+function userRows(users: AdminUser[]): Row[] {
+  return users.map((user) => ({
     id: user.id,
     title: user.name,
     subtitle: user.email,
@@ -303,7 +372,11 @@ function userRows(): Row[] {
     },
   }));
 }
-function directory(tab: DirectoryTab): {
+function directory(
+  tab: DirectoryTab,
+  report: AdminReport,
+  billing: BillingReport,
+): {
   columns: string[];
   rows: Row[];
   statuses: string[];
@@ -312,16 +385,16 @@ function directory(tab: DirectoryTab): {
   if (tab === "users")
     return {
       columns: ["Name", "Plan", "Projects", "Joined", "Status"],
-      rows: userRows(),
-      statuses: ["Active", "Invited", "Inactive"],
+      rows: userRows(report.users),
+      statuses: ["Active", "Unverified", "Inactive"],
       label: "All users",
     };
   if (tab === "projects")
     return {
       columns: ["Project", "Owner", "Type", "Updated", "Status"],
-      statuses: ["Published", "In progress", "Draft", "Failed"],
+      statuses: ["Published", "In progress", "Draft", "Archived"],
       label: "All projects",
-      rows: adminProjects.map((project) => ({
+      rows: report.projects.map((project) => ({
         id: project.id,
         title: project.name,
         cells: [project.owner, project.type, dateText(project.updated)],
@@ -337,16 +410,16 @@ function directory(tab: DirectoryTab): {
     };
   if (tab === "usage")
     return {
-      columns: ["Project", "User", "Credits", "Date", "Status"],
+      columns: ["Project", "User", "Tokens", "Date", "Status"],
       statuses: ["Completed", "Failed"],
       label: "Usage history",
-      rows: adminUsage.map((job) => ({
+      rows: report.usage.map((job) => ({
         id: job.id,
         title: job.project,
         subtitle: job.id,
         cells: [
           job.user,
-          job.credits.toLocaleString("en-US"),
+          job.tokens.toLocaleString("en-US"),
           dateText(job.date),
         ],
         status: job.status,
@@ -355,32 +428,33 @@ function directory(tab: DirectoryTab): {
           Job: job.id,
           User: job.user,
           Type: job.type,
-          Credits: job.credits.toLocaleString("en-US"),
+          Tokens: job.tokens.toLocaleString("en-US"),
           Date: dateText(job.date),
           Status: job.status,
-          ...(job.status === "Failed"
-            ? { Result: "Sample export failure. No credits charged." }
-            : {}),
         },
       })),
     };
   if (tab === "billing")
     return {
       columns: ["Invoice", "Customer", "Plan", "Amount", "Status"],
-      statuses: ["Paid", "Needs attention"],
+      statuses: ["Paid", "Needs attention", "Void"],
       label: "Recent invoices",
-      rows: adminInvoices.map((invoice) => ({
+      rows: billing.invoices.map((invoice) => ({
         id: invoice.id,
         title: invoice.id,
         subtitle: dateText(invoice.date),
-        cells: [invoice.user, invoice.plan, money(invoice.amount)],
+        cells: [
+          invoice.user,
+          invoice.plan,
+          money(invoice.amount, invoice.currency),
+        ],
         status: invoice.status,
         date: invoice.date,
         fields: {
           Invoice: invoice.id,
           Customer: invoice.user,
           Plan: invoice.plan,
-          Amount: money(invoice.amount),
+          Amount: money(invoice.amount, invoice.currency),
           Date: dateText(invoice.date),
           Status: invoice.status,
         },
@@ -388,9 +462,9 @@ function directory(tab: DirectoryTab): {
     };
   return {
     columns: ["Event", "Actor", "Subject", "Date", "Category"],
-    statuses: ["Users", "Projects", "AI usage", "Billing"],
+    statuses: [...new Set(report.activity.map((event) => event.category))],
     label: "Workspace events",
-    rows: adminActivity.map((event) => ({
+    rows: report.activity.map((event) => ({
       id: event.id,
       title: event.event,
       subtitle: event.time,
@@ -409,10 +483,13 @@ function directory(tab: DirectoryTab): {
   };
 }
 
-function CreationChart({ days }: { days: number }) {
+function CreationChart({ data }: { data: CreationPoint[] }) {
   const [videoVisible, setVideoVisible] = useState(true);
   const [webVisible, setWebVisible] = useState(true);
-  const data = days === 7 ? creationActivity.slice(-2) : creationActivity;
+  const ceiling = Math.max(
+    3,
+    ...data.map((point) => Math.max(point.video, point.website + point.app)),
+  );
   return (
     <section
       className={`${styles.panel} ${styles.chartPanel}`}
@@ -421,7 +498,7 @@ function CreationChart({ days }: { days: number }) {
       <div className={styles.panelHeading}>
         <div>
           <h2 id="creation-heading">Creation activity</h2>
-          <p>Projects created each week</p>
+          <p>Projects created each day</p>
         </div>
         <div className={styles.legend}>
           <button
@@ -446,11 +523,16 @@ function CreationChart({ days }: { days: number }) {
         <div
           className={styles.chart}
           role="img"
-          aria-label={`Illustrative creation activity. ${videoVisible ? "Blue bars show videos." : "Videos hidden."} ${webVisible ? "Green bars show websites and apps." : "Websites and apps hidden."} The values are available in the table below.`}
+          aria-label="Daily project creation counts. Values are available in the table below."
         >
           <div className={styles.axis} aria-hidden="true">
-            {[90, 60, 30, 0].map((n) => (
-              <span key={n}>{n}</span>
+            {[
+              ceiling,
+              Math.round((ceiling * 2) / 3),
+              Math.round(ceiling / 3),
+              0,
+            ].map((value, index) => (
+              <span key={index}>{value}</span>
             ))}
           </div>
           <div className={styles.plot}>
@@ -466,20 +548,22 @@ function CreationChart({ days }: { days: number }) {
                     <span
                       className={styles.videoBar}
                       style={{
-                        height: `${(point.videos / 90) * 100}%`,
+                        height: `${(point.video / ceiling) * 100}%`,
                         opacity: videoVisible ? 1 : 0,
                       }}
                     />
                     <span
                       className={styles.webBar}
                       style={{
-                        height: `${(point.websites / 90) * 100}%`,
+                        height: `${((point.website + point.app) / ceiling) * 100}%`,
                         opacity: webVisible ? 1 : 0,
                       }}
                     />
                   </div>
                   <span className={styles.chartDate}>
-                    {index % 2 === 0 || data.length === 2 ? point.date : ""}
+                    {index % Math.max(1, Math.ceil(data.length / 7)) === 0
+                      ? dateText(point.date).replace(/, \d{4}$/, "")
+                      : ""}
                   </span>
                 </div>
               ))}
@@ -488,7 +572,7 @@ function CreationChart({ days }: { days: number }) {
         </div>
       </div>
       <table className={styles.srOnly}>
-        <caption>Illustrative creation activity values</caption>
+        <caption>Daily project creation counts</caption>
         <thead>
           <tr>
             <th>Date</th>
@@ -497,11 +581,11 @@ function CreationChart({ days }: { days: number }) {
           </tr>
         </thead>
         <tbody>
-          {data.map((p) => (
-            <tr key={p.date}>
-              <th>{p.date}</th>
-              <td>{videoVisible ? p.videos : "Hidden"}</td>
-              <td>{webVisible ? p.websites : "Hidden"}</td>
+          {data.map((point) => (
+            <tr key={point.date}>
+              <th>{point.date}</th>
+              <td>{point.video}</td>
+              <td>{point.website + point.app}</td>
             </tr>
           ))}
         </tbody>
@@ -511,9 +595,11 @@ function CreationChart({ days }: { days: number }) {
 }
 function Overview({
   days,
+  report,
   onDetail,
 }: {
   days: number;
+  report: AdminReport;
   onDetail: (detail: Detail) => void;
 }) {
   return (
@@ -521,63 +607,57 @@ function Overview({
       <div className={styles.metrics}>
         <Metric
           label="Total users"
-          value="1,284"
-          note="+84 this month"
-          positive
+          value={report.overview.users.toLocaleString()}
+          note="Accounts in the loaded directory"
         />
         <Metric
           label="Active projects"
-          value="326"
-          note="Across all creation types"
+          value={report.overview.activeProjects.toLocaleString()}
+          note="Projects that have not been archived"
         />
         <Metric
-          label="AI credits used"
-          value="42,860"
-          note="Of 60,000 workspace credits"
+          label="AI tokens used"
+          value={report.overview.tokensUsed.toLocaleString()}
+          note={`Recorded over the last ${days} days`}
         />
         <Metric
-          label="Monthly revenue"
-          value="$8,420"
-          note="Illustrative billing total"
+          label="Recorded events"
+          value={report.activity.length.toLocaleString()}
+          note={`Activity over the last ${days} days`}
         />
       </div>
       <div className={styles.overviewGrid}>
-        <CreationChart days={days} />
+        <CreationChart data={report.creationActivity} />
         <section
           className={`${styles.panel} ${styles.attention}`}
           aria-labelledby="attention-heading"
         >
           <div className={styles.panelHeading}>
-            <h2 id="attention-heading">Needs attention</h2>
-            <span className={styles.attentionCount}>3 items</span>
+            <h2 id="attention-heading">Service availability</h2>
           </div>
-          <Link
-            href="/admin/usage?status=Failed"
-            className={styles.attentionRow}
-          >
+          <div className={styles.attentionRow}>
             <Icon file="93bca.svg" />
             <span>
-              <strong>2 failed video exports</strong>
-              <small>Review export details</small>
+              <strong>Sandbox services are not connected</strong>
+              <small>
+                Generation, terminal sessions, framework previews and video
+                exports require the deferred runtime.
+              </small>
             </span>
-            <Arrow />
-          </Link>
-          <Link
-            href="/admin/billing?status=Needs%20attention"
-            className={styles.attentionRow}
-          >
-            <Icon file="93bca.svg" />
-            <span>
-              <strong>1 payment needs attention</strong>
-              <small>Open billing details</small>
-            </span>
-            <Arrow />
-          </Link>
+          </div>
           <Link href="/admin/activity" className={styles.attentionRow}>
             <Icon file="6c60b.svg" />
             <span>
-              <strong>All systems operational</strong>
-              <small>Illustrative system status</small>
+              <strong>Review recorded activity</strong>
+              <small>{report.activity.length} events in this report</small>
+            </span>
+            <Arrow />
+          </Link>
+          <Link href="/admin/billing" className={styles.attentionRow}>
+            <Icon file="762ef.svg" />
+            <span>
+              <strong>Review billing</strong>
+              <small>Load current invoices from Stripe</small>
             </span>
             <Arrow />
           </Link>
@@ -595,9 +675,9 @@ function Overview({
         </div>
         <Table
           columns={["Name", "Plan", "Projects", "Joined", "Status"]}
-          rows={userRows().slice(0, 4)}
+          rows={userRows(report.users).slice(0, 4)}
           onDetail={onDetail}
-          caption="Recent illustrative users"
+          caption="Recent registered users"
         />
       </section>
     </>
@@ -606,6 +686,8 @@ function Overview({
 
 function Directory({
   tab,
+  report,
+  billing,
   query,
   days,
   initialStatus,
@@ -613,13 +695,18 @@ function Directory({
   onRowsChange,
 }: {
   tab: DirectoryTab;
+  report: AdminReport;
+  billing: BillingReport;
   query: string;
   days: number;
   initialStatus: string;
   onDetail: (detail: Detail) => void;
   onRowsChange: (columns: string[], rows: Row[]) => void;
 }) {
-  const config = useMemo(() => directory(tab), [tab]);
+  const config = useMemo(
+    () => directory(tab, report, billing),
+    [tab, report, billing],
+  );
   const [status, setStatus] = useState(
     config.statuses.includes(initialStatus) ? initialStatus : "all",
   );
@@ -659,19 +746,29 @@ function Directory({
     pages,
   );
   const first = (currentPage - 1) * 5;
+  const count = (value: number) => value.toLocaleString();
+  const reportNote = `Loaded records, last ${days} days`;
   const summaries: Record<DirectoryTab, ReactNode> = {
     users: (
       <>
-        <Metric label="Total users" value="1,284" note="Across the workspace" />
         <Metric
-          label="Active users"
-          value="1,172"
-          note="Illustrative account total"
+          label="Users in directory"
+          value={count(report.users.length)}
+          note="Loaded registered accounts"
         />
         <Metric
-          label="Pending invitations"
-          value="12"
-          note="Awaiting acceptance"
+          label="Verified active users"
+          value={count(
+            report.users.filter((user) => user.status === "Active").length,
+          )}
+          note="Confirmed accounts without an active ban"
+        />
+        <Metric
+          label="Unverified users"
+          value={count(
+            report.users.filter((user) => user.status === "Unverified").length,
+          )}
+          note="Email verification is pending"
         />
       </>
     ),
@@ -679,59 +776,97 @@ function Directory({
       <>
         <Metric
           label="Active projects"
-          value="326"
-          note="Across all creation types"
+          value={count(report.overview.activeProjects)}
+          note="Projects that have not been archived"
         />
-        <Metric label="Published" value="214" note="Shared with the world" />
-        <Metric label="Needs attention" value="2" note="Failed video exports" />
+        <Metric
+          label="Draft projects"
+          value={count(
+            report.projects.filter((project) => project.status === "Draft")
+              .length,
+          )}
+          note="Loaded projects in draft status"
+        />
+        <Metric
+          label="Archived projects"
+          value={count(
+            report.projects.filter((project) => project.status === "Archived")
+              .length,
+          )}
+          note="Retained project history"
+        />
       </>
     ),
     usage: (
       <>
         <Metric
-          label="AI credits used"
-          value="42,860"
-          note="Illustrative usage total"
+          label="AI tokens used"
+          value={count(report.overview.tokensUsed)}
+          note={reportNote}
         />
         <Metric
-          label="Workspace allowance"
-          value="60,000"
-          note="Sample credit allowance"
+          label="Usage records"
+          value={count(report.usage.length)}
+          note="Settled provider usage events"
         />
-        <Metric label="Failed jobs" value="2" note="No credits charged" />
+        <Metric
+          label="Projects with usage"
+          value={count(
+            new Set(report.usage.map((event) => event.project)).size,
+          )}
+          note={reportNote}
+        />
       </>
     ),
     billing: (
       <>
         <Metric
-          label="Monthly revenue"
-          value="$8,420"
-          note="Illustrative billing total"
+          label="Invoices loaded"
+          value={count(billing.invoices.length)}
+          note="Current Stripe invoices"
         />
         <Metric
-          label="Paid subscriptions"
-          value="284"
-          note="Creator and Studio samples"
+          label="Paid invoices"
+          value={count(
+            billing.invoices.filter((invoice) => invoice.status === "Paid")
+              .length,
+          )}
+          note="Verified invoice status from Stripe"
         />
-        <Metric label="Needs attention" value="1" note="Payment to review" />
+        <Metric
+          label="Needs attention"
+          value={count(
+            billing.invoices.filter(
+              (invoice) => invoice.status === "Needs attention",
+            ).length,
+          )}
+          note="Invoices requiring review"
+        />
       </>
     ),
     activity: (
       <>
         <Metric
-          label="Workspace events"
-          value="128"
-          note="Illustrative activity total"
+          label="Recorded events"
+          value={count(report.activity.length)}
+          note={reportNote}
         />
         <Metric
-          label="Project changes"
-          value="84"
-          note="Created, updated, or published"
+          label="Project events"
+          value={count(
+            report.activity.filter((event) => event.category === "Projects")
+              .length,
+          )}
+          note="Recorded project actions"
         />
         <Metric
-          label="Account changes"
-          value="32"
-          note="Signups and invitations"
+          label="Administration events"
+          value={count(
+            report.activity.filter(
+              (event) => event.category === "Administration",
+            ).length,
+          )}
+          note="Recorded administrative actions"
         />
       </>
     ),
@@ -741,22 +876,16 @@ function Directory({
       <div className={`${styles.metrics} ${styles.threeMetrics}`}>
         {summaries[tab]}
       </div>
-      {tab === "usage" && (
-        <section
-          className={styles.usageAllowance}
-          aria-label="Illustrative credit allowance"
-        >
-          <div>
-            <strong>Workspace credit allowance</strong>
-            <span>42,860 / 60,000 credits · 71.4%</span>
-          </div>
-          <progress max={60000} value={42860}>
-            71.4%
-          </progress>
-          <Link href="/admin/ai-providers">
-            Manage AI providers <Arrow />
-          </Link>
-        </section>
+      {tab === "billing" && !billing.configured && (
+        <p className={styles.feedback} role="status">
+          Stripe is not configured. Connect billing to load real invoices.
+        </p>
+      )}
+      {tab === "billing" && billing.hasMore && (
+        <p className={styles.feedback}>
+          Showing the latest 100 Stripe invoices. More invoices are available in
+          Stripe.
+        </p>
       )}
       <section
         className={`${styles.panel} ${styles.directoryPanel}`}
@@ -766,8 +895,8 @@ function Directory({
           <div>
             <h2 id="directory-heading">{config.label}</h2>
             <p>
-              {filtered.length} sample{" "}
-              {tab === "activity" ? "events" : "records"} in this view
+              {filtered.length} {tab === "activity" ? "events" : "records"} in
+              this view
             </p>
           </div>
           {tab === "billing" && (
@@ -814,7 +943,7 @@ function Directory({
           columns={config.columns}
           rows={filtered.slice(first, first + 5)}
           onDetail={onDetail}
-          caption={`${config.label}, illustrative data`}
+          caption={config.label}
         />
         <div className={styles.pagination}>
           <span role="status">
@@ -852,15 +981,31 @@ function Settings({ account }: { account: CustomerAccount }) {
   const [draftDays, setDraftDays] = useState<string | null>(null);
   const days = draftDays ?? String(savedDays);
   const [saved, setSaved] = useState("");
-  function save() {
+  const [saving, setSaving] = useState(false);
+  async function save() {
+    setSaving(true);
+    setSaved("");
     try {
-      localStorage.setItem("runly-admin-range", days);
-      window.dispatchEvent(new Event("runly-admin-preferences"));
-      setSaved("Dashboard preferences saved on this device.");
-    } catch {
-      setSaved(
-        "Your browser couldn't save these preferences. Please try again.",
+      const result = await adminRequest<{ defaultRange: number }>(
+        "/api/admin/settings",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ defaultRange: Number(days) }),
+        },
       );
+      window.dispatchEvent(
+        new CustomEvent("runly-admin-preferences", {
+          detail: result.defaultRange,
+        }),
+      );
+      setSaved("Dashboard preferences saved to your account.");
+    } catch (error) {
+      setSaved(
+        error instanceof Error ? error.message : "Couldn't save preferences.",
+      );
+    } finally {
+      setSaving(false);
     }
   }
   return (
@@ -890,7 +1035,9 @@ function Settings({ account }: { account: CustomerAccount }) {
       </section>
       <section className={`${styles.panel} ${styles.settingsPanel}`}>
         <h2>Dashboard preferences</h2>
-        <p>Changes apply to this dashboard on your current device.</p>
+        <p>
+          Your account stores the default range for future dashboard visits.
+        </p>
         <label className={styles.preference}>
           Default date range
           <select
@@ -905,8 +1052,13 @@ function Settings({ account }: { account: CustomerAccount }) {
             <option value="90">Last 90 days</option>
           </select>
         </label>
-        <button type="button" className={styles.primaryButton} onClick={save}>
-          Save preferences
+        <button
+          type="button"
+          className={styles.primaryButton}
+          onClick={() => void save()}
+          disabled={saving}
+        >
+          {saving ? "Saving…" : "Save preferences"}
         </button>
         <p className={styles.feedback} role="status">
           {saved}
@@ -977,7 +1129,6 @@ function DetailDialog({
     >
       <div className={styles.dialogHeading}>
         <div>
-          <span className={styles.sampleBadge}>Sample data</span>
           <h2 id="admin-detail-title">{detail.title}</h2>
         </div>
         <button
@@ -997,10 +1148,7 @@ function DetailDialog({
           </div>
         ))}
       </dl>
-      <p>
-        This illustrative record cannot change a real account, project, or
-        payment.
-      </p>
+      <p>Details from the current administration report.</p>
       <button type="button" className={styles.primaryButton} onClick={onClose}>
         Done
       </button>
@@ -1009,7 +1157,10 @@ function DetailDialog({
 }
 
 function exportCsv(columns: string[], rows: string[][], name: string) {
-  const escape = (value: string) => `"${value.replace(/"/g, '""')}"`;
+  const escape = (value: string) => {
+    const safe = /^[=+@\-\t\r\n]/.test(value) ? `'${value}` : value;
+    return `"${safe.replace(/"/g, '""')}"`;
+  };
   const csv = [columns, ...rows]
     .map((row) => row.map(escape).join(","))
     .join("\r\n");
@@ -1018,7 +1169,7 @@ function exportCsv(columns: string[], rows: string[][], name: string) {
   );
   const link = document.createElement("a");
   link.href = url;
-  link.download = `runly-${name}-sample.csv`;
+  link.download = `runly-${name}.csv`;
   link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
@@ -1043,6 +1194,18 @@ export function AdminDashboard({
   const days = selectedDays ?? savedDays;
   const [detail, setDetail] = useState<Detail | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  const [reportState, setReportState] = useState<{
+    data: AdminReport | null;
+    days: number;
+    error: string;
+  }>({ data: null, days: 0, error: "" });
+  const [billingState, setBillingState] = useState<{
+    data: BillingReport | null;
+    error: string;
+  }>({ data: null, error: "" });
+  const [reload, setReload] = useState(0);
+  const [actionError, setActionError] = useState("");
+  const [exporting, setExporting] = useState(false);
   const exportRows = useRef<{ columns: string[]; rows: Row[] }>({
     columns: [],
     rows: [],
@@ -1059,6 +1222,47 @@ export function AdminDashboard({
   const isInfrastructure = tab === "swiftlet" || tab === "nests";
   const isDirectory =
     tab !== "overview" && tab !== "settings" && !isInfrastructure;
+  useEffect(() => {
+    if (isInfrastructure || tab === "settings") return;
+    const controller = new AbortController();
+    adminRequest<AdminReport>(`/api/admin/overview?days=${days}`, {
+      signal: controller.signal,
+    })
+      .then((data) => setReportState({ data, days, error: "" }))
+      .catch((error) => {
+        if (!controller.signal.aborted)
+          setReportState({
+            data: null,
+            days,
+            error:
+              error instanceof Error ? error.message : "Couldn't load reports.",
+          });
+      });
+    return () => controller.abort();
+  }, [days, isInfrastructure, tab, reload]);
+  useEffect(() => {
+    if (tab !== "billing") return;
+    const controller = new AbortController();
+    adminRequest<BillingReport>("/api/admin/billing", {
+      signal: controller.signal,
+    })
+      .then((data) => setBillingState({ data, error: "" }))
+      .catch((error) => {
+        if (!controller.signal.aborted)
+          setBillingState({
+            data: null,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Couldn't load invoices.",
+          });
+      });
+    return () => controller.abort();
+  }, [tab, reload]);
+  const report = reportState.days === days ? reportState.data : null;
+  const reportError = reportState.days === days ? reportState.error : "";
+  const loading =
+    !isInfrastructure && tab !== "settings" && !report && !reportError;
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -1081,7 +1285,10 @@ export function AdminDashboard({
   const onRowsChange = useCallback((columns: string[], rows: Row[]) => {
     exportRows.current = { columns, rows };
   }, []);
-  function handleExport() {
+  async function handleExport() {
+    if (!report || exporting) return;
+    setExporting(true);
+    setActionError("");
     const data = isDirectory
       ? {
           columns: exportRows.current.columns,
@@ -1094,16 +1301,47 @@ export function AdminDashboard({
       : {
           columns: ["Metric", "Value", "Note"],
           rows: [
-            ["Total users", "1284", "Illustrative workspace total"],
-            ["Active projects", "326", "Across all creation types"],
-            ["AI credits used", "42860", "Of 60000 sample credits"],
-            ["Monthly revenue", "8420", "Illustrative USD total"],
+            [
+              "Total users",
+              String(report.overview.users),
+              "Loaded account directory",
+            ],
+            [
+              "Active projects",
+              String(report.overview.activeProjects),
+              "Projects that have not been archived",
+            ],
+            [
+              "AI tokens used",
+              String(report.overview.tokensUsed),
+              `Last ${days} days`,
+            ],
+            [
+              "Recorded events",
+              String(report.activity.length),
+              `Last ${days} days`,
+            ],
           ],
         };
-    exportCsv(data.columns, data.rows, tab);
-    setAnnouncement(
-      `Exported ${data.rows.length} illustrative records as CSV.`,
-    );
+    try {
+      await adminRequest("/api/admin/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resource: tab,
+          days,
+          rowCount: data.rows.length,
+        }),
+      });
+      exportCsv(data.columns, data.rows, tab);
+      setAnnouncement(`Exported ${data.rows.length} records as CSV.`);
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "Couldn't export this report.",
+      );
+    } finally {
+      setExporting(false);
+    }
   }
   return (
     <div className={`admin-surface ${styles.root}`}>
@@ -1238,17 +1476,11 @@ export function AdminDashboard({
               <p>{active.description}</p>
             </div>
             <div className={styles.pageActions}>
-              {isInfrastructure && isInfrastructureMock && (
-                <span className={styles.sampleBadge}>Mock data</span>
-              )}
-              {tab !== "settings" && !isInfrastructure && (
-                <span className={styles.sampleBadge}>Sample data</span>
-              )}
               {tab !== "settings" && !isInfrastructure && (
                 <>
                   <label className={styles.dateRange}>
                     <span className={styles.srOnly}>
-                      Date range for sample data
+                      Date range for recorded data
                     </span>
                     <select
                       value={days}
@@ -1263,9 +1495,14 @@ export function AdminDashboard({
                   <button
                     type="button"
                     className={styles.exportButton}
-                    onClick={handleExport}
+                    onClick={() => void handleExport()}
+                    disabled={
+                      !report ||
+                      exporting ||
+                      (tab === "billing" && !billingState.data)
+                    }
                   >
-                    Export
+                    {exporting ? "Exporting…" : "Export"}
                   </button>
                 </>
               )}
@@ -1274,29 +1511,64 @@ export function AdminDashboard({
           <span className={styles.srOnly} role="status">
             {announcement}
           </span>
-          {tab === "overview" ? (
-            <Overview days={days} onDetail={setDetail} />
+          {actionError && (
+            <p role="alert" className={styles.feedback}>
+              {actionError}
+            </p>
+          )}
+          {loading && (
+            <p role="status" className={styles.feedback}>
+              Loading administration data…
+            </p>
+          )}
+          {reportError && (
+            <div role="alert" className={styles.feedback}>
+              <p>{reportError}</p>
+              <button
+                className={styles.primaryButton}
+                onClick={() => setReload((value) => value + 1)}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {tab === "overview" && report ? (
+            <Overview days={days} report={report} onDetail={setDetail} />
           ) : tab === "swiftlet" ? (
             <AdminSwiftlet />
           ) : tab === "nests" ? (
             <AdminNests query={query} />
           ) : tab === "settings" ? (
             <Settings account={account} />
-          ) : (
+          ) : tab === "billing" && billingState.error ? (
+            <p role="alert" className={styles.feedback}>
+              {billingState.error}
+            </p>
+          ) : tab === "billing" && !billingState.data ? (
+            <p role="status" className={styles.feedback}>
+              Loading Stripe invoices…
+            </p>
+          ) : isDirectory && report ? (
             <Directory
-              tab={tab}
+              tab={tab as DirectoryTab}
+              report={report}
+              billing={billingState.data || emptyBilling}
               query={query}
               days={days}
               initialStatus={initialStatus}
               onDetail={setDetail}
               onRowsChange={onRowsChange}
             />
-          )}
+          ) : null}
           {!isInfrastructure && (
             <footer className={styles.footer}>
               {tab === "settings"
-                ? "Dashboard preferences are saved only on this device."
-                : "All metrics and accounts shown are illustrative. Sample period ending October 2, 2026."}
+                ? "Dashboard preferences are saved to your administrator account."
+                : report?.truncated
+                  ? `Reports include up to ${report.limit.toLocaleString()} rows per source. Some results are truncated; filters and exports use loaded records.`
+                  : report
+                    ? `Reports include up to ${report.limit.toLocaleString()} rows per source. Search and exports use the loaded records.`
+                    : "Administration data is loaded from connected services."}
             </footer>
           )}
         </main>

@@ -1,5 +1,6 @@
 import {
   adminClient,
+  auditAction,
   ApiError,
   failure,
   rateLimit,
@@ -99,6 +100,7 @@ export async function POST(request: Request) {
         502,
         "Your image was saved but could not be displayed. Refresh and try again.",
       );
+    await auditAction(user.id, "account.avatar_updated");
     return Response.json({ avatarUrl: signed.signedUrl });
   } catch (error) {
     return failure(error);
@@ -128,6 +130,7 @@ export async function DELETE(request: Request) {
       throw new ApiError(502, "Couldn't remove your profile image. Try again.");
     if (profile.avatar_path)
       await admin.storage.from("profile-avatars").remove([profile.avatar_path]);
+    await auditAction(user.id, "account.avatar_removed");
     return Response.json({ avatarUrl: "" });
   } catch (error) {
     return failure(error);

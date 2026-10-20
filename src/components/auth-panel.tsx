@@ -18,11 +18,13 @@ export function AuthPanel({
   initialEmail = "",
   initialTokenHash = "",
   initialNext = "/dashboard/projects",
+  emailCode = false,
 }: {
   mode: "login" | "signup" | "verify" | "forgot" | "reset" | "mfa";
   initialEmail?: string;
   initialTokenHash?: string;
   initialNext?: string;
+  emailCode?: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -128,7 +130,10 @@ export function AuthPanel({
       code,
       accepted,
       factorId: mode === "mfa" ? mfaFactorId : undefined,
-      next: mode === "mfa" || mode === "login" ? initialNext : undefined,
+      next:
+        mode === "mfa" || mode === "login" || mode === "verify"
+          ? initialNext
+          : undefined,
     });
   }
   async function run(action: string, payload: Record<string, unknown>) {
@@ -411,7 +416,13 @@ export function AuthPanel({
             className="auth-resend"
             type="button"
             disabled={pending || !verificationEmail}
-            onClick={() => run("resend", { email: verificationEmail })}
+            onClick={() =>
+              run(emailCode ? "email" : "resend", {
+                email: verificationEmail,
+                signup: false,
+                next: initialNext,
+              })
+            }
           >
             Send a new code
           </button>

@@ -43,6 +43,29 @@ components:
 
 # Runly Design System
 
+## Payment confirmation
+
+The matching checkout review screen, `/settings/billing/checkout?plan=...`,
+follows node `53:862`. Its two columns, form controls, price summary, and notices
+use HTML/CSS. Only the logo and small Figma icons are image assets. Available
+plan selections lead here before opening the existing Stripe Checkout or plan
+change portal. Production loads published plan prices and allowances, and card
+details are collected by Stripe. In development, `?preview=true` shows the
+sample Creator card form and can continue to the sample confirmation. Preview
+inputs have no form field names, are never serialized or stored, and are marked
+for sample data only. The columns stack on phones.
+
+`/settings/billing/success` follows Figma node `53:1554`: a standalone dark
+confirmation card, Manrope type, a green check icon, a payment summary, and blue
+workspace/billing actions. Layout, shapes, and controls use HTML/CSS; only the
+existing logo and Figma check icon are image assets. The card compacts on short
+desktop viewports and stacks naturally on phones. Its development-only
+`?preview=true` state uses the sample Creator payment; production confirms the
+signed-in customer's Checkout Session through a read-only endpoint before
+showing success. Processing, expired, missing, and unavailable states never
+show fabricated payment details. Checkout return URLs carry Stripe's session
+placeholder; subscription access remains managed by the existing billing flow.
+
 ## Admin dashboard
 
 The admin dashboard follows Figma node `53:942`: a dark operational surface,

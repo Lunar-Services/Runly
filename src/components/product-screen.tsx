@@ -12,11 +12,10 @@ import {
 } from "lucide-react";
 import { AppShell } from "./app-shell";
 import { AdminBillingPlans } from "./admin-billing-plans";
-import { CustomerHeader } from "./customer-header";
-import { CustomerFooter } from "./customer-footer";
-import { CreditPricingPreview } from "./credit-pricing-preview";
-const InteractiveProjectWorkspace = dynamic(() =>
-  import("./project-workspace").then((module) => module.ProjectWorkspace),
+import { PricingUI } from "./pricing-ui";
+const InteractiveProjectWorkspace = dynamic(
+  () => import("./project-workspace").then((module) => module.ProjectWorkspace),
+  { ssr: false },
 );
 
 export function ProductScreen({ slug }: { slug: string[] }) {
@@ -223,22 +222,5 @@ function LegalAdmin() {
 }
 
 function PricingPage() {
-  return (
-    <div className="customer-account customer-marketing-morph">
-      <CustomerHeader morphOnScroll />
-      <main id="customer-content" className="customer-pricing-page">
-        <section className="customer-pricing-heading">
-          <p>Plans</p>
-          <h1>
-            Your ideas.
-            <br />
-            <em>More room to create.</em>
-          </h1>
-          <p>Your workspace, AI, and live previews. Priced by the hour.</p>
-        </section>
-        <CreditPricingPreview />
-      </main>
-      <CustomerFooter />
-    </div>
-  );
+  return <PricingUI />;
 }

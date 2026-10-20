@@ -5,6 +5,7 @@ import {
   ApiError,
   body,
   failure,
+  rateLimit,
   sameOrigin,
 } from "@/lib/api";
 import { getMonthlyPrice, StripeConfigurationError } from "@/lib/stripe";
@@ -93,7 +94,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     sameOrigin(request);
-    await adminSession();
+    const { user } = await adminSession();
+    await rateLimit(request, "admin-plan-write", user.id, 20);
     const parsed = planInput.safeParse(await body(request, 4096));
     if (!parsed.success)
       throw new ApiError(400, "Check the product details and try again.");
@@ -126,8 +128,9 @@ export async function POST(request: Request) {
       input.stripeProductId,
       input.stripePriceId,
     );
-    const { error } = await db.from("subscription_plans").upsert(
-      {
+    const { data, error } = await db.rpc("save_subscription_plan", {
+      p_actor: user.id,
+      p_plan: {
         id: input.id,
         name: input.name,
         active: input.active,
@@ -138,15 +141,19 @@ export async function POST(request: Request) {
         window_7d_tokens: input.window7dTokens,
         project_cap: input.projectCap,
       },
-      { onConflict: "id" },
-    );
+    });
     if (error?.code === "23505")
       throw new ApiError(
         409,
         "That Stripe Product or Price is already registered to another plan.",
       );
+    if (error?.message.includes("plan_in_use"))
+      throw new ApiError(
+        409,
+        "Deactivate or migrate active subscriptions before changing this Product ID.",
+      );
     if (error) throw new Error("Couldn't save the product.");
-    return Response.json({ message: "Product saved." });
+    return Response.json({ message: "Product saved.", plan: data });
   } catch (error) {
     return planFailure(error);
   }
@@ -155,16 +162,17 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     sameOrigin(request);
-    await adminSession();
+    const { user } = await adminSession();
+    await rateLimit(request, "admin-plan-write", user.id, 20);
     const parsed = planStatusInput.safeParse(await body(request, 1024));
     if (!parsed.success)
       throw new ApiError(400, "Check the plan status and try again.");
-    const { data, error } = await adminClient()
-      .from("subscription_plans")
-      .update({ active: parsed.data.active })
-      .eq("id", parsed.data.id)
-      .select("id,active")
-      .maybeSingle();
+    const { data, error } = await adminClient().rpc(
+      "set_subscription_plan_status",
+      { p_actor: user.id, p_id: parsed.data.id, p_active: parsed.data.active },
+    );
+    if (error?.message.includes("plan_missing"))
+      throw new ApiError(404, "This product no longer exists.");
     if (error) throw new Error("Couldn't update the plan status.");
     if (!data) throw new ApiError(404, "This product no longer exists.");
     return Response.json({ plan: data });

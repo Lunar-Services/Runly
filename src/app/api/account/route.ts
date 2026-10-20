@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   adminClient,
+  auditAction,
   ApiError,
   body,
   failure,
@@ -87,6 +88,7 @@ export async function PATCH(request: Request) {
       throw new ApiError(409, "That display name is already in use.");
     if (error)
       throw new ApiError(502, "Your changes couldn't be saved. Try again.");
+    await auditAction(user.id, "account.profile_updated");
     return Response.json({ message: "Account updated." });
   } catch (error) {
     return failure(error);

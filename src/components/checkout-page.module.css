@@ -1,0 +1,472 @@
+.page {
+  --checkout-input: #212831;
+  --checkout-border: #353e4b;
+}
+.header {
+  width: min(1272px, 88.333%);
+  margin: 0 auto;
+  min-height: 94px;
+  padding: 30px 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--payment-line);
+}
+.headerLinks {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+}
+.page .back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--payment-muted);
+  font-size: 13px;
+}
+.environmentLabel {
+  min-width: 284px;
+  padding: 5px 18px;
+  border-radius: 20px;
+  background: #1f242b;
+  color: var(--payment-muted);
+  text-align: center;
+  font-size: 11px;
+}
+.main {
+  width: min(1200px, 83.333%);
+  margin: 0 auto;
+  padding: 40px 0 48px;
+}
+.intro {
+  margin-bottom: 36px;
+}
+.intro h1 {
+  margin: 0 0 12px;
+  color: var(--payment-text);
+  font-family: inherit;
+  font-size: clamp(34px, 2.92vw, 42px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.35;
+}
+.intro p {
+  margin: 0;
+  color: var(--payment-muted);
+  font-size: 16px;
+}
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 32px;
+}
+.paymentPanel,
+.orderPanel {
+  min-width: 0;
+  padding: 30px 32px;
+  border-radius: 18px;
+}
+.paymentPanel {
+  background: #171b21;
+}
+.orderPanel {
+  background: var(--payment-card);
+}
+.page h2 {
+  margin: 0;
+  color: var(--payment-text);
+  font:
+    700 21px/1.4 "Runly Manrope",
+    Arial,
+    sans-serif;
+  letter-spacing: -0.02em;
+}
+.method {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  margin: 24px 0;
+  padding: 12px 16px;
+  border: 1px solid #7099c6;
+  border-radius: 9px;
+  background: #293b52;
+}
+.method img {
+  flex-shrink: 0;
+}
+.method strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+.method > span {
+  margin-left: auto;
+  color: var(--payment-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.fields {
+  display: grid;
+  gap: 18px;
+}
+.field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 9px;
+  color: var(--payment-text);
+  font-size: 12px;
+}
+.fieldRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+:global(html[data-theme]) .page .field :is(input, select) {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--checkout-border);
+  border-radius: 8px;
+  background: var(--checkout-input);
+  color: var(--payment-text);
+  font:
+    13px/1.5 "Runly Manrope",
+    Arial,
+    sans-serif;
+  box-shadow: none;
+}
+:global(html[data-theme]) .page .field input::placeholder {
+  color: var(--payment-muted);
+  opacity: 1;
+}
+:global(html[data-theme]) .page .field select {
+  appearance: none;
+  padding-right: 38px;
+}
+:global(html[data-theme]) .page .field select:has(option:checked[value=""]) {
+  color: var(--payment-muted);
+}
+:global(html[data-theme]) .page .field :is(input, select):focus-visible {
+  outline: 2px solid var(--payment-action);
+  outline-offset: 3px;
+}
+.inputIcon {
+  display: block;
+  position: relative;
+}
+.inputIcon img {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+:global(html[data-theme]) .page .field .inputIcon input {
+  padding-right: 44px;
+}
+.taxNote {
+  margin: 30px 0 22px;
+  color: var(--payment-muted);
+  font-size: 12px;
+}
+.trustNote {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+  border-radius: 9px;
+  background: var(--payment-card);
+}
+.trustNote img {
+  flex-shrink: 0;
+}
+.trustNote p {
+  margin: 0;
+  color: var(--payment-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.page .sampleHint {
+  margin: 14px 0 0;
+  color: var(--payment-muted);
+  font-size: 11px;
+}
+.planDescription {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 24px;
+}
+.planDescription > span {
+  padding: 4px 22px;
+  border-radius: 18px;
+  background: #304d70;
+  color: var(--payment-action);
+  font-size: 11px;
+}
+.planDescription > p {
+  margin: 0;
+  color: var(--payment-muted);
+  font-size: 13px;
+}
+.page .price {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 6px 0 0;
+  color: var(--payment-text);
+  font-size: clamp(44px, 3.82vw, 55px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.4;
+}
+.price > span {
+  color: var(--payment-muted);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.currency {
+  margin: 0;
+  color: var(--payment-muted);
+  font-size: 12px;
+}
+.features {
+  display: grid;
+  gap: 14px;
+  margin: 28px 0 0;
+  padding: 22px 0;
+  border-block: 1px solid var(--payment-line);
+  list-style: none;
+}
+.features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--payment-text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.features img {
+  flex-shrink: 0;
+}
+.totals {
+  margin: 16px 0 24px;
+}
+.totals > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+}
+.totals dt {
+  color: var(--payment-muted);
+  font-size: 13px;
+}
+.totals dd {
+  margin: 0;
+  color: var(--payment-text);
+  text-align: right;
+  font-size: 13px;
+}
+.totals > div:nth-child(2) dd {
+  color: var(--payment-muted);
+  font-size: 12px;
+}
+.totals .total {
+  margin-top: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--payment-line);
+}
+.total dt {
+  color: var(--payment-text);
+  font-size: 15px;
+  font-weight: 700;
+}
+.total dd {
+  font-size: 23px;
+  font-weight: 700;
+}
+.page .continue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 49px;
+  padding: 12px 22px;
+  border: 0;
+  border-radius: 28px;
+  background: var(--payment-action);
+  color: #151b26;
+  font:
+    700 13px/1.5 "Runly Manrope",
+    Arial,
+    sans-serif;
+  cursor: pointer;
+}
+.page .continue:hover:not(:disabled) {
+  background: #c3dcfc;
+}
+.page .continue:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.orderFooter {
+  padding: 26px 32px 0;
+  color: var(--payment-muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.orderFooter p {
+  margin: 0;
+}
+.page .orderFooter a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 14px;
+  color: var(--payment-action);
+}
+.page .footer {
+  margin: 52px 0 0;
+  color: var(--payment-muted);
+  font-size: 12px;
+}
+.secureEntry {
+  padding: 26px 0;
+}
+.secureEntry h3 {
+  margin: 0 0 18px;
+  color: var(--payment-text);
+  font:
+    700 22px/1.4 "Runly Manrope",
+    Arial,
+    sans-serif;
+}
+.secureEntry p {
+  margin: 0 0 18px;
+  color: var(--payment-muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.notice {
+  padding: 24px;
+  border: 1px solid var(--payment-line);
+  border-radius: 12px;
+  color: var(--payment-muted);
+}
+.notice p {
+  margin: 0 0 16px;
+}
+.notice :is(button, a) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-right: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--payment-action);
+  font: inherit;
+  text-decoration: underline;
+}
+.page .error {
+  margin: 0 0 16px;
+  color: #e5bcb8;
+  font-size: 13px;
+  line-height: 1.6;
+}
+@media (max-width: 1000px) {
+  .main {
+    width: calc(100% - 48px);
+  }
+  .header {
+    width: calc(100% - 48px);
+  }
+  .columns {
+    gap: 24px;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  }
+  .paymentPanel,
+  .orderPanel {
+    padding: 26px 24px;
+  }
+  .method > span {
+    display: none;
+  }
+  .orderFooter {
+    padding-inline: 24px;
+  }
+}
+@media (max-width: 760px) {
+  .header {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-block: 20px;
+  }
+  .headerLinks {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .environmentLabel {
+    min-width: 0;
+  }
+  .main {
+    padding-top: 28px;
+  }
+  .intro h1 {
+    font-size: 32px;
+  }
+  .intro p {
+    font-size: 14px;
+  }
+  .columns {
+    grid-template-columns: 1fr;
+  }
+  .intro {
+    margin-bottom: 28px;
+  }
+  .orderFooter {
+    padding-top: 20px;
+  }
+  .page .footer {
+    margin-top: 32px;
+  }
+}
+@media (max-width: 420px) {
+  .header,
+  .main {
+    width: calc(100% - 32px);
+  }
+  .paymentPanel,
+  .orderPanel {
+    padding: 24px 20px;
+  }
+  .fieldRow {
+    gap: 12px;
+  }
+  .fields > .fieldRow:last-child {
+    grid-template-columns: 1fr;
+  }
+  .method {
+    padding-inline: 12px;
+    gap: 10px;
+  }
+  .method strong {
+    font-size: 13px;
+  }
+  .trustNote {
+    padding-inline: 12px;
+    gap: 10px;
+  }
+  .planDescription {
+    gap: 12px;
+  }
+}

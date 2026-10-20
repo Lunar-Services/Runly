@@ -1,0 +1,1430 @@
+@font-face {
+  font-family: "Runly Manrope";
+  src: url("/fonts/manrope.ttf") format("truetype");
+  font-weight: 200 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("/fonts/instrument-serif.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+.root {
+  --bg: #111317;
+  --panel: #17191e;
+  --surface: #222a35;
+  --text: #f5f6f8;
+  --muted: #aeb8c8;
+  display: grid;
+  grid-template-columns: 68px 316px minmax(0, 1fr);
+  height: 100dvh;
+  min-height: 600px;
+  background: var(--bg);
+  color: var(--text);
+  color-scheme: dark;
+  overflow: hidden;
+  font:
+    13px/1.5 "Runly Manrope",
+    Arial,
+    sans-serif;
+  isolation: isolate;
+}
+.root * {
+  box-sizing: border-box;
+}
+.root button,
+.root input,
+.root select,
+.root textarea {
+  font: inherit;
+  color: inherit;
+}
+.root button {
+  border: 0;
+  cursor: pointer;
+}
+.root button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.root a {
+  color: inherit;
+  text-decoration: none;
+}
+.root button:focus-visible,
+.root a:focus-visible,
+.root input:focus-visible,
+.root textarea:focus-visible,
+.root select:focus-visible {
+  outline: 2px solid #afcff8;
+  outline-offset: 3px;
+}
+.root h1,
+.root h2,
+.root p {
+  margin: 0;
+}
+.root img {
+  display: block;
+  max-width: none;
+}
+.root button:hover {
+  filter: brightness(1.1);
+}
+.rail {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  background: #0d1114;
+  padding: 26px 0 25px;
+  gap: 18px;
+}
+.rail > a:first-child {
+  margin-bottom: 30px;
+}
+.rail > button,
+.rail > a:not(:first-child) {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: transparent;
+  padding: 0;
+}
+.rail > button.railActive {
+  background: #243548;
+}
+.rail .themeButton {
+  margin-top: auto;
+}
+.rail > a.avatar {
+  width: 29px;
+  height: 29px;
+  min-height: 29px;
+  border-radius: 50%;
+  background: #d1dceb;
+  color: #151b26;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+.sidebar {
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid #20262f;
+}
+.projectHeader {
+  height: 91px;
+  flex: none;
+  position: relative;
+  padding: 24px 24px 0;
+  border-bottom: 1px solid #252a32;
+}
+.projectHeader select {
+  appearance: none;
+  font-size: 16px;
+  font-weight: 700;
+  border: 0;
+  background: transparent;
+  width: 100%;
+  padding-right: 25px;
+  cursor: pointer;
+}
+.projectHeader option {
+  background: var(--panel);
+}
+.projectHeader > img {
+  position: absolute;
+  right: 17px;
+  top: 27px;
+  pointer-events: none;
+}
+.projectHeader p {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.sideTabs {
+  margin: 17px 16px 0;
+  height: 40px;
+  display: flex;
+  flex: none;
+  background: #252d38;
+  border-radius: 9px;
+  padding: 0 9px;
+}
+.sideTabs button {
+  width: 33.33%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 0;
+  position: relative;
+}
+.sideTabs button[aria-selected="true"] {
+  color: var(--text);
+  font-weight: 700;
+}
+.sideTabs button[aria-selected="true"]:after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: #afcff8;
+}
+.conversation {
+  padding: 31px 24px 0;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  scrollbar-width: thin;
+}
+.userMessage {
+  margin-left: 10px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #2b3440;
+  min-height: 105px;
+  line-height: 1.8;
+}
+.assistant {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 34px;
+}
+.assistant strong {
+  font-size: 13px;
+}
+.assistant > span {
+  margin-left: auto;
+  border-radius: 20px;
+  background: #2f4a3e;
+  color: #b7d9c3;
+  font-size: 11px;
+  padding: 4px 18px;
+}
+.conversation > p {
+  font-size: 13px;
+  line-height: 1.8;
+  margin-top: 27px;
+}
+.conversation ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+  margin: 29px 0 0;
+}
+.conversation li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.result {
+  width: 100%;
+  background: #222c38;
+  border-radius: 12px;
+  text-align: left;
+  padding: 17px;
+  margin-top: 29px;
+}
+.result > span {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.result strong {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.result > span > img:last-child {
+  margin-left: auto;
+}
+.result small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 9px;
+}
+.conversation .changeQuestion {
+  margin-top: 21px;
+}
+.responseTools {
+  display: flex;
+  gap: 14px;
+  margin-top: 13px;
+}
+.responseTools button {
+  background: transparent;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+.paletteButton {
+  height: 35px;
+  flex: none;
+  background: #252d38;
+  border-radius: 24px;
+  margin: 20px 24px 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+.composer {
+  height: 125px;
+  flex: none;
+  background: #252f3e;
+  border-radius: 18px;
+  padding: 17px 16px;
+  margin: 21px 14px 0;
+}
+.composer textarea {
+  resize: none;
+  height: 52px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  outline: 0;
+  font-size: 13px;
+}
+.composer textarea::placeholder {
+  color: #d3dbe7;
+}
+.composer > div {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 5px;
+}
+.composer button {
+  background: transparent;
+  padding: 0;
+}
+.composer label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+}
+.composer select {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  font-size: 11px;
+  padding: 0;
+  cursor: pointer;
+}
+.composer option {
+  background: var(--panel);
+}
+.composer button.send {
+  width: 36px;
+  height: 36px;
+  background: #afcff8;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  margin-left: auto;
+  opacity: 1;
+}
+.review {
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  margin: 18px 0 20px;
+}
+.followup {
+  background: #29323e;
+  margin: 20px 0;
+  padding: 13px;
+  border-radius: 10px;
+}
+.followup p {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.toolPanel {
+  padding: 26px 20px;
+  overflow: auto;
+}
+.toolPanel h2 {
+  font-size: 15px;
+  margin-bottom: 20px;
+}
+.toolPanel > button {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  background: #222a35;
+  padding: 14px;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.toolPanel button > span,
+.toolPanel button > small {
+  color: var(--muted);
+}
+.toolPanel .selectedHistory {
+  outline: 1px solid #afcff8;
+}
+.toolPanel .uploadButton {
+  background: #afcff8;
+  color: #151b26;
+  align-items: center;
+}
+.main {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.toolbar {
+  height: 77px;
+  display: flex;
+  align-items: center;
+  background: #171e28;
+  padding: 0 26px 0 23px;
+  gap: 28px;
+  flex: none;
+}
+.modeTabs {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  gap: 35px;
+}
+.modeTabs button {
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 0 4px;
+  position: relative;
+}
+.modeTabs button[aria-selected="true"] {
+  color: var(--text);
+  font-weight: 700;
+}
+.modeTabs button[aria-selected="true"]:after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  height: 3px;
+  background: #afcff8;
+}
+.saveStatus {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  margin-left: 65px;
+  white-space: nowrap;
+}
+.actions {
+  display: flex;
+  gap: 13px;
+  margin-left: auto;
+}
+.actions button,
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 39px;
+  padding: 0 28px;
+  border-radius: 24px;
+  border: 0;
+  background: #252d38;
+  color: #f5f6f8;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.actions .primary,
+.primary {
+  background: #afcff8;
+  color: #151b26;
+}
+.actions > button {
+  width: 90px;
+  padding: 0;
+}
+.actions > button.primary {
+  width: 120px;
+  padding: 0;
+}
+.canvasArea {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 16px 14px 27px;
+  gap: 21px;
+}
+.previewToolbar {
+  height: 52px;
+  background: #222a35;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 6px;
+  flex: none;
+}
+.previewTabs {
+  display: flex;
+  gap: 12px;
+  height: 100%;
+}
+.previewTabs button {
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 0 27px;
+  border-radius: 9px;
+}
+.previewTabs button[aria-selected="true"] {
+  background: #34475d;
+  color: var(--text);
+  font-weight: 700;
+}
+.domain {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.device {
+  margin-left: auto;
+}
+.device select,
+.zoom select {
+  appearance: none;
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+}
+.device select {
+  padding-right: 19px;
+  background-image: url("/figma/workspace/editor/91d66.svg");
+  background-position: right center;
+  background-repeat: no-repeat;
+}
+.device option,
+.zoom option {
+  background: #222a35;
+}
+.openPreview {
+  margin-left: auto;
+  margin-right: 13px;
+}
+.previewContainer {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 14px 0 10px;
+  scrollbar-width: thin;
+}
+.site {
+  background: #e8eddf;
+  color: #28382e;
+  border-radius: 13px;
+  min-height: 721px;
+  padding: 16px 51px 40px 38px;
+  overflow: hidden;
+}
+.site > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #bcc8ba;
+  padding-bottom: 20px;
+}
+.site > header strong {
+  font-size: 28px;
+  font-weight: 700;
+}
+.site nav {
+  display: flex;
+  gap: 16px;
+}
+.site nav button {
+  padding: 0;
+  background: transparent;
+  font-size: 12px;
+  color: #415447;
+}
+.site > h1 {
+  font-size: 54px;
+  font-weight: 400;
+  line-height: 1.18;
+  letter-spacing: -1.7px;
+  margin-top: 43px;
+}
+.site > p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #52634f;
+  margin: 20px 3px 0;
+}
+.siteCta {
+  background: #293f31;
+  color: #f5f7f0;
+  height: 44px;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 40px;
+  margin: 26px 3px 0;
+}
+.workHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 48px;
+  font-size: 14px;
+}
+.workHeading > span {
+  font-size: 11px;
+  color: #52634f;
+}
+.workCards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 21px;
+  margin-top: 20px;
+}
+.workCards > button {
+  height: 174px;
+  border-radius: 10px;
+  position: relative;
+  text-align: left;
+  padding: 25px;
+  background: #c3cead;
+  color: #30452f;
+  overflow: hidden;
+}
+.workCards > button > span {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  background: #dfe7cf;
+  border-radius: 20px;
+  font-size: 11px;
+  padding: 4px 24px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.commonGround > strong {
+  display: block;
+  font-size: 42px;
+  line-height: 1.1;
+  letter-spacing: -1.6px;
+  margin-top: 22px;
+}
+.workCards > .sunday {
+  background: #e5c3a7;
+  color: #6f4836;
+}
+.sunday > strong {
+  font:
+    400 63px/1.1 "Instrument Serif",
+    Georgia,
+    serif;
+  display: block;
+  margin-top: 8px;
+}
+.sunday > p {
+  font-size: 15px;
+  margin-top: 25px;
+}
+.workCards > .sunday > span {
+  background: #f4d9c0;
+}
+.alternatePalette {
+  background: #ece7df;
+}
+.alternatePalette .commonGround {
+  background: #b6c7d3;
+}
+.alternatePalette .sunday {
+  background: #dec4cb;
+}
+.versionBar {
+  height: 67px;
+  flex: none;
+  background: #222a35;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  gap: 16px;
+}
+.versionBar strong {
+  display: block;
+  font-size: 12px;
+}
+.versionBar small {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.historyButton {
+  margin-left: auto;
+  height: 35px;
+  border-radius: 24px;
+  padding: 0 23px;
+  background: #28313e;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.undoButton {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+.code {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  padding: 0 10px;
+}
+.code > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.code button {
+  background: #afcff8;
+  color: #151b26;
+  border-radius: 20px;
+  padding: 7px 22px;
+}
+.code > textarea {
+  width: 100%;
+  flex: 1;
+  min-height: 220px;
+  resize: none;
+  font:
+    13px/1.8 Consolas,
+    monospace;
+  background: #17191e;
+  border: 1px solid #30343d;
+  border-radius: 8px;
+  padding: 20px;
+  tab-size: 2;
+}
+.code > p {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.mobileCanvas .site {
+  max-width: 390px;
+  margin: auto;
+}
+.tabletCanvas .site {
+  max-width: 680px;
+  margin: auto;
+}
+.mobileCanvas .site > h1 {
+  font-size: 36px;
+}
+.mobileCanvas .workCards {
+  grid-template-columns: 1fr;
+}
+.mobileCanvas .site nav {
+  display: none;
+}
+.video {
+  position: relative;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #15243b;
+}
+.video > img {
+  object-fit: cover;
+}
+.video h1 {
+  position: relative;
+  font:
+    400 70px/1.45 "Instrument Serif",
+    Georgia,
+    serif;
+  text-align: center;
+}
+.video > button {
+  position: relative;
+  background: #ffffff8c;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+}
+.video > span {
+  position: absolute;
+  bottom: 30px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.appCanvas {
+  background: #e7eaf1;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  padding: 22px;
+}
+.phone {
+  width: 292px;
+  height: 703px;
+  background: #fbfcf9;
+  border-radius: 28px;
+  padding: 18px 16px;
+  color: #151b26;
+}
+.phone > small {
+  font-size: 12px;
+  margin-left: 6px;
+}
+.phone > h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 33px 6px 8px;
+}
+.phone > p {
+  font-size: 13px;
+  color: #526174;
+  margin-left: 6px;
+}
+.phone > h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 37px 6px 10px;
+}
+.chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 128px;
+  margin: 0 8px;
+}
+.chart > div {
+  width: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.chart span {
+  display: block;
+  width: 20px;
+  border-radius: 5px;
+  background: #cfddcc;
+}
+.chart small {
+  font-size: 10px;
+  color: #526174;
+}
+.phone h3 {
+  font-size: 11px;
+  color: #526174;
+  margin: 34px 6px 23px;
+}
+.phone > button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  height: 45px;
+  border-radius: 12px;
+  background: #edf1e9;
+  padding: 0 12px;
+  margin-bottom: 9px;
+  font-size: 13px;
+}
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  background: #303948;
+  border: 1px solid #46566b;
+  border-radius: 9px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 12px;
+  box-shadow: 0 10px 30px #0006;
+}
+.toast button {
+  background: transparent;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+.dialog {
+  position: fixed;
+  background: #1d222a;
+  color: #f5f6f8;
+  border: 1px solid #3b4350;
+  border-radius: 16px;
+  padding: 28px;
+  width: min(480px, calc(100vw - 32px));
+  font:
+    13px/1.6 "Runly Manrope",
+    Arial,
+    sans-serif;
+}
+.dialog::backdrop {
+  background: #070a10a8;
+}
+.dialog .close {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  background: transparent;
+  color: #aeb8c8;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.dialog h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 30px 16px 0;
+}
+.dialog p {
+  color: #aeb8c8;
+  margin: 10px 0 18px;
+}
+.dialog input,
+.dialog textarea {
+  background: #111317;
+  color: #f5f6f8;
+  border: 1px solid #30343d;
+  padding: 12px;
+  border-radius: 8px;
+  width: 100%;
+  font: inherit;
+  margin-bottom: 14px;
+}
+.dialog textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.root.root .composer textarea {
+  background: transparent;
+  border: 0;
+  color: var(--text);
+}
+.root.root .composer textarea::placeholder {
+  color: #d3dbe7;
+  opacity: 1;
+}
+.root.root .composer select,
+.root.root .projectHeader select,
+.root.root .device select,
+.root.root .zoom select {
+  background-color: transparent;
+  border: 0;
+  color: var(--muted);
+}
+.root.root .projectHeader select {
+  color: var(--text);
+}
+.root.root .siteCta {
+  background: #293f31;
+  color: #f5f7f0;
+}
+.root.root .versionBar {
+  background: #222a35;
+  color: var(--text);
+}
+.root.root .sideTabs button[aria-selected="true"] {
+  background: transparent;
+  color: var(--text);
+}
+.root.root .modeTabs button[aria-selected="true"] {
+  background: transparent;
+  color: var(--text);
+}
+.root.root .previewTabs button[aria-selected="true"] {
+  background: #34475d;
+  color: var(--text);
+}
+.root.root .code > textarea {
+  background: #17191e;
+  border: 1px solid #30343d;
+  color: #f5f6f8;
+}
+.root.root .dialog input,
+.root.root .dialog textarea {
+  background: #111317;
+  border: 1px solid #30343d;
+  color: #f5f6f8;
+}
+.light {
+  --bg: #e8ebf0;
+  --panel: #f1f3f6;
+  --text: #151b26;
+  --muted: #526174;
+}
+.light .sidebar,
+.light .toolPanel {
+  color: #151b26;
+}
+.light .sideTabs {
+  background: #dae0e9;
+}
+.light .conversation {
+  color: #151b26;
+}
+.light .userMessage,
+.light .result,
+.light .composer {
+  background: #dbe1ea;
+  color: #151b26;
+}
+.light .composer textarea::placeholder {
+  color: #526174;
+}
+.light .rail {
+  background: #d2dbe5;
+}
+@media (max-height: 900px) and (min-width: 1001px) {
+  .conversation {
+    padding-top: 25px;
+  }
+  .userMessage {
+    min-height: 100px;
+    line-height: 1.7;
+  }
+  .assistant {
+    margin-top: 28px;
+  }
+  .conversation > p {
+    margin-top: 22px;
+  }
+  .conversation ul {
+    margin-top: 24px;
+    gap: 15px;
+  }
+  .result {
+    margin-top: 34px;
+  }
+  .composer {
+    margin-top: 16px;
+  }
+  .review {
+    margin: 15px 0 17px;
+  }
+  .site {
+    min-height: 680px;
+  }
+  .site > h1 {
+    margin-top: 42px;
+    font-size: 50px;
+  }
+  .workHeading {
+    margin-top: 44px;
+  }
+  .workCards > button {
+    height: 160px;
+  }
+  .canvasArea {
+    gap: 20px;
+  }
+}
+@media (max-width: 1250px) {
+  .root {
+    grid-template-columns: 60px 290px minmax(0, 1fr);
+  }
+  .toolbar {
+    gap: 20px;
+    padding: 0 18px;
+  }
+  .saveStatus {
+    margin-left: 12px;
+  }
+  .modeTabs {
+    gap: 22px;
+  }
+  .previewToolbar {
+    gap: 12px;
+  }
+  .previewTabs {
+    gap: 0;
+  }
+  .previewTabs button {
+    padding: 0 18px;
+  }
+  .domain {
+    display: none;
+  }
+  .site {
+    padding: 24px;
+  }
+  .site > h1 {
+    font-size: 42px;
+  }
+  .workCards {
+    gap: 15px;
+  }
+  .workCards > button {
+    padding: 18px;
+  }
+  .commonGround > strong {
+    font-size: 32px;
+  }
+  .sunday > strong {
+    font-size: 52px;
+  }
+  .workCards > button > span {
+    font-size: 9px;
+    padding: 4px 14px;
+  }
+  .conversation {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .assistant {
+    gap: 9px;
+  }
+  .assistant > span {
+    padding: 4px 12px;
+  }
+}
+@media (max-width: 1000px) {
+  .root {
+    grid-template-columns: 52px 260px minmax(0, 1fr);
+  }
+  .projectHeader {
+    padding: 24px 16px 0;
+  }
+  .projectHeader select {
+    font-size: 14px;
+  }
+  .sideTabs {
+    margin-left: 10px;
+    margin-right: 10px;
+  }
+  .conversation {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .userMessage {
+    font-size: 12px;
+  }
+  .assistant > span {
+    font-size: 9px;
+    padding: 4px 9px;
+  }
+  .conversation > p {
+    font-size: 12px;
+  }
+  .conversation li {
+    font-size: 11px;
+    gap: 7px;
+  }
+  .result {
+    padding: 12px;
+  }
+  .result strong {
+    font-size: 10px;
+  }
+  .result > span {
+    gap: 8px;
+  }
+  .saveStatus {
+    display: none;
+  }
+  .actions button {
+    padding: 0 20px;
+  }
+  .site > h1 {
+    font-size: 35px;
+    letter-spacing: -1px;
+  }
+  .site > p {
+    font-size: 12px;
+  }
+  .workCards {
+    grid-template-columns: 1fr;
+  }
+  .site nav {
+    display: none;
+  }
+  .versionBar {
+    padding: 12px;
+    gap: 10px;
+  }
+  .versionBar > div small {
+    max-width: 160px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+  .historyButton {
+    padding: 0 15px;
+    font-size: 11px;
+  }
+  .undoButton {
+    font-size: 0;
+    gap: 0;
+    padding: 0;
+  }
+  .rail > a:first-child {
+    margin-bottom: 24px;
+  }
+  .paletteButton {
+    font-size: 11px;
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+}
+@media (max-width: 760px) {
+  .root {
+    grid-template-columns: 48px minmax(0, 1fr);
+    min-height: 100dvh;
+    height: auto;
+    overflow: visible;
+  }
+  .rail {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    grid-row: 1 / 3;
+    padding-top: 22px;
+    gap: 14px;
+  }
+  .rail > a:first-child img {
+    width: 26px;
+    height: 26px;
+  }
+  .rail > button,
+  .rail > a:not(:first-child) {
+    width: 36px;
+    height: 36px;
+  }
+  .sidebar {
+    grid-column: 2;
+    grid-row: 2;
+    height: 650px;
+    border-top: 1px solid #30343d;
+  }
+  .projectHeader {
+    height: 74px;
+    padding-top: 15px;
+  }
+  .projectHeader > img {
+    top: 16px;
+  }
+  .sideTabs {
+    margin: 14px 16px 0;
+  }
+  .conversation {
+    padding: 20px;
+  }
+  .main {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .toolbar {
+    height: 64px;
+    padding: 0 12px;
+    gap: 10px;
+  }
+  .modeTabs {
+    gap: 13px;
+  }
+  .modeTabs button {
+    font-size: 11px;
+    padding: 0 2px;
+  }
+  .actions {
+    gap: 6px;
+  }
+  .actions button {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 10px;
+  }
+  .canvasArea {
+    padding: 14px 10px;
+    gap: 14px;
+    min-height: 680px;
+  }
+  .previewToolbar {
+    height: 44px;
+    gap: 5px;
+    padding: 4px;
+  }
+  .previewTabs button {
+    font-size: 10px;
+    padding: 0 12px;
+  }
+  .device select {
+    font-size: 9px;
+    padding-right: 16px;
+  }
+  .zoom {
+    display: none;
+  }
+  .openPreview {
+    margin: 0 5px 0 auto;
+  }
+  .previewContainer {
+    padding: 0;
+    overflow: visible;
+  }
+  .site {
+    padding: 20px;
+    min-height: 580px;
+  }
+  .site > header strong {
+    font-size: 23px;
+  }
+  .site > h1 {
+    font-size: 28px;
+    margin-top: 30px;
+  }
+  .site > p {
+    font-size: 11px;
+    line-height: 1.8;
+  }
+  .site > p br {
+    display: none;
+  }
+  .siteCta {
+    font-size: 11px;
+    padding: 0 23px;
+    height: 39px;
+  }
+  .workHeading {
+    font-size: 12px;
+    margin-top: 34px;
+  }
+  .workHeading > span {
+    font-size: 9px;
+  }
+  .workCards {
+    gap: 14px;
+    margin-top: 16px;
+  }
+  .workCards > button {
+    height: 142px;
+  }
+  .workCards > button > span {
+    font-size: 9px;
+  }
+  .commonGround > strong {
+    font-size: 32px;
+  }
+  .sunday > strong {
+    font-size: 48px;
+  }
+  .sunday > p {
+    font-size: 12px;
+    margin-top: 12px;
+  }
+  .versionBar {
+    height: 60px;
+    padding: 10px;
+  }
+  .versionBar > img {
+    display: none;
+  }
+  .versionBar strong {
+    font-size: 10px;
+  }
+  .versionBar small {
+    font-size: 8px;
+  }
+  .historyButton {
+    font-size: 9px;
+    padding: 0 12px;
+    height: 30px;
+  }
+  .versionBar > div small {
+    max-width: 100px;
+  }
+  .video h1 {
+    font-size: 36px;
+  }
+  .video > span {
+    font-size: 8px;
+    bottom: 14px;
+  }
+  .appCanvas {
+    padding: 18px 0;
+  }
+  .phone {
+    transform: scale(0.85);
+    transform-origin: top center;
+    margin-bottom: -105px;
+    flex: none;
+  }
+  .toast {
+    width: calc(100vw - 36px);
+    bottom: 18px;
+  }
+  .code > textarea {
+    min-height: 420px;
+  }
+  .dialog {
+    padding: 24px;
+  }
+}

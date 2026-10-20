@@ -10,14 +10,15 @@ import {
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import {
   defaultSwiftlet,
-  isInfrastructureMock,
   swiftletSchema,
   nestSchema,
-  swiftletSettingsKey,
-  nestsKey,
-  saveConfiguration,
+  saveSwiftletSettings,
+  saveNest,
+  removeNest,
   useSwiftletSettings,
   useNests,
+  useInfrastructureStatus,
+  retryInfrastructureLoad,
   type SwiftletSettings,
   type Nest,
 } from "./admin-infrastructure-state";
@@ -49,14 +50,6 @@ const toNestForm = (value: Nest): NestForm => ({
   maxEggs: String(value.maxEggs),
 });
 
-function DevelopmentNote() {
-  if (!isInfrastructureMock) return null;
-  return (
-    <p className={styles.developmentNote}>
-      Development mode. Mock data and changes are saved in this browser.
-    </p>
-  );
-}
 function Field({
   label,
   name,
@@ -91,27 +84,52 @@ function Field({
 function fieldDescription(name: string, error: string | undefined) {
   return `${name}-help${error ? ` ${name}-error` : ""}`;
 }
-function TokenField({ name, label }: { name: string; label: string }) {
+function TokenField({
+  name,
+  label,
+  value,
+  configured,
+  disabled,
+  onChange,
+  onClear,
+}: {
+  name: string;
+  label: string;
+  value: string;
+  configured: boolean;
+  disabled: boolean;
+  onChange: (value: string) => void;
+  onClear: () => void;
+}) {
   return (
     <Field
       name={name}
       label={label}
-      help={
-        isInfrastructureMock
-          ? "Authentication is simulated in development."
-          : "API authentication is not configured."
-      }
+      help={`Write-only. ${configured ? "A token is saved; leave blank to keep it." : "No token is saved yet."} Enter a new token to replace it.`}
     >
       <input
         id={name}
         name={name}
         type="password"
-        disabled
-        placeholder={isInfrastructureMock ? "Mock token" : "Not configured"}
+        disabled={disabled}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={configured ? "Saved token" : "Enter API token"}
         autoComplete="new-password"
         spellCheck={false}
+        aria-label="Swiftlet API token"
         aria-describedby={`${name}-help`}
       />
+      {configured && (
+        <button
+          type="button"
+          className={styles.secondaryButton}
+          disabled={disabled}
+          onClick={onClear}
+        >
+          Remove saved token
+        </button>
+      )}
     </Field>
   );
 }
@@ -127,24 +145,43 @@ function focusField(form: HTMLFormElement, field: PropertyKey | undefined) {
 
 export function AdminSwiftlet() {
   const saved = useSwiftletSettings();
+  const status = useInfrastructureStatus();
+  const [apiToken, setApiToken] = useState("");
+  const [clearToken, setClearToken] = useState(false);
   const [editing, setEditing] = useState<SwiftletForm | null>(null);
   const form = editing ?? toSwiftletForm(saved);
   const [errors, setErrors] = useState<Errors>({});
   const [feedback, setFeedback] = useState("");
   const [failed, setFailed] = useState(false);
-  const dirty = JSON.stringify(form) !== JSON.stringify(toSwiftletForm(saved));
+  const [saving, setSaving] = useState(false);
+  const dirty =
+    JSON.stringify(form) !== JSON.stringify(toSwiftletForm(saved)) ||
+    apiToken.length > 0 ||
+    clearToken;
   function change(name: keyof SwiftletForm, value: string) {
     setEditing({ ...form, [name]: value });
     setErrors((current) => ({ ...current, [name]: "" }));
     setFeedback("");
   }
+  function changeToken(value: string) {
+    setApiToken(value);
+    setClearToken(false);
+    setFeedback("");
+  }
+  function clearSavedToken() {
+    setApiToken("");
+    setClearToken(true);
+    setFeedback("");
+  }
   function discard() {
     setEditing(null);
+    setApiToken("");
+    setClearToken(false);
     setErrors({});
     setFailed(false);
     setFeedback("Changes discarded.");
   }
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const result = swiftletSchema.safeParse({
       ...form,
@@ -161,17 +198,27 @@ export function AdminSwiftlet() {
       focusField(event.currentTarget, result.error.issues[0]?.path[0]);
       return;
     }
+    setSaving(true);
     try {
-      saveConfiguration(swiftletSettingsKey, result.data);
+      await saveSwiftletSettings(
+        result.data,
+        clearToken ? null : apiToken.trim() || undefined,
+      );
       setEditing(null);
+      setApiToken("");
+      setClearToken(false);
       setErrors({});
       setFailed(false);
       setFeedback("Swiftlet settings saved.");
-    } catch {
+    } catch (error) {
       setFailed(true);
       setFeedback(
-        "Unable to save changes. Your changes are still in the form.",
+        error instanceof Error
+          ? error.message
+          : "Unable to save changes. Your changes are still in the form.",
       );
+    } finally {
+      setSaving(false);
     }
   }
   const numberField = (
@@ -199,7 +246,18 @@ export function AdminSwiftlet() {
   );
   return (
     <div className={styles.infrastructure}>
-      <DevelopmentNote />
+      {status.error && (
+        <p className={styles.feedbackError} role="alert">
+          {status.error}{" "}
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            onClick={() => void retryInfrastructureLoad()}
+          >
+            Retry loading
+          </button>
+        </p>
+      )}
       <form
         noValidate
         onSubmit={submit}
@@ -216,11 +274,9 @@ export function AdminSwiftlet() {
                 <p>How Perch reaches your Swiftlet service.</p>
               </div>
               <span
-                className={`${shared.badge} ${isInfrastructureMock && saved.endpoint ? shared.good : shared.neutral}`}
+                className={`${shared.badge} ${saved.endpoint ? shared.good : shared.neutral}`}
               >
-                {isInfrastructureMock && saved.endpoint
-                  ? "Connected"
-                  : "Not connected"}
+                {saved.endpoint ? "Configured" : "Not configured"}
               </span>
             </div>
             <Field
@@ -243,7 +299,15 @@ export function AdminSwiftlet() {
                 aria-describedby={fieldDescription("endpoint", errors.endpoint)}
               />
             </Field>
-            <TokenField name="swiftlet-token" label="API token" />
+            <TokenField
+              name="swiftlet-token"
+              label="API token"
+              value={apiToken}
+              configured={status.tokenConfigured}
+              disabled={status.loading || saving || Boolean(status.error)}
+              onChange={changeToken}
+              onClear={clearSavedToken}
+            />
           </section>
           <section
             className={styles.placement}
@@ -321,27 +385,31 @@ export function AdminSwiftlet() {
             role={failed ? "alert" : "status"}
           >
             {feedback ||
-              (!isInfrastructureMock
-                ? "Swiftlet service is not configured."
-                : dirty
-                  ? "Unsaved changes"
-                  : "No unsaved changes")}
+              (status.loading
+                ? "Loading saved configuration…"
+                : status.error
+                  ? "Could not load saved configuration."
+                  : dirty
+                    ? "Unsaved changes"
+                    : "No unsaved changes")}
           </p>
           <div>
             <button
               type="button"
               className={styles.secondaryButton}
               onClick={discard}
-              disabled={!dirty}
+              disabled={!dirty || saving}
             >
               Discard changes
             </button>
             <button
               type="submit"
               className={shared.primaryButton}
-              disabled={!dirty || !isInfrastructureMock}
+              disabled={
+                !dirty || saving || status.loading || Boolean(status.error)
+              }
             >
-              Save settings
+              {saving ? "Saving…" : "Save settings"}
             </button>
           </div>
         </div>
@@ -408,24 +476,27 @@ function NestEditor({
   initial,
   records,
   isNew,
+  saving,
   onSave,
   onClose,
 }: {
   initial: Nest;
   records: Nest[];
   isNew: boolean;
-  onSave: (nest: Nest) => string | null;
+  saving: boolean;
+  onSave: (nest: Nest) => Promise<string | null>;
   onClose: () => void;
 }) {
   const [form, setForm] = useState(toNestForm(initial));
   const [errors, setErrors] = useState<Errors>({});
   const [feedback, setFeedback] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   function change(name: keyof NestForm, value: string) {
     setForm((current) => ({ ...current, [name]: value }));
     setErrors((current) => ({ ...current, [name]: "" }));
     setFeedback("");
   }
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const result = nestSchema.safeParse({
       ...initial,
@@ -455,8 +526,13 @@ function NestEditor({
       focusField(event.currentTarget, field);
       return;
     }
-    const error = onSave(result.data);
-    if (error) setFeedback(error);
+    setSubmitting(true);
+    try {
+      const error = await onSave(result.data);
+      if (error) setFeedback(error);
+    } finally {
+      setSubmitting(false);
+    }
   }
   return (
     <NestDialog
@@ -547,8 +623,16 @@ function NestEditor({
           >
             Cancel
           </button>
-          <button type="submit" className={shared.primaryButton}>
-            {isNew ? "Add Nest" : "Save changes"}
+          <button
+            type="submit"
+            className={shared.primaryButton}
+            disabled={saving || submitting}
+          >
+            {saving || submitting
+              ? "Saving…"
+              : isNew
+                ? "Add Nest"
+                : "Save changes"}
           </button>
         </div>
       </form>
@@ -587,6 +671,7 @@ function UsageMeter({ value, label }: { value: number | null; label: string }) {
 export function AdminNests({ query }: { query: string }) {
   const records = useNests();
   const swiftlet = useSwiftletSettings();
+  const status = useInfrastructureStatus();
   const [editor, setEditor] = useState<{
     nest: Nest;
     isNew: boolean;
@@ -594,6 +679,8 @@ export function AdminNests({ query }: { query: string }) {
   const [removing, setRemoving] = useState<Nest | null>(null);
   const [feedback, setFeedback] = useState("");
   const [failed, setFailed] = useState(false);
+  const [savingNest, setSavingNest] = useState(false);
+  const [removingNest, setRemovingNest] = useState(false);
   const filtered = records.filter((nest) =>
     [
       nest.name,
@@ -622,42 +709,56 @@ export function AdminNests({ query }: { query: string }) {
       },
     });
   }
-  function save(nest: Nest) {
+  async function save(nest: Nest): Promise<string | null> {
     const updated = records.some((item) => item.id === nest.id);
+    setSavingNest(true);
     try {
-      saveConfiguration(
-        nestsKey,
-        updated
-          ? records.map((item) => (item.id === nest.id ? nest : item))
-          : [...records, nest],
-      );
+      await saveNest(nest, !updated);
       setEditor(null);
       setFailed(false);
       setFeedback(updated ? "Nest updated." : "Nest added.");
       return null;
-    } catch {
-      return "Unable to save changes. Your changes are still in the form.";
+    } catch (error) {
+      return error instanceof Error
+        ? error.message
+        : "Unable to save changes. Your changes are still in the form.";
+    } finally {
+      setSavingNest(false);
     }
   }
-  function remove() {
+  async function remove() {
     if (!removing) return;
+    setRemovingNest(true);
     try {
-      saveConfiguration(
-        nestsKey,
-        records.filter((nest) => nest.id !== removing.id),
-      );
+      await removeNest(removing.id);
       setRemoving(null);
       setFailed(false);
       setFeedback("Nest removed.");
-    } catch {
+    } catch (error) {
       setFailed(true);
-      setFeedback("Unable to remove the Nest. Please try again.");
-      setRemoving(null);
+      setFeedback(
+        error instanceof Error
+          ? error.message
+          : "Unable to remove the Nest. Please try again.",
+      );
+    } finally {
+      setRemovingNest(false);
     }
   }
   return (
     <div className={styles.infrastructure}>
-      <DevelopmentNote />
+      {status.error && (
+        <p className={styles.feedbackError} role="alert">
+          {status.error}{" "}
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            onClick={() => void retryInfrastructureLoad()}
+          >
+            Retry loading
+          </button>
+        </p>
+      )}
       <section
         className={`${shared.panel} ${styles.nestsPanel}`}
         aria-labelledby="nest-registry-heading"
@@ -666,8 +767,9 @@ export function AdminNests({ query }: { query: string }) {
           <div>
             <h2 id="nest-registry-heading">Nests</h2>
             <p>
-              {records.length} {records.length === 1 ? "Nest" : "Nests"} in your
-              fleet
+              {status.loading
+                ? "Loading saved Nests…"
+                : `${records.length} ${records.length === 1 ? "Nest" : "Nests"} in your fleet`}
             </p>
           </div>
           <button
@@ -675,7 +777,9 @@ export function AdminNests({ query }: { query: string }) {
             id="admin-add-nest"
             className={`${shared.primaryButton} ${styles.addButton}`}
             onClick={add}
-            disabled={records.length >= 250 || !isInfrastructureMock}
+            disabled={
+              records.length >= 1000 || status.loading || Boolean(status.error)
+            }
           >
             <Plus size={16} aria-hidden="true" />
             Add Nest
@@ -795,9 +899,9 @@ export function AdminNests({ query }: { query: string }) {
           <div className={styles.registryEmpty}>
             <h3>No Nests added</h3>
             <p>
-              {isInfrastructureMock
-                ? "Add a Nest with its daemon URL and Egg capacity."
-                : "Connect Swiftlet to add and manage Nests."}
+              {status.loading
+                ? "Loading saved Nests…"
+                : "Add a Nest with its daemon URL and Egg capacity."}
             </p>
           </div>
         )}
@@ -814,6 +918,7 @@ export function AdminNests({ query }: { query: string }) {
           initial={editor.nest}
           isNew={editor.isNew}
           records={records}
+          saving={savingNest}
           onSave={save}
           onClose={() => setEditor(null)}
         />
@@ -838,8 +943,9 @@ export function AdminNests({ query }: { query: string }) {
               type="button"
               className={styles.removeButton}
               onClick={remove}
+              disabled={removingNest}
             >
-              Remove Nest
+              {removingNest ? "Removing…" : "Remove Nest"}
             </button>
           </div>
         </NestDialog>

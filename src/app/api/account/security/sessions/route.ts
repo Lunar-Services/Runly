@@ -1,4 +1,11 @@
-import { ApiError, failure, rateLimit, sameOrigin, session } from "@/lib/api";
+import {
+  ApiError,
+  auditAction,
+  failure,
+  rateLimit,
+  sameOrigin,
+  session,
+} from "@/lib/api";
 
 export async function POST(request: Request) {
   try {
@@ -11,6 +18,7 @@ export async function POST(request: Request) {
         502,
         "Couldn't sign out your other sessions. Try again.",
       );
+    await auditAction(user.id, "account.other_sessions_revoked");
     return Response.json(
       { message: "Your other sessions have been signed out." },
       { headers: { "Cache-Control": "no-store" } },

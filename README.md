@@ -1,5 +1,12 @@
 # Runly AI
 
+**Current backend and local setup:** see [backend development](docs/backend-development.md)
+and the [UI action inventory](docs/ui-action-backend-coverage.md). The web app
+uses Supabase for projects, conversations, source files, history, account data,
+admin reporting and infrastructure configuration. Sandbox execution is deferred.
+Use `pnpm dev` for local Supabase, or `pnpm dev:stripe` to also use the existing
+Stripe test credentials in `.env.local`.
+
 **Docker deployment:** see [deploy/README.md](deploy/README.md) for the web app,
 runtime worker, TLS proxy, required environment, and production commands.
 See [REVIEW.md](REVIEW.md) for the frontend refactor coverage and repository review.
@@ -56,6 +63,12 @@ Docker Desktop must be running before database commands.
 ### 4. Stripe test setup
 
 Use Stripe test mode only for local development:
+
+`pnpm dev:stripe` now starts the official Stripe CLI Docker forwarder and passes
+its signing secret to Next.js automatically, using the existing test-mode key
+in `.env.local`. No separate CLI installation or `stripe listen` command is
+required for this workflow. The manual alternative below remains useful when
+running `pnpm dev:frontend` with a separately managed local configuration.
 
 1. Add `STRIPE_SECRET_KEY=sk_test_...` to `.env.local`.
 2. Start the app with `pnpm dev:stripe`.

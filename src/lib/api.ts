@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "./supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
+import { ZodError } from "zod";
 
 export class ApiError extends Error {
   constructor(
@@ -18,6 +19,20 @@ export function adminClient() {
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+}
+export async function auditAction(
+  actor: string,
+  action: string,
+  metadata: Record<string, unknown> = {},
+) {
+  const { error } = await adminClient()
+    .from("audit_events")
+    .insert({ actor_id: actor, action, metadata });
+  if (error)
+    throw new ApiError(
+      502,
+      "The change was saved, but activity couldn't be recorded. Reload before retrying.",
+    );
 }
 export async function session(options: { allowMfaPending?: boolean } = {}) {
   const db = await createServerSupabaseClient();
@@ -145,6 +160,14 @@ export async function readRawBody(request: Request, max: number) {
   return Buffer.concat(chunks);
 }
 export function failure(error: unknown) {
+  if (error instanceof ZodError)
+    return Response.json(
+      { message: "Check the request fields and try again." },
+      {
+        status: 400,
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   if (error instanceof ApiError)
     return Response.json(
       { message: error.message },

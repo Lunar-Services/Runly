@@ -1,5 +1,6 @@
 import {
   ApiError,
+  auditAction,
   appOrigin,
   failure,
   rateLimit,
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
         503,
         "Supabase did not return a GitHub authorization URL.",
       );
+    await auditAction(user.id, "account.github_link_started");
     return Response.json({ url: data.url });
   } catch (error) {
     return failure(error);

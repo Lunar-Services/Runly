@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { ApiError, body, failure, sameOrigin, session } from "@/lib/api";
+import {
+  ApiError,
+  auditAction,
+  body,
+  failure,
+  sameOrigin,
+  session,
+} from "@/lib/api";
 
 const preferences = z.object({
   projectUpdates: z.boolean(),
@@ -64,6 +71,7 @@ export async function PATCH(request: Request) {
         502,
         "Your notification preferences couldn't be saved.",
       );
+    await auditAction(user.id, "account.notifications_updated", next);
     return Response.json(
       { ...saved.data, message: "Notification preferences saved." },
       { headers: noStore },
